@@ -10,6 +10,7 @@ const PATHS: Record<string, string> = {
     'M8.5 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM3 19.5c0-2.9 2.5-4.5 5.5-4.5s5.5 1.6 5.5 4.5M16 11.2a2.6 2.6 0 1 0-1-5M18.2 15c2.1.3 3.3 1.9 3.3 4.5',
   data: 'M12 3.2c3.9 0 7 1.2 7 2.8s-3.1 2.8-7 2.8-7-1.2-7-2.8 3.1-2.8 7-2.8ZM5 6v12c0 1.6 3.1 2.8 7 2.8s7-1.2 7-2.8V6M5 12c0 1.6 3.1 2.8 7 2.8s7-1.2 7-2.8',
   menu: 'M4 7h16M4 12h16M4 17h16',
+  flag: 'M6 21V4.5M6 5h11l-1.8 3L17 11H6',
 }
 
 export function Icon({ name, className }: { name: string; className?: string }) {

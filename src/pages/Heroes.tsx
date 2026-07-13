@@ -3,6 +3,7 @@ import type { Grade, Hero, Position, SavedDeck } from '../types'
 import { getAllHeroes, newId, update, useUserData } from '../store'
 import { DeckLine, HeroChip } from '../components/HeroChip'
 import { HeroPicker } from '../components/HeroPicker'
+import { recFor, TEAM_SPEED_NOTE } from '../data/heroRecs'
 
 const GRADES: Grade[] = ['전설', '희귀', '고급', '일반']
 const POSITIONS: Position[] = ['공격형', '마법형', '방어형', '지원형', '만능형']
@@ -63,6 +64,7 @@ function DeckBuilder({
           <DeckLine heroIds={sel} heroMap={heroMap}
             onRemove={(i) => setSel((s) => s.filter((_, j) => j !== i))} />
         </div>
+        {sel.length > 0 && <DeckRecs heroIds={sel} heroMap={heroMap} />}
         <div className="row">
           <input placeholder="덱 이름" value={name} onChange={(e) => setName(e.target.value)} style={{ width: 150 }} />
           <select value={kind} onChange={(e) => setKind(e.target.value as SavedDeck['kind'])}>
@@ -104,6 +106,31 @@ function DeckBuilder({
         </div>
       )}
     </>
+  )
+}
+
+function DeckRecs({ heroIds, heroMap }: { heroIds: string[]; heroMap: Map<string, Hero> }) {
+  return (
+    <div className="rec-panel">
+      <div className="rec-head">🔧 세팅 추천 <span className="muted">(선택한 영웅 기준)</span></div>
+      {heroIds.map((id, i) => {
+        const h = heroMap.get(id)
+        const rec = recFor(h?.name ?? id, h?.position ?? null)
+        return (
+          <div className="rec-row" key={`${id}-${i}`}>
+            <div className="rec-hero"><HeroChip hero={h} name={id} /></div>
+            <div className="rec-items">
+              <span title="반지/장신구"><b>💍</b> {rec.accessory ?? '—'}</span>
+              <span title="장비(템)"><b>🛡️</b> {rec.gear ?? '—'}</span>
+              <span title="펫"><b>🐾</b> {rec.pet ?? '—'}</span>
+              <span title="속공"><b>⚡</b> {rec.speed ?? '—'}</span>
+            </div>
+            {rec.note && <div className="rec-note muted">{rec.note}</div>}
+          </div>
+        )
+      })}
+      <div className="rec-team">⚡ <b>팀 속공</b> — {TEAM_SPEED_NOTE}</div>
+    </div>
   )
 }
 

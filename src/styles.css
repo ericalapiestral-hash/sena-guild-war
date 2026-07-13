@@ -406,6 +406,64 @@ tbody tr:hover td { background: var(--surface-2); }
 }
 .stat-tile .label { color: var(--text-2); font-size: 0.86rem; }
 
+/* ---- 세팅 추천 패널 ---- */
+.rec-panel {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  margin: 4px 0 12px;
+}
+.rec-head { font-weight: 700; font-size: 0.95rem; margin-bottom: 8px; }
+.rec-row { padding: 8px 0; border-top: 1px solid var(--border); }
+.rec-row:first-of-type { border-top: none; }
+.rec-hero { margin-bottom: 6px; }
+.rec-items {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 14px;
+  font-size: 0.88rem;
+  color: var(--text);
+}
+.rec-items b { font-style: normal; opacity: 0.9; margin-right: 2px; }
+.rec-note { margin-top: 4px; font-size: 0.82rem; }
+.rec-team {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  font-size: 0.86rem;
+  color: var(--text-2);
+}
+.rec-team b { color: var(--ink); }
+@media (max-width: 520px) { .rec-items { grid-template-columns: 1fr; } }
+
+/* ---- 거점 배치 ---- */
+.tier-head { display: flex; align-items: center; gap: 10px; margin: 4px 0 8px; flex-wrap: wrap; }
+.tier-badge {
+  display: inline-block;
+  padding: 3px 12px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  border: 1px solid transparent;
+}
+.tier-본성 { color: #8a3b2e; background: #fbece7; border-color: #f0cabf; }
+.tier-내성 { color: var(--accent-strong); background: var(--accent-soft); border-color: #e6d6a8; }
+.tier-외성 { color: var(--text-2); background: var(--surface-2); border-color: var(--border-2); }
+.castle-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 12px;
+}
+.castle-card { margin-bottom: 0; }
+.castle-deck {
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+  margin-top: 8px;
+}
+.castle-deck:first-of-type { border-top: none; }
+@media (max-width: 520px) { .castle-grid { grid-template-columns: 1fr; } }
+
 .footer-note {
   text-align: center;
   color: var(--text-3);

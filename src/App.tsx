@@ -8,6 +8,7 @@ import { GuidePage } from './pages/Guide'
 import { MembersPage } from './pages/Members'
 import { SettingsPage } from './pages/Settings'
 import { SearchPage } from './pages/Search'
+import { CastlePage } from './pages/Castle'
 
 interface MenuItem {
   route: string
@@ -20,6 +21,7 @@ const MENU: MenuItem[] = [
   { route: 'counters', label: '카운터덱', icon: 'target' },
   { route: 'heroes', label: '영웅 · 덱', icon: 'shield' },
   { route: 'guide', label: '가이드', icon: 'book' },
+  { route: 'castle', label: '거점 배치', icon: 'flag' },
   { route: 'search', label: 'AI 검색', icon: 'search' },
   { route: 'members', label: '길드원', icon: 'users' },
   { route: 'settings', label: '데이터', icon: 'data' },
@@ -30,7 +32,7 @@ const PRIMARY = ['home', 'counters', 'heroes', 'guide']
 const MORE = MENU.filter((m) => !PRIMARY.includes(m.route))
 
 const Brand = () => (
-  <span className="logo"><span className="em">⚔️</span>세나 길드전</span>
+  <span className="logo"><span className="em">⚔️</span>낭만주의</span>
 )
 
 export default function App() {
@@ -67,13 +69,14 @@ export default function App() {
         {base === 'counters' && <CountersPage />}
         {base === 'heroes' && <HeroesPage />}
         {base === 'guide' && <GuidePage />}
+        {base === 'castle' && <CastlePage />}
         {base === 'search' && <SearchPage />}
         {base === 'members' && <MembersPage />}
         {base === 'settings' && <SettingsPage />}
       </main>
 
       <div className="footer-note">
-        세븐나이츠 리버스 길드전 도우미 — 데이터는 이 브라우저에 저장됩니다. 공유하려면 [데이터 관리]에서 내보내기.
+        낭만주의 · 세븐나이츠 리버스 길드전 도우미 — 데이터는 이 브라우저에 저장됩니다. 공유하려면 [데이터 관리]에서 내보내기.
       </div>
 
       {/* 모바일 하단 탭바 */}
@@ -110,7 +113,7 @@ export default function App() {
                 onClick={() => { navigate(m.route); setSheet(false) }}
               >
                 <Icon name={m.icon} className="ic" />
-                {m.label === 'AI 검색' ? 'AI 공략검색' : m.label === '데이터' ? '데이터 관리' : `${m.label} 관리`}
+                {({ 'AI 검색': 'AI 공략검색', 데이터: '데이터 관리', 길드원: '길드원 관리' } as Record<string, string>)[m.label] ?? m.label}
               </button>
             ))}
           </div>
