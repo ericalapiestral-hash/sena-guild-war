@@ -1,5 +1,7 @@
 node_modules/
 dist/
 *.tsbuildinfo
+.wrangler/
+worker/node_modules/
 *.local
 .DS_Store

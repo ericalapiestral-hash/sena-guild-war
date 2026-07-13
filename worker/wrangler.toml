@@ -1,0 +1,14 @@
+name = "sena-guild-search"
+main = "worker.js"
+compatibility_date = "2024-11-01"
+
+# 모델 선택 (비용에 직접 영향):
+#   claude-haiku-4-5   → 가장 저렴 (기본값), 간단한 공략 Q&A에 충분
+#   claude-opus-4-8    → 더 깊고 정확하지만 몇 배 비쌈
+# 바꾸려면 아래 값을 수정하고 `npx wrangler deploy` 로 재배포.
+[vars]
+CLAUDE_MODEL = "claude-haiku-4-5"
+
+# 시크릿(키·비밀번호)은 여기 적지 말고 CLI로 설정하세요:
+#   npx wrangler secret put ANTHROPIC_API_KEY
+#   npx wrangler secret put GUILD_PASSWORD

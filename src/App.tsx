@@ -5,12 +5,14 @@ import { HeroesPage } from './pages/Heroes'
 import { GuidePage } from './pages/Guide'
 import { MembersPage } from './pages/Members'
 import { SettingsPage } from './pages/Settings'
+import { SearchPage } from './pages/Search'
 
 const MENU: { route: string; label: string }[] = [
   { route: 'home', label: '홈' },
   { route: 'counters', label: '카운터덱 사전' },
   { route: 'heroes', label: '영웅 · 덱 빌더' },
   { route: 'guide', label: '공략 가이드' },
+  { route: 'search', label: 'AI 공략검색' },
   { route: 'members', label: '길드원 관리' },
   { route: 'settings', label: '데이터 관리' },
 ]
@@ -40,6 +42,7 @@ export default function App() {
         {base === 'counters' && <CountersPage />}
         {base === 'heroes' && <HeroesPage />}
         {base === 'guide' && <GuidePage />}
+        {base === 'search' && <SearchPage />}
         {base === 'members' && <MembersPage />}
         {base === 'settings' && <SettingsPage />}
       </main>
