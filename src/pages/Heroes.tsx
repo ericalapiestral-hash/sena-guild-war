@@ -3,7 +3,7 @@ import type { Grade, Hero, Position, SavedDeck } from '../types'
 import { getAllHeroes, newId, update, useUserData } from '../store'
 import { DeckLine, HeroChip } from '../components/HeroChip'
 import { HeroPicker } from '../components/HeroPicker'
-import { recFor, TEAM_SPEED_NOTE } from '../data/heroRecs'
+import { recFor } from '../data/heroRecs'
 
 const GRADES: Grade[] = ['전설', '희귀', '고급', '일반']
 const POSITIONS: Position[] = ['공격형', '마법형', '방어형', '지원형', '만능형']
@@ -123,13 +123,11 @@ function DeckRecs({ heroIds, heroMap }: { heroIds: string[]; heroMap: Map<string
               <span title="반지/장신구"><b>💍</b> {rec.accessory ?? '—'}</span>
               <span title="장비(템)"><b>🛡️</b> {rec.gear ?? '—'}</span>
               <span title="펫"><b>🐾</b> {rec.pet ?? '—'}</span>
-              <span title="속공"><b>⚡</b> {rec.speed ?? '—'}</span>
             </div>
             {rec.note && <div className="rec-note muted">{rec.note}</div>}
           </div>
         )
       })}
-      <div className="rec-team">⚡ <b>팀 속공</b> — {TEAM_SPEED_NOTE}</div>
     </div>
   )
 }
