@@ -1,1 +1,1812 @@
-[]
+[
+  {
+    "id": "각성 델론즈",
+    "name": "각성 델론즈",
+    "grade": "전설",
+    "position": "공격형",
+    "role": "광역 누커",
+    "pvpRelevant": true,
+    "tags": [
+      "세븐나이츠",
+      "다크나이츠",
+      "각성 형태"
+    ]
+  },
+  {
+    "id": "각성 루디",
+    "name": "각성 루디",
+    "grade": "전설",
+    "position": "방어형",
+    "role": "링크로 아군 피해를 분산하는 메인 탱커",
+    "pvpRelevant": true,
+    "tags": [
+      "세븐나이츠",
+      "각성 형태"
+    ]
+  },
+  {
+    "id": "각성 스쿨드",
+    "name": "각성 스쿨드",
+    "grade": "전설",
+    "position": "마법형",
+    "role": "마법취약 기점 마법 딜러",
+    "pvpRelevant": true,
+    "tags": [
+      "천상의 수호자",
+      "각성 형태"
+    ]
+  },
+  {
+    "id": "각성 실베스타",
+    "name": "각성 실베스타",
+    "grade": "전설",
+    "position": "마법형",
+    "role": "마법 딜러",
+    "pvpRelevant": true,
+    "tags": [
+      "각성 형태"
+    ]
+  },
+  {
+    "id": "각성 아리스",
+    "name": "각성 아리스",
+    "grade": "전설",
+    "position": "만능형",
+    "role": "피격 시 '지룡의 격노'로 강해지는 방어덱 딜러",
+    "pvpRelevant": true,
+    "tags": [
+      "펜타곤",
+      "2026-07 신규",
+      "각성 형태"
+    ]
+  },
+  {
+    "id": "각성 오르카",
+    "name": "각성 오르카",
+    "grade": "전설",
+    "position": "공격형",
+    "role": "아군 스킬 순환 지원 물리 딜러",
+    "pvpRelevant": true,
+    "tags": [
+      "펜타곤",
+      "2026-06 신규",
+      "각성 형태"
+    ]
+  },
+  {
+    "id": "각성 클레미스",
+    "name": "각성 클레미스",
+    "grade": "전설",
+    "position": "지원형",
+    "role": "아군에 불사/부활 부여 — 방덱 최적 서포터",
+    "pvpRelevant": true,
+    "tags": [
+      "펜타곤",
+      "2026 신규",
+      "각성 형태"
+    ]
+  },
+  {
+    "id": "겔리두스",
+    "name": "겔리두스",
+    "grade": "전설",
+    "position": "만능형",
+    "pvpRelevant": true,
+    "tags": [
+      "(구)세븐나이츠",
+      "합성 전용 획득"
+    ]
+  },
+  {
+    "id": "관우",
+    "name": "관우",
+    "grade": "전설",
+    "position": "만능형",
+    "pvpRelevant": null,
+    "tags": [
+      "삼국호걸"
+    ]
+  },
+  {
+    "id": "나타",
+    "name": "나타",
+    "grade": "전설",
+    "position": "마법형",
+    "pvpRelevant": true,
+    "tags": [
+      "천자의 땅 동쪽"
+    ]
+  },
+  {
+    "id": "녹스",
+    "name": "녹스",
+    "grade": "전설",
+    "position": "방어형",
+    "role": "탱커",
+    "pvpRelevant": true,
+    "tags": [
+      "복수자의 지옥"
+    ]
+  },
+  {
+    "id": "니아",
+    "name": "니아",
+    "grade": "전설",
+    "position": "만능형",
+    "role": "광역 딜러(보호막 패시브)",
+    "pvpRelevant": true,
+    "tags": [
+      "성십자단",
+      "모험가 소환 획득 가능"
+    ]
+  },
+  {
+    "id": "데이지",
+    "name": "데이지",
+    "grade": "전설",
+    "position": "마법형",
+    "pvpRelevant": true,
+    "tags": [
+      "달빛의 섬"
+    ]
+  },
+  {
+    "id": "델론즈",
+    "name": "델론즈",
+    "grade": "전설",
+    "position": "공격형",
+    "role": "광역 누커",
+    "pvpRelevant": true,
+    "tags": [
+      "세븐나이츠",
+      "다크나이츠",
+      "각성 보유"
+    ]
+  },
+  {
+    "id": "돼오",
+    "name": "돼오",
+    "grade": "전설",
+    "position": "공격형",
+    "pvpRelevant": true,
+    "tags": [
+      "테라 영지"
+    ]
+  },
+  {
+    "id": "라드그리드",
+    "name": "라드그리드",
+    "grade": "전설",
+    "position": "방어형",
+    "role": "탱커",
+    "pvpRelevant": true,
+    "tags": [
+      "천상의 수호자"
+    ]
+  },
+  {
+    "id": "라이언",
+    "name": "라이언",
+    "grade": "전설",
+    "position": "공격형",
+    "pvpRelevant": true,
+    "tags": [
+      "루미너스 혁명단"
+    ]
+  },
+  {
+    "id": "란드그리드",
+    "name": "란드그리드",
+    "grade": "전설",
+    "position": "공격형",
+    "pvpRelevant": true,
+    "tags": [
+      "천상의 수호자"
+    ]
+  },
+  {
+    "id": "레긴레이프",
+    "name": "레긴레이프",
+    "grade": "전설",
+    "position": "마법형",
+    "pvpRelevant": true,
+    "tags": [
+      "천상의 수호자"
+    ]
+  },
+  {
+    "id": "레이첼",
+    "name": "레이첼",
+    "grade": "전설",
+    "position": "만능형",
+    "role": "디버퍼",
+    "pvpRelevant": true,
+    "tags": [
+      "세븐나이츠"
+    ]
+  },
+  {
+    "id": "로지",
+    "name": "로지",
+    "grade": "전설",
+    "position": "지원형",
+    "pvpRelevant": null,
+    "tags": [
+      "(구)세븐나이츠",
+      "합성 전용 획득"
+    ]
+  },
+  {
+    "id": "루디",
+    "name": "루디",
+    "grade": "전설",
+    "position": "방어형",
+    "role": "링크로 아군 피해를 분산하는 메인 탱커",
+    "pvpRelevant": true,
+    "tags": [
+      "세븐나이츠",
+      "각성 보유"
+    ]
+  },
+  {
+    "id": "루리",
+    "name": "루리",
+    "grade": "전설",
+    "position": "마법형",
+    "role": "공성전 마법 공격 요원",
+    "pvpRelevant": true,
+    "tags": [
+      "성십자단",
+      "모험가 소환 획득 가능"
+    ]
+  },
+  {
+    "id": "룩",
+    "name": "룩",
+    "grade": "전설",
+    "position": "방어형",
+    "role": "탱커",
+    "pvpRelevant": false,
+    "tags": [
+      "테라 영지"
+    ]
+  },
+  {
+    "id": "리나",
+    "name": "리나",
+    "grade": "전설",
+    "position": "지원형",
+    "role": "힐러·버퍼",
+    "pvpRelevant": true,
+    "tags": [
+      "달빛의 섬"
+    ]
+  },
+  {
+    "id": "린",
+    "name": "린",
+    "grade": "전설",
+    "position": "마법형",
+    "pvpRelevant": true,
+    "tags": [
+      "사황"
+    ]
+  },
+  {
+    "id": "멜키르",
+    "name": "멜키르",
+    "grade": "전설",
+    "position": "마법형",
+    "role": "광역 마법 누커",
+    "pvpRelevant": true,
+    "tags": [
+      "다크나이츠"
+    ]
+  },
+  {
+    "id": "미스트",
+    "name": "미스트",
+    "grade": "전설",
+    "position": "만능형",
+    "pvpRelevant": true,
+    "tags": [
+      "천상의 수호자"
+    ]
+  },
+  {
+    "id": "미호",
+    "name": "미호",
+    "grade": "전설",
+    "position": "마법형",
+    "pvpRelevant": true,
+    "tags": [
+      "숨은 강자들"
+    ]
+  },
+  {
+    "id": "밀리아",
+    "name": "밀리아",
+    "grade": "전설",
+    "position": "마법형",
+    "role": "마법형 다수 편성 시너지 딜러",
+    "pvpRelevant": true,
+    "tags": [
+      "(구)세븐나이츠",
+      "합성 전용 획득"
+    ]
+  },
+  {
+    "id": "바네사",
+    "name": "바네사",
+    "grade": "전설",
+    "position": "마법형",
+    "role": "방어력 감소 디버퍼",
+    "pvpRelevant": true,
+    "tags": [
+      "세븐나이츠"
+    ]
+  },
+  {
+    "id": "발리스타",
+    "name": "발리스타",
+    "grade": "전설",
+    "position": "공격형",
+    "pvpRelevant": true,
+    "tags": [
+      "그림자단"
+    ]
+  },
+  {
+    "id": "백각",
+    "name": "백각",
+    "grade": "전설",
+    "position": "만능형",
+    "pvpRelevant": true,
+    "tags": [
+      "천자의 땅 동쪽"
+    ]
+  },
+  {
+    "id": "백룡",
+    "name": "백룡",
+    "grade": "전설",
+    "position": "공격형",
+    "pvpRelevant": true,
+    "tags": [
+      "천자의 땅 서쪽"
+    ]
+  },
+  {
+    "id": "벨리카",
+    "name": "벨리카",
+    "grade": "전설",
+    "position": "마법형",
+    "role": "광역 마법 딜러(치명타 버프)",
+    "pvpRelevant": false,
+    "tags": [
+      "모험가",
+      "모험가 소환 획득 가능"
+    ]
+  },
+  {
+    "id": "브란즈&브란셀",
+    "name": "브란즈&브란셀",
+    "grade": "전설",
+    "position": "공격형",
+    "pvpRelevant": true,
+    "tags": [
+      "다크나이츠"
+    ]
+  },
+  {
+    "id": "비담",
+    "name": "비담",
+    "grade": "전설",
+    "position": "공격형",
+    "role": "공성전 물리 공격 요원",
+    "pvpRelevant": true,
+    "tags": [
+      "천자의 땅 동쪽",
+      "모험가 소환 획득 가능"
+    ]
+  },
+  {
+    "id": "비스킷",
+    "name": "비스킷",
+    "grade": "전설",
+    "position": "지원형",
+    "role": "서포터",
+    "pvpRelevant": true,
+    "tags": [
+      "테라 영지"
+    ]
+  },
+  {
+    "id": "성진우",
+    "name": "성진우",
+    "grade": "전설",
+    "position": "마법형",
+    "role": "콜라보 마법 딜러",
+    "pvpRelevant": true,
+    "tags": [
+      "콜라보(나 혼자만 레벨업)"
+    ]
+  },
+  {
+    "id": "세인",
+    "name": "세인",
+    "grade": "전설",
+    "position": "공격형",
+    "role": "단일 보스딜",
+    "pvpRelevant": true,
+    "tags": [
+      "성십자단"
+    ]
+  },
+  {
+    "id": "소교",
+    "name": "소교",
+    "grade": "전설",
+    "position": "마법형",
+    "pvpRelevant": true,
+    "tags": [
+      "천자의 땅 동쪽"
+    ]
+  },
+  {
+    "id": "손오공",
+    "name": "손오공",
+    "grade": "전설",
+    "position": "만능형",
+    "role": "분신 버프 방어덱 딜러·아군 회복 지원",
+    "pvpRelevant": true,
+    "tags": [
+      "사황"
+    ]
+  },
+  {
+    "id": "스쿨드",
+    "name": "스쿨드",
+    "grade": "전설",
+    "position": "마법형",
+    "role": "마법취약 기점 마법 딜러",
+    "pvpRelevant": true,
+    "tags": [
+      "천상의 수호자",
+      "각성 보유"
+    ]
+  },
+  {
+    "id": "스파이크",
+    "name": "스파이크",
+    "grade": "전설",
+    "position": "만능형",
+    "pvpRelevant": true,
+    "tags": [
+      "세븐나이츠"
+    ]
+  },
+  {
+    "id": "실베스타",
+    "name": "실베스타",
+    "grade": "전설",
+    "position": "마법형",
+    "role": "마법 딜러",
+    "pvpRelevant": true,
+    "tags": [
+      "각성 보유"
+    ]
+  },
+  {
+    "id": "아라곤",
+    "name": "아라곤",
+    "grade": "전설",
+    "position": "방어형",
+    "pvpRelevant": true,
+    "tags": [
+      "테라 영지"
+    ]
+  },
+  {
+    "id": "아리스",
+    "name": "아리스",
+    "grade": "전설",
+    "position": "만능형",
+    "role": "피격 시 '지룡의 격노'로 강해지는 방어덱 딜러",
+    "pvpRelevant": null,
+    "tags": [
+      "펜타곤",
+      "각성 보유",
+      "2026-07 신규"
+    ]
+  },
+  {
+    "id": "아멜리아",
+    "name": "아멜리아",
+    "grade": "전설",
+    "position": "공격형",
+    "pvpRelevant": true,
+    "tags": [
+      "숨은 강자들"
+    ]
+  },
+  {
+    "id": "아일린",
+    "name": "아일린",
+    "grade": "전설",
+    "position": "만능형",
+    "pvpRelevant": false,
+    "tags": [
+      "세븐나이츠"
+    ]
+  },
+  {
+    "id": "아킬라",
+    "name": "아킬라",
+    "grade": "전설",
+    "position": "방어형",
+    "role": "탱커",
+    "pvpRelevant": true,
+    "tags": [
+      "나이트 크로우"
+    ]
+  },
+  {
+    "id": "에스파다",
+    "name": "에스파다",
+    "grade": "전설",
+    "position": "마법형",
+    "role": "광역 딜러",
+    "pvpRelevant": true,
+    "tags": [
+      "성십자단"
+    ]
+  },
+  {
+    "id": "에이스",
+    "name": "에이스",
+    "grade": "전설",
+    "position": "만능형",
+    "role": "디버퍼",
+    "pvpRelevant": true,
+    "tags": [
+      "사황"
+    ]
+  },
+  {
+    "id": "엘리스",
+    "name": "엘리스",
+    "grade": "전설",
+    "position": "지원형",
+    "pvpRelevant": true,
+    "tags": [
+      "테라 영지"
+    ]
+  },
+  {
+    "id": "엘리시아",
+    "name": "엘리시아",
+    "grade": "전설",
+    "position": "만능형",
+    "pvpRelevant": true,
+    "tags": [
+      "루미너스 혁명단"
+    ]
+  },
+  {
+    "id": "여포",
+    "name": "여포",
+    "grade": "전설",
+    "position": "공격형",
+    "role": "사망 시 부활+스킬 쿨 초기화 물리 광역딜러",
+    "pvpRelevant": true,
+    "tags": [
+      "사황"
+    ]
+  },
+  {
+    "id": "연희",
+    "name": "연희",
+    "grade": "전설",
+    "position": "마법형",
+    "pvpRelevant": true,
+    "tags": [
+      "(구)사황"
+    ]
+  },
+  {
+    "id": "오르카",
+    "name": "오르카",
+    "grade": "전설",
+    "position": "공격형",
+    "role": "아군 스킬 순환 지원 물리 딜러",
+    "pvpRelevant": true,
+    "tags": [
+      "펜타곤",
+      "각성 보유",
+      "2026-06 신규"
+    ]
+  },
+  {
+    "id": "오를리",
+    "name": "오를리",
+    "grade": "전설",
+    "position": "지원형",
+    "pvpRelevant": true,
+    "tags": [
+      "나이트 크로우"
+    ]
+  },
+  {
+    "id": "오목",
+    "name": "오목",
+    "grade": "전설",
+    "position": "마법형",
+    "pvpRelevant": true,
+    "tags": [
+      "나이트 크로우"
+    ]
+  },
+  {
+    "id": "유신",
+    "name": "유신",
+    "grade": "전설",
+    "position": "마법형",
+    "pvpRelevant": true,
+    "tags": [
+      "천자의 땅 동쪽",
+      "모험가 소환 획득 가능"
+    ]
+  },
+  {
+    "id": "제이브",
+    "name": "제이브",
+    "grade": "전설",
+    "position": "만능형",
+    "role": "탱딜 겸용 브루저(리세마라 0순위 출신)",
+    "pvpRelevant": true,
+    "tags": [
+      "세븐나이츠"
+    ]
+  },
+  {
+    "id": "쥬리",
+    "name": "쥬리",
+    "grade": "전설",
+    "position": "마법형",
+    "pvpRelevant": null,
+    "tags": [
+      "(구)세븐나이츠",
+      "합성 전용 획득"
+    ]
+  },
+  {
+    "id": "지크",
+    "name": "지크",
+    "grade": "전설",
+    "position": "만능형",
+    "pvpRelevant": true,
+    "tags": [
+      "성십자단"
+    ]
+  },
+  {
+    "id": "차해인",
+    "name": "차해인",
+    "grade": "전설",
+    "position": "공격형",
+    "pvpRelevant": false,
+    "tags": [
+      "콜라보(나 혼자만 레벨업)"
+    ]
+  },
+  {
+    "id": "챈슬러",
+    "name": "챈슬러",
+    "grade": "전설",
+    "position": "만능형",
+    "role": "쿨타임·버프 견제",
+    "pvpRelevant": false,
+    "tags": [
+      "테라 영지"
+    ]
+  },
+  {
+    "id": "초선",
+    "name": "초선",
+    "grade": "전설",
+    "position": "지원형",
+    "role": "수면 CC·버퍼",
+    "pvpRelevant": true,
+    "tags": [
+      "삼국호걸"
+    ]
+  },
+  {
+    "id": "카구라",
+    "name": "카구라",
+    "grade": "전설",
+    "position": "공격형",
+    "pvpRelevant": true,
+    "tags": [
+      "숨은 강자들"
+    ]
+  },
+  {
+    "id": "카르마",
+    "name": "카르마",
+    "grade": "전설",
+    "position": "만능형",
+    "pvpRelevant": true,
+    "tags": [
+      "(구)사황"
+    ]
+  },
+  {
+    "id": "카일",
+    "name": "카일",
+    "grade": "전설",
+    "position": "공격형",
+    "pvpRelevant": true,
+    "tags": [
+      "(구)사황"
+    ]
+  },
+  {
+    "id": "칼헤론",
+    "name": "칼헤론",
+    "grade": "전설",
+    "position": "공격형",
+    "pvpRelevant": true,
+    "tags": [
+      "나이트 크로우"
+    ]
+  },
+  {
+    "id": "콜트",
+    "name": "콜트",
+    "grade": "전설",
+    "position": "공격형",
+    "pvpRelevant": true,
+    "tags": [
+      "다크나이츠"
+    ]
+  },
+  {
+    "id": "크리스",
+    "name": "크리스",
+    "grade": "전설",
+    "position": "만능형",
+    "pvpRelevant": true,
+    "tags": [
+      "세븐나이츠"
+    ]
+  },
+  {
+    "id": "클라한",
+    "name": "클라한",
+    "grade": "전설",
+    "position": "공격형",
+    "pvpRelevant": true,
+    "tags": [
+      "숨은 강자들"
+    ]
+  },
+  {
+    "id": "클레미스",
+    "name": "클레미스",
+    "grade": "전설",
+    "position": "지원형",
+    "role": "아군에 불사/부활 부여 — 방덱 최적 서포터",
+    "pvpRelevant": true,
+    "tags": [
+      "펜타곤",
+      "각성 보유",
+      "2026 신규"
+    ]
+  },
+  {
+    "id": "키리엘",
+    "name": "키리엘",
+    "grade": "전설",
+    "position": "마법형",
+    "pvpRelevant": true,
+    "tags": [
+      "루미너스 혁명단"
+    ]
+  },
+  {
+    "id": "타카",
+    "name": "타카",
+    "grade": "전설",
+    "position": "공격형",
+    "pvpRelevant": true,
+    "tags": [
+      "나이트 크로우"
+    ]
+  },
+  {
+    "id": "태오",
+    "name": "태오",
+    "grade": "전설",
+    "position": "공격형",
+    "role": "0티어 만능 딜러(결투장·레이드 전천후)",
+    "pvpRelevant": true,
+    "tags": [
+      "(구)사황"
+    ]
+  },
+  {
+    "id": "트루드",
+    "name": "트루드",
+    "grade": "전설",
+    "position": "만능형",
+    "pvpRelevant": true,
+    "tags": [
+      "천상의 수호자"
+    ]
+  },
+  {
+    "id": "파스칼",
+    "name": "파스칼",
+    "grade": "전설",
+    "position": "마법형",
+    "role": "광역 마법 딜러",
+    "pvpRelevant": true,
+    "tags": [
+      "어둠의 안식처"
+    ]
+  },
+  {
+    "id": "파이",
+    "name": "파이",
+    "grade": "전설",
+    "position": "공격형",
+    "pvpRelevant": null,
+    "tags": [
+      "(구)세븐나이츠",
+      "합성 전용 획득"
+    ]
+  },
+  {
+    "id": "팔라누스",
+    "name": "팔라누스",
+    "grade": "전설",
+    "position": "만능형",
+    "pvpRelevant": true,
+    "tags": [
+      "다크나이츠"
+    ]
+  },
+  {
+    "id": "프레이야",
+    "name": "프레이야",
+    "grade": "전설",
+    "position": "마법형",
+    "pvpRelevant": true,
+    "tags": [
+      "천상의 수호자"
+    ]
+  },
+  {
+    "id": "플라튼",
+    "name": "플라튼",
+    "grade": "전설",
+    "position": "지원형",
+    "role": "서포터",
+    "pvpRelevant": true,
+    "tags": [
+      "다크나이츠"
+    ]
+  },
+  {
+    "id": "각성 헤브니아",
+    "name": "각성 헤브니아",
+    "grade": "희귀",
+    "position": "공격형",
+    "role": "물리 딜러",
+    "pvpRelevant": true,
+    "tags": [
+      "에반 원정대",
+      "각성 형태"
+    ]
+  },
+  {
+    "id": "각성 헬레니아",
+    "name": "각성 헬레니아",
+    "grade": "희귀",
+    "position": "방어형",
+    "role": "탱커",
+    "pvpRelevant": true,
+    "tags": [
+      "에반 원정대",
+      "각성 형태"
+    ]
+  },
+  {
+    "id": "노호",
+    "name": "노호",
+    "grade": "희귀",
+    "position": "마법형",
+    "role": "방덱 상대 필승 카드로 평가(2025)",
+    "pvpRelevant": false,
+    "tags": [
+      "테라 영지"
+    ]
+  },
+  {
+    "id": "라니아",
+    "name": "라니아",
+    "grade": "희귀",
+    "position": "만능형",
+    "pvpRelevant": false,
+    "tags": [
+      "눈보라의 대지"
+    ]
+  },
+  {
+    "id": "라쿤",
+    "name": "라쿤",
+    "grade": "희귀",
+    "position": "방어형",
+    "pvpRelevant": null,
+    "tags": [
+      "침묵의 광산"
+    ]
+  },
+  {
+    "id": "레오",
+    "name": "레오",
+    "grade": "희귀",
+    "position": "공격형",
+    "pvpRelevant": true,
+    "tags": [
+      "화염의 사막"
+    ]
+  },
+  {
+    "id": "레이",
+    "name": "레이",
+    "grade": "희귀",
+    "position": "공격형",
+    "pvpRelevant": null,
+    "tags": [
+      "달빛의 섬"
+    ]
+  },
+  {
+    "id": "루시",
+    "name": "루시",
+    "grade": "희귀",
+    "position": "지원형",
+    "pvpRelevant": true,
+    "tags": [
+      "모험가"
+    ]
+  },
+  {
+    "id": "리",
+    "name": "리",
+    "grade": "희귀",
+    "position": "방어형",
+    "role": "방어형 탱커",
+    "pvpRelevant": false,
+    "tags": [
+      "에반 원정대"
+    ]
+  },
+  {
+    "id": "링링",
+    "name": "링링",
+    "grade": "희귀",
+    "position": "마법형",
+    "pvpRelevant": null,
+    "tags": [
+      "천자의 땅 서쪽"
+    ]
+  },
+  {
+    "id": "메이",
+    "name": "메이",
+    "grade": "희귀",
+    "position": "공격형",
+    "pvpRelevant": null,
+    "tags": [
+      "테라 영지"
+    ]
+  },
+  {
+    "id": "베인",
+    "name": "베인",
+    "grade": "희귀",
+    "position": "마법형",
+    "pvpRelevant": null,
+    "tags": [
+      "암흑의 무덤"
+    ]
+  },
+  {
+    "id": "블랙로즈",
+    "name": "블랙로즈",
+    "grade": "희귀",
+    "position": "공격형",
+    "pvpRelevant": true,
+    "tags": [
+      "그림자단"
+    ]
+  },
+  {
+    "id": "빅토리아",
+    "name": "빅토리아",
+    "grade": "희귀",
+    "position": "만능형",
+    "pvpRelevant": true,
+    "tags": [
+      "모험가"
+    ]
+  },
+  {
+    "id": "사라",
+    "name": "사라",
+    "grade": "희귀",
+    "position": "지원형",
+    "role": "서포터",
+    "pvpRelevant": null,
+    "tags": [
+      "복수자의 지옥"
+    ]
+  },
+  {
+    "id": "샤오",
+    "name": "샤오",
+    "grade": "희귀",
+    "position": "공격형",
+    "pvpRelevant": null,
+    "tags": [
+      "모험가"
+    ]
+  },
+  {
+    "id": "세라",
+    "name": "세라",
+    "grade": "희귀",
+    "position": "마법형",
+    "role": "공성전 마법 공격 요원",
+    "pvpRelevant": false,
+    "tags": [
+      "그림자단"
+    ]
+  },
+  {
+    "id": "소이",
+    "name": "소이",
+    "grade": "희귀",
+    "position": "공격형",
+    "pvpRelevant": false,
+    "tags": [
+      "천자의 땅 서쪽"
+    ]
+  },
+  {
+    "id": "스니퍼",
+    "name": "스니퍼",
+    "grade": "희귀",
+    "position": "공격형",
+    "pvpRelevant": false,
+    "tags": [
+      "에반 원정대"
+    ]
+  },
+  {
+    "id": "실비아",
+    "name": "실비아",
+    "grade": "희귀",
+    "position": "마법형",
+    "pvpRelevant": false,
+    "tags": [
+      "모험가"
+    ]
+  },
+  {
+    "id": "아리엘",
+    "name": "아리엘",
+    "grade": "희귀",
+    "position": "마법형",
+    "role": "공성전 마법 공격 요원",
+    "pvpRelevant": true,
+    "tags": [
+      "에반 원정대"
+    ]
+  },
+  {
+    "id": "아수라",
+    "name": "아수라",
+    "grade": "희귀",
+    "position": "만능형",
+    "pvpRelevant": true,
+    "tags": [
+      "어둠의 안식처"
+    ]
+  },
+  {
+    "id": "에반",
+    "name": "에반",
+    "grade": "희귀",
+    "position": "방어형",
+    "role": "탱커·서포트",
+    "pvpRelevant": true,
+    "tags": [
+      "에반 원정대"
+    ]
+  },
+  {
+    "id": "유리",
+    "name": "유리",
+    "grade": "희귀",
+    "position": "마법형",
+    "role": "공성전 특화 요원",
+    "pvpRelevant": false,
+    "tags": [
+      "에반 원정대"
+    ]
+  },
+  {
+    "id": "유이",
+    "name": "유이",
+    "grade": "희귀",
+    "position": "지원형",
+    "role": "메인 힐러",
+    "pvpRelevant": true,
+    "tags": [
+      "에반 원정대"
+    ]
+  },
+  {
+    "id": "유진호",
+    "name": "유진호",
+    "grade": "희귀",
+    "position": "방어형",
+    "role": "탱커",
+    "pvpRelevant": null,
+    "tags": [
+      "콜라보(나 혼자만 레벨업)"
+    ]
+  },
+  {
+    "id": "이주희",
+    "name": "이주희",
+    "grade": "희귀",
+    "position": "지원형",
+    "role": "힐러·서포터",
+    "pvpRelevant": null,
+    "tags": [
+      "콜라보(나 혼자만 레벨업)"
+    ]
+  },
+  {
+    "id": "제인",
+    "name": "제인",
+    "grade": "희귀",
+    "position": "공격형",
+    "pvpRelevant": false,
+    "tags": [
+      "그림자단"
+    ]
+  },
+  {
+    "id": "조운",
+    "name": "조운",
+    "grade": "희귀",
+    "position": "공격형",
+    "pvpRelevant": null,
+    "tags": [
+      "삼국호걸"
+    ]
+  },
+  {
+    "id": "조커",
+    "name": "조커",
+    "grade": "희귀",
+    "position": "마법형",
+    "pvpRelevant": false,
+    "tags": [
+      "모험가"
+    ]
+  },
+  {
+    "id": "쥬피",
+    "name": "쥬피",
+    "grade": "희귀",
+    "position": "공격형",
+    "role": "공성전 단일 공격 요원",
+    "pvpRelevant": true,
+    "tags": [
+      "에반 원정대"
+    ]
+  },
+  {
+    "id": "진",
+    "name": "진",
+    "grade": "희귀",
+    "position": "공격형",
+    "pvpRelevant": true,
+    "tags": [
+      "달빛의 섬"
+    ]
+  },
+  {
+    "id": "카론",
+    "name": "카론",
+    "grade": "희귀",
+    "position": "지원형",
+    "pvpRelevant": false,
+    "tags": [
+      "모험가"
+    ]
+  },
+  {
+    "id": "카린",
+    "name": "카린",
+    "grade": "희귀",
+    "position": "지원형",
+    "pvpRelevant": false,
+    "tags": [
+      "에반 원정대"
+    ]
+  },
+  {
+    "id": "캐티",
+    "name": "캐티",
+    "grade": "희귀",
+    "position": "공격형",
+    "pvpRelevant": false,
+    "tags": [
+      "달빛의 섬"
+    ]
+  },
+  {
+    "id": "클레오",
+    "name": "클레오",
+    "grade": "희귀",
+    "position": "마법형",
+    "pvpRelevant": false,
+    "tags": [
+      "용의 유적지"
+    ]
+  },
+  {
+    "id": "클로에",
+    "name": "클로에",
+    "grade": "희귀",
+    "position": "지원형",
+    "pvpRelevant": true,
+    "tags": [
+      "테라 영지"
+    ]
+  },
+  {
+    "id": "풍연",
+    "name": "풍연",
+    "grade": "희귀",
+    "position": "공격형",
+    "role": "공성전 물리 공격 요원",
+    "pvpRelevant": true,
+    "tags": [
+      "천자의 땅 서쪽"
+    ]
+  },
+  {
+    "id": "헤브니아",
+    "name": "헤브니아",
+    "grade": "희귀",
+    "position": "공격형",
+    "role": "물리 딜러",
+    "pvpRelevant": true,
+    "tags": [
+      "에반 원정대",
+      "각성 보유"
+    ]
+  },
+  {
+    "id": "헬레니아",
+    "name": "헬레니아",
+    "grade": "희귀",
+    "position": "방어형",
+    "role": "탱커",
+    "pvpRelevant": true,
+    "tags": [
+      "에반 원정대",
+      "각성 보유"
+    ]
+  },
+  {
+    "id": "호킨",
+    "name": "호킨",
+    "grade": "희귀",
+    "position": "공격형",
+    "pvpRelevant": null,
+    "tags": [
+      "신비의 숲"
+    ]
+  },
+  {
+    "id": "강재",
+    "name": "강재",
+    "grade": "고급",
+    "position": "공격형",
+    "pvpRelevant": false,
+    "tags": [
+      "천자의 땅 동쪽"
+    ]
+  },
+  {
+    "id": "구피",
+    "name": "구피",
+    "grade": "고급",
+    "position": "공격형",
+    "pvpRelevant": false,
+    "tags": [
+      "눈보라의 대지"
+    ]
+  },
+  {
+    "id": "나미",
+    "name": "나미",
+    "grade": "고급",
+    "position": "공격형",
+    "pvpRelevant": false,
+    "tags": [
+      "침묵의 광산"
+    ]
+  },
+  {
+    "id": "데릭",
+    "name": "데릭",
+    "grade": "고급",
+    "position": "공격형",
+    "pvpRelevant": false,
+    "tags": [
+      "암흑의 무덤"
+    ]
+  },
+  {
+    "id": "라울",
+    "name": "라울",
+    "grade": "고급",
+    "position": "공격형",
+    "pvpRelevant": false,
+    "tags": [
+      "화염의 사막"
+    ]
+  },
+  {
+    "id": "로울",
+    "name": "로울",
+    "grade": "고급",
+    "position": "공격형",
+    "pvpRelevant": false,
+    "tags": [
+      "화염의 사막"
+    ]
+  },
+  {
+    "id": "로토",
+    "name": "로토",
+    "grade": "고급",
+    "position": "공격형",
+    "pvpRelevant": false,
+    "tags": [
+      "용의 유적지"
+    ]
+  },
+  {
+    "id": "바론",
+    "name": "바론",
+    "grade": "고급",
+    "position": "방어형",
+    "pvpRelevant": false,
+    "tags": [
+      "복수자의 지옥"
+    ]
+  },
+  {
+    "id": "베스킨",
+    "name": "베스킨",
+    "grade": "고급",
+    "position": "공격형",
+    "pvpRelevant": false,
+    "tags": [
+      "신비의 숲"
+    ]
+  },
+  {
+    "id": "벨라",
+    "name": "벨라",
+    "grade": "고급",
+    "position": "마법형",
+    "pvpRelevant": false,
+    "tags": [
+      "용의 유적지"
+    ]
+  },
+  {
+    "id": "봉황",
+    "name": "봉황",
+    "grade": "고급",
+    "position": "마법형",
+    "pvpRelevant": false,
+    "tags": [
+      "천자의 땅 서쪽"
+    ]
+  },
+  {
+    "id": "스모키",
+    "name": "스모키",
+    "grade": "고급",
+    "position": "공격형",
+    "pvpRelevant": false,
+    "tags": [
+      "침묵의 광산"
+    ]
+  },
+  {
+    "id": "스커드",
+    "name": "스커드",
+    "grade": "고급",
+    "position": "공격형",
+    "pvpRelevant": false,
+    "tags": [
+      "암흑의 무덤"
+    ]
+  },
+  {
+    "id": "스컬",
+    "name": "스컬",
+    "grade": "고급",
+    "position": "공격형",
+    "pvpRelevant": false,
+    "tags": [
+      "암흑의 무덤"
+    ]
+  },
+  {
+    "id": "시로",
+    "name": "시로",
+    "grade": "고급",
+    "position": "방어형",
+    "pvpRelevant": false,
+    "tags": [
+      "달빛의 섬"
+    ]
+  },
+  {
+    "id": "아론",
+    "name": "아론",
+    "grade": "고급",
+    "position": "공격형",
+    "pvpRelevant": false,
+    "tags": [
+      "복수자의 지옥"
+    ]
+  },
+  {
+    "id": "아칸",
+    "name": "아칸",
+    "grade": "고급",
+    "position": "방어형",
+    "pvpRelevant": false,
+    "tags": [
+      "눈보라의 대지"
+    ]
+  },
+  {
+    "id": "알리",
+    "name": "알리",
+    "grade": "고급",
+    "position": "공격형",
+    "pvpRelevant": false,
+    "tags": [
+      "복수자의 지옥"
+    ]
+  },
+  {
+    "id": "엘렌",
+    "name": "엘렌",
+    "grade": "고급",
+    "position": "공격형",
+    "pvpRelevant": false,
+    "tags": [
+      "암흑의 무덤"
+    ]
+  },
+  {
+    "id": "엘린",
+    "name": "엘린",
+    "grade": "고급",
+    "position": "공격형",
+    "pvpRelevant": false,
+    "tags": [
+      "암흑의 무덤"
+    ]
+  },
+  {
+    "id": "용",
+    "name": "용",
+    "grade": "고급",
+    "position": "공격형",
+    "pvpRelevant": false,
+    "tags": [
+      "천자의 땅 서쪽"
+    ]
+  },
+  {
+    "id": "웬디",
+    "name": "웬디",
+    "grade": "고급",
+    "position": "방어형",
+    "pvpRelevant": false,
+    "tags": [
+      "눈보라의 대지"
+    ]
+  },
+  {
+    "id": "유미",
+    "name": "유미",
+    "grade": "고급",
+    "position": "공격형",
+    "pvpRelevant": false,
+    "tags": [
+      "달빛의 섬"
+    ]
+  },
+  {
+    "id": "이치",
+    "name": "이치",
+    "grade": "고급",
+    "position": "만능형",
+    "pvpRelevant": false,
+    "tags": [
+      "달빛의 섬"
+    ]
+  },
+  {
+    "id": "자스",
+    "name": "자스",
+    "grade": "고급",
+    "position": "마법형",
+    "pvpRelevant": false,
+    "tags": [
+      "용의 유적지"
+    ]
+  },
+  {
+    "id": "자크",
+    "name": "자크",
+    "grade": "고급",
+    "position": "공격형",
+    "pvpRelevant": false,
+    "tags": [
+      "용의 유적지"
+    ]
+  },
+  {
+    "id": "쥬몬",
+    "name": "쥬몬",
+    "grade": "고급",
+    "position": "지원형",
+    "pvpRelevant": false,
+    "tags": [
+      "달빛의 섬"
+    ]
+  },
+  {
+    "id": "카이",
+    "name": "카이",
+    "grade": "고급",
+    "position": "공격형",
+    "pvpRelevant": false,
+    "tags": [
+      "눈보라의 대지"
+    ]
+  },
+  {
+    "id": "코코",
+    "name": "코코",
+    "grade": "고급",
+    "position": "마법형",
+    "pvpRelevant": false,
+    "tags": [
+      "달빛의 섬"
+    ]
+  },
+  {
+    "id": "코쿤",
+    "name": "코쿤",
+    "grade": "고급",
+    "position": "공격형",
+    "pvpRelevant": false,
+    "tags": [
+      "침묵의 광산"
+    ]
+  },
+  {
+    "id": "쿠퍼",
+    "name": "쿠퍼",
+    "grade": "고급",
+    "position": "방어형",
+    "pvpRelevant": false,
+    "tags": [
+      "화염의 사막"
+    ]
+  },
+  {
+    "id": "클로프",
+    "name": "클로프",
+    "grade": "고급",
+    "position": "공격형",
+    "pvpRelevant": false,
+    "tags": [
+      "복수자의 지옥"
+    ]
+  },
+  {
+    "id": "토토",
+    "name": "토토",
+    "grade": "고급",
+    "position": "공격형",
+    "pvpRelevant": false,
+    "tags": [
+      "용의 유적지"
+    ]
+  },
+  {
+    "id": "페페",
+    "name": "페페",
+    "grade": "고급",
+    "position": "방어형",
+    "pvpRelevant": false,
+    "tags": [
+      "신비의 숲"
+    ]
+  },
+  {
+    "id": "폰",
+    "name": "폰",
+    "grade": "고급",
+    "position": "공격형",
+    "pvpRelevant": false,
+    "tags": [
+      "신비의 숲"
+    ]
+  },
+  {
+    "id": "하울",
+    "name": "하울",
+    "grade": "고급",
+    "position": "지원형",
+    "pvpRelevant": false,
+    "tags": [
+      "용의 유적지"
+    ]
+  },
+  {
+    "id": "리키",
+    "name": "리키",
+    "grade": "일반",
+    "position": "공격형",
+    "pvpRelevant": false,
+    "tags": [
+      "화염의 사막"
+    ]
+  },
+  {
+    "id": "리퍼",
+    "name": "리퍼",
+    "grade": "일반",
+    "position": "방어형",
+    "pvpRelevant": false,
+    "tags": [
+      "화염의 사막"
+    ]
+  },
+  {
+    "id": "바벨",
+    "name": "바벨",
+    "grade": "일반",
+    "position": "공격형",
+    "pvpRelevant": false,
+    "tags": [
+      "침묵의 광산"
+    ]
+  },
+  {
+    "id": "셀롭",
+    "name": "셀롭",
+    "grade": "일반",
+    "position": "공격형",
+    "pvpRelevant": false,
+    "tags": [
+      "침묵의 광산"
+    ]
+  },
+  {
+    "id": "실롭",
+    "name": "실롭",
+    "grade": "일반",
+    "position": "공격형",
+    "pvpRelevant": false,
+    "tags": [
+      "침묵의 광산"
+    ]
+  },
+  {
+    "id": "아리",
+    "name": "아리",
+    "grade": "일반",
+    "position": "지원형",
+    "pvpRelevant": false,
+    "tags": [
+      "신비의 숲"
+    ]
+  },
+  {
+    "id": "찰스",
+    "name": "찰스",
+    "grade": "일반",
+    "position": "방어형",
+    "pvpRelevant": false,
+    "tags": [
+      "암흑의 무덤"
+    ]
+  },
+  {
+    "id": "포포",
+    "name": "포포",
+    "grade": "일반",
+    "position": "방어형",
+    "pvpRelevant": false,
+    "tags": [
+      "신비의 숲"
+    ]
+  },
+  {
+    "id": "푸키",
+    "name": "푸키",
+    "grade": "일반",
+    "position": "방어형",
+    "pvpRelevant": false,
+    "tags": [
+      "신비의 숲"
+    ]
+  },
+  {
+    "id": "프로스",
+    "name": "프로스",
+    "grade": "일반",
+    "position": "공격형",
+    "pvpRelevant": false,
+    "tags": [
+      "눈보라의 대지"
+    ]
+  },
+  {
+    "id": "프루나",
+    "name": "프루나",
+    "grade": "일반",
+    "position": "공격형",
+    "pvpRelevant": false,
+    "tags": [
+      "눈보라의 대지"
+    ]
+  },
+  {
+    "id": "해피",
+    "name": "해피",
+    "grade": "일반",
+    "position": "마법형",
+    "pvpRelevant": false,
+    "tags": [
+      "복수자의 지옥"
+    ]
+  }
+]

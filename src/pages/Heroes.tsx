@@ -1,12 +1,11 @@
 import { useMemo, useState } from 'react'
-import type { Element, Grade, Hero, Position, SavedDeck } from '../types'
+import type { Grade, Hero, Position, SavedDeck } from '../types'
 import { getAllHeroes, newId, update, useUserData } from '../store'
 import { DeckLine, HeroChip } from '../components/HeroChip'
 import { HeroPicker } from '../components/HeroPicker'
 
-const ELEMENTS: Element[] = ['불', '물', '땅', '빛', '암']
 const GRADES: Grade[] = ['전설', '희귀', '고급', '일반']
-const POSITIONS: Position[] = ['공격형', '방어형', '지원형']
+const POSITIONS: Position[] = ['공격형', '마법형', '방어형', '지원형', '만능형']
 
 export function HeroesPage() {
   const userData = useUserData()
@@ -55,7 +54,7 @@ function DeckBuilder({
   return (
     <>
       <div className="card">
-        <strong>덱 빌더</strong>
+        <strong>덱 빌더</strong> <span className="muted">— 길드전 파티는 3인, 방어 파티는 1인당 최대 5개</span>
         <div style={{ marginTop: 8 }}>
           <HeroPicker heroes={heroes} selected={sel} max={3}
             onToggle={(id) => setSel((s) => s.includes(id) ? s.filter((x) => x !== id) : s.length < 3 ? [...s, id] : s)} />
@@ -108,16 +107,16 @@ function DeckBuilder({
 
 function HeroTable({ heroes }: { heroes: Hero[] }) {
   const [q, setQ] = useState('')
-  const [el, setEl] = useState<Element | ''>('')
-  const [grade, setGrade] = useState<Grade | ''>('')
   const [pos, setPos] = useState<Position | ''>('')
+  const [grade, setGrade] = useState<Grade | ''>('')
+  const [pvpOnly, setPvpOnly] = useState(false)
   const [showAdd, setShowAdd] = useState(false)
 
   const filtered = heroes.filter((h) => {
     if (q && !h.name.includes(q)) return false
-    if (el && h.element !== el) return false
-    if (grade && h.grade !== grade) return false
     if (pos && h.position !== pos) return false
+    if (grade && h.grade !== grade) return false
+    if (pvpOnly && !h.pvpRelevant) return false
     return true
   })
 
@@ -133,27 +132,27 @@ function HeroTable({ heroes }: { heroes: Hero[] }) {
           <option value="">등급 전체</option>
           {GRADES.map((g) => <option key={g} value={g}>{g}</option>)}
         </select>
-        <select value={el} onChange={(e) => setEl(e.target.value as Element | '')}>
-          <option value="">속성 전체</option>
-          {ELEMENTS.map((e) => <option key={e} value={e}>{e}</option>)}
-        </select>
         <select value={pos} onChange={(e) => setPos(e.target.value as Position | '')}>
-          <option value="">포지션 전체</option>
+          <option value="">유형 전체</option>
           {POSITIONS.map((p) => <option key={p} value={p}>{p}</option>)}
         </select>
+        <label className="muted" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <input type="checkbox" checked={pvpOnly} onChange={(e) => setPvpOnly(e.target.checked)} />
+          PvP 주력만
+        </label>
       </div>
       <table>
         <thead>
-          <tr><th>영웅</th><th>등급</th><th>속성</th><th>포지션</th><th>역할</th><th>PvP</th><th /></tr>
+          <tr><th>영웅</th><th>등급</th><th>유형</th><th>역할</th><th>소속</th><th>PvP</th><th /></tr>
         </thead>
         <tbody>
           {filtered.map((h) => (
             <tr key={h.id}>
               <td><HeroChip hero={h} /></td>
               <td>{h.grade}</td>
-              <td>{h.element ?? '—'}</td>
               <td>{h.position ?? '—'}</td>
               <td className="muted">{h.role ?? ''}</td>
+              <td className="muted">{h.tags?.join(', ') ?? ''}</td>
               <td>{h.pvpRelevant ? '⭐' : ''}</td>
               <td>
                 {h.custom && (
@@ -176,7 +175,6 @@ function HeroTable({ heroes }: { heroes: Hero[] }) {
 function AddHeroForm({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState('')
   const [grade, setGrade] = useState<Grade>('전설')
-  const [el, setEl] = useState<Element>('불')
   const [pos, setPos] = useState<Position>('공격형')
   const [role, setRole] = useState('')
 
@@ -188,9 +186,6 @@ function AddHeroForm({ onClose }: { onClose: () => void }) {
         <input placeholder="영웅 이름" value={name} onChange={(e) => setName(e.target.value)} />
         <select value={grade} onChange={(e) => setGrade(e.target.value as Grade)}>
           {GRADES.map((g) => <option key={g} value={g}>{g}</option>)}
-        </select>
-        <select value={el} onChange={(e) => setEl(e.target.value as Element)}>
-          {ELEMENTS.map((e) => <option key={e} value={e}>{e}</option>)}
         </select>
         <select value={pos} onChange={(e) => setPos(e.target.value as Position)}>
           {POSITIONS.map((p) => <option key={p} value={p}>{p}</option>)}
@@ -205,7 +200,7 @@ function AddHeroForm({ onClose }: { onClose: () => void }) {
             d.customHeroes.push({
               id: newId('hero'),
               name: name.trim(),
-              grade, element: el, position: pos,
+              grade, position: pos,
               role: role.trim() || undefined,
               pvpRelevant: true,
               custom: true,

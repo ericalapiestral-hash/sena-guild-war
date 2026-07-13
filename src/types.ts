@@ -1,17 +1,17 @@
 // 도메인 타입 정의
+// 주의: 세나 리버스는 영웅별 속성(불/물/땅/빛/암) 시스템이 없음 — 속성은 요일 던전 분류 전용.
 
-export type Element = '불' | '물' | '땅' | '빛' | '암'
-export type Position = '공격형' | '방어형' | '지원형'
+export type Position = '공격형' | '마법형' | '방어형' | '지원형' | '만능형'
 export type Grade = '전설' | '희귀' | '고급' | '일반'
 
 export interface Hero {
   id: string
   name: string
   grade: Grade
-  element: Element | null
   position: Position | null
   role?: string
-  pvpRelevant?: boolean
+  pvpRelevant?: boolean | null
+  /** 소속 그룹·특이사항 (세븐나이츠/사황/펜타곤/각성 형태 등) */
   tags?: string[]
   /** 사용자가 직접 추가한 영웅 여부 */
   custom?: boolean

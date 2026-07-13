@@ -14,7 +14,7 @@ export function HeroChip({
   onClick?: () => void
   className?: string
 }) {
-  const el = hero?.element
+  const pos = hero?.position
   const display = hero?.name ?? name ?? '?'
   return (
     <span
@@ -22,7 +22,7 @@ export function HeroChip({
       onClick={onClick}
       role={onClick ? 'button' : undefined}
     >
-      <span className={`el-dot ${el ? `el-${el}` : 'el-none'}`} title={el ?? '속성 미상'} />
+      <span className={`pos-dot ${pos ? `pos-${pos}` : 'pos-none'}`} title={pos ?? '유형 미상'} />
       {display}
       {hero?.grade === '전설' && <span className="grade-mark">★</span>}
       {onRemove && (
