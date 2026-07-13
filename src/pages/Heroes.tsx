@@ -77,28 +77,30 @@ function DeckBuilder({
       {savedDecks.length > 0 && (
         <div className="card">
           <strong>저장된 덱</strong>
-          <table style={{ marginTop: 8 }}>
-            <thead>
-              <tr><th>이름</th><th>종류</th><th>구성</th><th>메모</th><th /></tr>
-            </thead>
-            <tbody>
-              {savedDecks.map((d) => (
-                <tr key={d.id}>
-                  <td><strong>{d.name}</strong></td>
-                  <td>{d.kind}</td>
-                  <td><DeckLine heroIds={d.heroes} heroMap={heroMap} /></td>
-                  <td className="muted">{d.memo}</td>
-                  <td>
-                    <button className="small danger" onClick={() => {
-                      if (confirm(`'${d.name}' 덱을 삭제할까요?`)) {
-                        update((u) => { u.savedDecks = u.savedDecks.filter((x) => x.id !== d.id) })
-                      }
-                    }}>삭제</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="table-wrap">
+            <table style={{ marginTop: 8 }}>
+              <thead>
+                <tr><th>이름</th><th>종류</th><th>구성</th><th>메모</th><th /></tr>
+              </thead>
+              <tbody>
+                {savedDecks.map((d) => (
+                  <tr key={d.id}>
+                    <td><strong>{d.name}</strong></td>
+                    <td>{d.kind}</td>
+                    <td><DeckLine heroIds={d.heroes} heroMap={heroMap} /></td>
+                    <td className="muted">{d.memo}</td>
+                    <td>
+                      <button className="small danger" onClick={() => {
+                        if (confirm(`'${d.name}' 덱을 삭제할까요?`)) {
+                          update((u) => { u.savedDecks = u.savedDecks.filter((x) => x.id !== d.id) })
+                        }
+                      }}>삭제</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </>
@@ -141,32 +143,34 @@ function HeroTable({ heroes }: { heroes: Hero[] }) {
           PvP 주력만
         </label>
       </div>
-      <table>
-        <thead>
-          <tr><th>영웅</th><th>등급</th><th>유형</th><th>역할</th><th>소속</th><th>PvP</th><th /></tr>
-        </thead>
-        <tbody>
-          {filtered.map((h) => (
-            <tr key={h.id}>
-              <td><HeroChip hero={h} /></td>
-              <td>{h.grade}</td>
-              <td>{h.position ?? '—'}</td>
-              <td className="muted">{h.role ?? ''}</td>
-              <td className="muted">{h.tags?.join(', ') ?? ''}</td>
-              <td>{h.pvpRelevant ? '⭐' : ''}</td>
-              <td>
-                {h.custom && (
-                  <button className="small danger" onClick={() => {
-                    if (confirm(`'${h.name}' 영웅을 삭제할까요?`)) {
-                      update((u) => { u.customHeroes = u.customHeroes.filter((x) => x.id !== h.id) })
-                    }
-                  }}>삭제</button>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <div className="table-wrap">
+        <table>
+          <thead>
+            <tr><th>영웅</th><th>등급</th><th>유형</th><th>역할</th><th>소속</th><th>PvP</th><th /></tr>
+          </thead>
+          <tbody>
+            {filtered.map((h) => (
+              <tr key={h.id}>
+                <td><HeroChip hero={h} /></td>
+                <td>{h.grade}</td>
+                <td>{h.position ?? '—'}</td>
+                <td className="muted">{h.role ?? ''}</td>
+                <td className="muted">{h.tags?.join(', ') ?? ''}</td>
+                <td>{h.pvpRelevant ? '⭐' : ''}</td>
+                <td>
+                  {h.custom && (
+                    <button className="small danger" onClick={() => {
+                      if (confirm(`'${h.name}' 영웅을 삭제할까요?`)) {
+                        update((u) => { u.customHeroes = u.customHeroes.filter((x) => x.id !== h.id) })
+                      }
+                    }}>삭제</button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
       {showAdd && <AddHeroForm onClose={() => setShowAdd(false)} />}
     </div>
   )

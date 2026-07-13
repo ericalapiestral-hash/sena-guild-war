@@ -104,27 +104,29 @@ function MemberCard({ member, expanded, onToggle }: { member: Member; expanded: 
           </div>
 
           {member.records.length > 0 && (
-            <table style={{ marginTop: 10 }}>
-              <thead><tr><th>날짜</th><th>결과</th><th>상대</th><th>메모</th><th /></tr></thead>
-              <tbody>
-                {member.records.map((r) => (
-                  <tr key={r.id}>
-                    <td>{r.date}</td>
-                    <td><span className={`badge ${r.result === '승' ? 'win' : 'lose'}`}>{r.result}</span></td>
-                    <td>{r.opponent ?? '—'}</td>
-                    <td className="muted">{r.memo ?? ''}</td>
-                    <td>
-                      <button className="small danger" onClick={() => {
-                        update((d) => {
-                          const t = d.members.find((x) => x.id === member.id)
-                          if (t) t.records = t.records.filter((x) => x.id !== r.id)
-                        })
-                      }}>✕</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="table-wrap">
+              <table style={{ marginTop: 10 }}>
+                <thead><tr><th>날짜</th><th>결과</th><th>상대</th><th>메모</th><th /></tr></thead>
+                <tbody>
+                  {member.records.map((r) => (
+                    <tr key={r.id}>
+                      <td>{r.date}</td>
+                      <td><span className={`badge ${r.result === '승' ? 'win' : 'lose'}`}>{r.result}</span></td>
+                      <td>{r.opponent ?? '—'}</td>
+                      <td className="muted">{r.memo ?? ''}</td>
+                      <td>
+                        <button className="small danger" onClick={() => {
+                          update((d) => {
+                            const t = d.members.find((x) => x.id === member.id)
+                            if (t) t.records = t.records.filter((x) => x.id !== r.id)
+                          })
+                        }}>✕</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       )}

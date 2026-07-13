@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { navigate, useRoute } from './router'
+import { Icon } from './components/Icon'
 import { HomePage } from './pages/Home'
 import { CountersPage } from './pages/Counters'
 import { HeroesPage } from './pages/Heroes'
@@ -7,24 +9,41 @@ import { MembersPage } from './pages/Members'
 import { SettingsPage } from './pages/Settings'
 import { SearchPage } from './pages/Search'
 
-const MENU: { route: string; label: string }[] = [
-  { route: 'home', label: '홈' },
-  { route: 'counters', label: '카운터덱 사전' },
-  { route: 'heroes', label: '영웅 · 덱 빌더' },
-  { route: 'guide', label: '공략 가이드' },
-  { route: 'search', label: 'AI 공략검색' },
-  { route: 'members', label: '길드원 관리' },
-  { route: 'settings', label: '데이터 관리' },
+interface MenuItem {
+  route: string
+  label: string
+  icon: string
+}
+
+const MENU: MenuItem[] = [
+  { route: 'home', label: '홈', icon: 'home' },
+  { route: 'counters', label: '카운터덱', icon: 'target' },
+  { route: 'heroes', label: '영웅 · 덱', icon: 'shield' },
+  { route: 'guide', label: '가이드', icon: 'book' },
+  { route: 'search', label: 'AI 검색', icon: 'search' },
+  { route: 'members', label: '길드원', icon: 'users' },
+  { route: 'settings', label: '데이터', icon: 'data' },
 ]
+
+// 모바일 하단 탭바: 주요 4개 + 더보기
+const PRIMARY = ['home', 'counters', 'heroes', 'guide']
+const MORE = MENU.filter((m) => !PRIMARY.includes(m.route))
+
+const Brand = () => (
+  <span className="logo"><span className="em">⚔️</span>세나 길드전</span>
+)
 
 export default function App() {
   const route = useRoute()
   const base = route.split('/')[0]
+  const [sheet, setSheet] = useState(false)
+  const moreActive = MORE.some((m) => m.route === base)
 
   return (
     <>
+      {/* 데스크톱 상단 네비게이션 */}
       <header className="topbar">
-        <span className="logo">⚔️ 세나 리버스 길드전</span>
+        <Brand />
         <nav>
           {MENU.map((m) => (
             <button
@@ -37,6 +56,12 @@ export default function App() {
           ))}
         </nav>
       </header>
+
+      {/* 모바일 상단 앱바 */}
+      <header className="mobile-appbar">
+        <Brand />
+      </header>
+
       <main>
         {base === 'home' && <HomePage />}
         {base === 'counters' && <CountersPage />}
@@ -46,9 +71,51 @@ export default function App() {
         {base === 'members' && <MembersPage />}
         {base === 'settings' && <SettingsPage />}
       </main>
+
       <div className="footer-note">
-        세븐나이츠 리버스 길드전 도우미 — 데이터는 이 브라우저에 저장됩니다. 다른 기기와 공유하려면 [데이터 관리]에서 내보내기.
+        세븐나이츠 리버스 길드전 도우미 — 데이터는 이 브라우저에 저장됩니다. 공유하려면 [데이터 관리]에서 내보내기.
       </div>
+
+      {/* 모바일 하단 탭바 */}
+      <nav className="bottom-nav">
+        {PRIMARY.map((r) => {
+          const m = MENU.find((x) => x.route === r)!
+          return (
+            <button
+              key={r}
+              className={base === r ? 'active' : ''}
+              onClick={() => navigate(r)}
+            >
+              <Icon name={m.icon} className="ic" />
+              {m.label}
+            </button>
+          )
+        })}
+        <button className={moreActive ? 'active' : ''} onClick={() => setSheet(true)}>
+          <Icon name="menu" className="ic" />
+          더보기
+        </button>
+      </nav>
+
+      {/* 더보기 시트 */}
+      {sheet && (
+        <>
+          <div className="sheet-backdrop" onClick={() => setSheet(false)} />
+          <div className="sheet" role="dialog" aria-label="더보기 메뉴">
+            <div className="sheet-handle" />
+            {MORE.map((m) => (
+              <button
+                key={m.route}
+                className={`sheet-item ${base === m.route ? 'active' : ''}`}
+                onClick={() => { navigate(m.route); setSheet(false) }}
+              >
+                <Icon name={m.icon} className="ic" />
+                {m.label === 'AI 검색' ? 'AI 공략검색' : m.label === '데이터' ? '데이터 관리' : `${m.label} 관리`}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
     </>
   )
 }
