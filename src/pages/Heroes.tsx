@@ -16,7 +16,7 @@ export function HeroesPage() {
   return (
     <div>
       <h1>영웅 DB · 덱 빌더</h1>
-      <p className="page-desc">영웅을 검색·필터하고, 5인 덱을 짜서 저장해 두세요.</p>
+      <p className="page-desc">영웅을 검색·필터하고, 길드전 3인 덱을 짜서 저장해 두세요.</p>
       <DeckBuilder heroes={heroes} heroMap={heroMap} savedDecks={userData.savedDecks} />
       <HeroTable heroes={heroes} />
     </div>
@@ -57,8 +57,8 @@ function DeckBuilder({
       <div className="card">
         <strong>덱 빌더</strong>
         <div style={{ marginTop: 8 }}>
-          <HeroPicker heroes={heroes} selected={sel}
-            onToggle={(id) => setSel((s) => s.includes(id) ? s.filter((x) => x !== id) : s.length < 5 ? [...s, id] : s)} />
+          <HeroPicker heroes={heroes} selected={sel} max={3}
+            onToggle={(id) => setSel((s) => s.includes(id) ? s.filter((x) => x !== id) : s.length < 3 ? [...s, id] : s)} />
         </div>
         <div style={{ margin: '10px 0' }}>
           <DeckLine heroIds={sel} heroMap={heroMap}

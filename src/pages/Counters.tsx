@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react'
-import type { CounterDeck, CounterEntry, Hero } from '../types'
+import type { CounterDeck, CounterEntry, Formation, Hero } from '../types'
 import { getAllCounters, getAllHeroes, isBuiltinCounter, newId, update, useUserData } from '../store'
 import { DeckLine } from '../components/HeroChip'
 import { HeroPicker } from '../components/HeroPicker'
 
 const CONFIDENCES: CounterDeck['confidence'][] = ['검증됨', '커뮤니티', '추측']
+const FORMATIONS: Formation[] = ['공격진형', '밸런스진형', '보호진형', '기본진형']
 
 export function CountersPage() {
   useUserData() // 변경 구독
@@ -25,7 +26,7 @@ export function CountersPage() {
   function startNew() {
     setEditing({
       id: newId('counter'),
-      defense: searchSel.slice(0, 5),
+      defense: searchSel.slice(0, 3),
       counters: [],
       updatedAt: new Date().toISOString().slice(0, 10),
     })
@@ -51,13 +52,13 @@ export function CountersPage() {
     <div>
       <h1>카운터덱 사전</h1>
       <p className="page-desc">
-        상대 방어덱에 포함된 영웅을 선택하면, 그 조합을 상대하는 카운터 공격덱을 찾아줍니다.
+        상대 방어덱(3인)에 포함된 영웅을 선택하면, 그 조합을 상대하는 카운터 공격덱을 찾아줍니다.
       </p>
 
       <div className="card">
         <strong>방어덱 영웅으로 검색</strong>
         <div style={{ marginTop: 8 }}>
-          <HeroPicker heroes={heroes} selected={searchSel} max={5}
+          <HeroPicker heroes={heroes} selected={searchSel} max={3}
             onToggle={(id) => setSearchSel((s) => s.includes(id) ? s.filter((x) => x !== id) : [...s, id])} />
         </div>
         <div className="row" style={{ marginTop: 10 }}>
@@ -78,7 +79,9 @@ export function CountersPage() {
         <div className="card" key={entry.id}>
           <div className="row between">
             <div>
-              <div className="muted" style={{ marginBottom: 4 }}>상대 방어덱</div>
+              <div className="muted" style={{ marginBottom: 4 }}>
+                상대 방어덱{entry.defenseFormation ? ` · ${entry.defenseFormation}` : ''}
+              </div>
               <DeckLine heroIds={entry.defense} heroMap={heroMap} />
               {entry.defenseNotes && <div className="muted" style={{ marginTop: 6 }}>{entry.defenseNotes}</div>}
             </div>
@@ -93,6 +96,7 @@ export function CountersPage() {
               <div key={i} className="row" style={{ padding: '8px 0', borderTop: '1px solid var(--border)' }}>
                 <span className={`badge ${c.confidence}`}>{c.confidence}</span>
                 <DeckLine heroIds={c.heroes} heroMap={heroMap} />
+                {c.formation && <span className="muted">({c.formation})</span>}
                 {c.notes && <span className="muted" style={{ flexBasis: '100%' }}>💡 {c.notes}</span>}
               </div>
             ))}
@@ -153,7 +157,7 @@ function CounterForm({
       const deck = target === -1 ? next.defense : next.counters[target].heroes
       const i = deck.indexOf(id)
       if (i >= 0) deck.splice(i, 1)
-      else if (deck.length < 5) deck.push(id)
+      else if (deck.length < 3) deck.push(id)
       return next
     })
   }
@@ -164,7 +168,14 @@ function CounterForm({
 
       <div className="card" onClick={() => setTarget(-1)}
         style={{ borderColor: target === -1 ? 'var(--accent)' : undefined, cursor: 'pointer' }}>
-        <strong>상대 방어덱</strong> <span className="muted">(클릭해서 선택 후 아래에서 영웅 지정)</span>
+        <div className="row between">
+          <span><strong>상대 방어덱</strong> <span className="muted">(클릭해서 선택 후 아래에서 영웅 지정)</span></span>
+          <select value={draft.defenseFormation ?? ''} onClick={(e) => e.stopPropagation()}
+            onChange={(e) => setDraft({ ...draft, defenseFormation: (e.target.value || undefined) as Formation | undefined })}>
+            <option value="">진형 미상</option>
+            {FORMATIONS.map((f) => <option key={f} value={f}>{f}</option>)}
+          </select>
+        </div>
         <div style={{ marginTop: 6 }}>
           <DeckLine heroIds={draft.defense} heroMap={heroMap} />
         </div>
@@ -183,6 +194,15 @@ function CounterForm({
           <div className="row between">
             <strong>카운터덱 {i + 1}</strong>
             <div className="row">
+              <select value={c.formation ?? ''} onClick={(e) => e.stopPropagation()}
+                onChange={(e) => {
+                  const next = structuredClone(draft)
+                  next.counters[i].formation = (e.target.value || undefined) as Formation | undefined
+                  setDraft(next)
+                }}>
+                <option value="">진형 미상</option>
+                {FORMATIONS.map((f) => <option key={f} value={f}>{f}</option>)}
+              </select>
               <select value={c.confidence} onClick={(e) => e.stopPropagation()}
                 onChange={(e) => {
                   const next = structuredClone(draft)
@@ -228,7 +248,7 @@ function CounterForm({
       <h2 style={{ fontSize: '1rem' }}>
         영웅 선택 — {target === -1 ? '상대 방어덱' : `카운터덱 ${target + 1}`}에 넣기
       </h2>
-      <HeroPicker heroes={heroes} selected={targetDeck} onToggle={toggleHero} />
+      <HeroPicker heroes={heroes} selected={targetDeck} onToggle={toggleHero} max={3} />
 
       <div className="row" style={{ marginTop: 16, justifyContent: 'flex-end' }}>
         <button onClick={onClose}>취소</button>

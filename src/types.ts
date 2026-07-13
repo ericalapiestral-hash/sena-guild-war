@@ -17,12 +17,15 @@ export interface Hero {
   custom?: boolean
 }
 
-/** 영웅 5명으로 구성된 덱. 영웅 id 배열 (0~5명, 작성 중엔 미만 허용) */
+/** 길드전 파티는 3인. 영웅 id 배열 (작성 중엔 미만 허용) */
 export type DeckHeroes = string[]
+
+export type Formation = '공격진형' | '밸런스진형' | '보호진형' | '기본진형'
 
 export interface CounterDeck {
   heroes: DeckHeroes
-  /** 공략 포인트: 스킬 순서, 진형, 주의점 등 */
+  formation?: Formation
+  /** 공략 포인트: 스킬 순서, 펫, 주의점 등 */
   notes: string
   /** 신뢰도: 검증됨(직접 승리) / 커뮤니티 / 추측 */
   confidence: '검증됨' | '커뮤니티' | '추측'
@@ -32,6 +35,7 @@ export interface CounterEntry {
   id: string
   /** 상대 방어덱 */
   defense: DeckHeroes
+  defenseFormation?: Formation
   defenseNotes?: string
   counters: CounterDeck[]
   updatedAt: string
