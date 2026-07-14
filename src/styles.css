@@ -374,6 +374,7 @@ h2 { font-size: 1.15rem; letter-spacing: -0.02em; margin: 26px 0 10px; font-weig
   .print-table th:nth-child(2), .print-table td:nth-child(2) { text-align: left; }
   .print-table th:nth-child(n+3), .print-table td:nth-child(n+3) { text-align: right; }
   .print-table thead th { background: #eee !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .print-table td.cell-fail { background: #f4bfba !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
 
 /* ---- 영웅 선택 그리드 ---- */
@@ -584,6 +585,8 @@ dialog::backdrop { background: rgba(20, 22, 30, 0.4); }
 
 /* ---- 통계: 커트라인 미달 행 강조 ---- */
 tbody tr.row-fail td { background: var(--danger-soft); }
+/* 미달자 이름칸 — 행 배경보다 한 단계 진한 적당한 빨강 */
+tbody tr.row-fail td.cell-fail, tbody td.cell-fail { background: #f4bfba; }
 
 /* ---- 통계 전주 대비 등락 ---- */
 .delta { font-size: 0.8rem; font-weight: 700; white-space: nowrap; color: var(--text-2); }

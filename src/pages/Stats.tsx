@@ -290,6 +290,8 @@ function PrintContent({
     (prevRound?.entries ?? []).filter((e) => typeof e.value === 'number').map((e) => [e.name, e.value as number]),
   )
   const curTotal = curRanked.reduce((s, e) => s + (e.value as number), 0)
+  // 커트라인 이하 미달자 — 이름칸 강조
+  const isFail = (e: StatEntry) => typeof current.cutline === 'number' && typeof e.value === 'number' && e.value <= current.cutline
   return (
     <div className="print-root">
       <div className="print-head">
@@ -306,7 +308,7 @@ function PrintContent({
           <tbody>
             {curRanked.map((e, i) => (
               <tr key={e.name}>
-                <td>{i + 1}</td><td>{e.name}</td>
+                <td>{i + 1}</td><td className={isFail(e) ? 'cell-fail' : ''}>{e.name}</td>
                 <td className="num-tab">{fmt(prevMap.get(e.name))}</td>
                 <td className="num-tab">{fmt(e.value)}</td>
                 <td>{pctText(prevMap.get(e.name), e.value)}</td>
@@ -459,7 +461,7 @@ function EntryTable({
             {displayRows.map((e, i) => (
               <tr key={e.name} className={isFail(e) ? 'row-fail' : ''}>
                 <td><b>{editing ? i + 1 : typeof e.value === 'number' ? i + 1 : '-'}</b></td>
-                <td><b>{e.name}</b>{!rosterSet.has(e.name) && <span className="muted" style={{ marginLeft: 4, fontSize: '0.75rem' }}>(외부)</span>}</td>
+                <td className={isFail(e) ? 'cell-fail' : ''}><b>{e.name}</b>{!rosterSet.has(e.name) && <span className="muted" style={{ marginLeft: 4, fontSize: '0.75rem' }}>(외부)</span>}</td>
                 <td style={{ textAlign: 'right' }}>{editing ? (
                   <input type="number" value={e.value ?? ''} placeholder="0" className="num-tab"
                     onChange={(ev) => setField(e.name, { value: ev.target.value === '' ? undefined : Number(ev.target.value) })}
