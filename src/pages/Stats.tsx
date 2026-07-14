@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import type { StatEntry, StatRound, UserData } from '../types'
 import { newId, update, useUserData } from '../store'
 import { isAdmin } from '../auth'
@@ -123,12 +124,15 @@ export function StatsPage({ kind }: { kind: Kind }) {
               <strong style={{ fontSize: '1.1rem' }}>{current.label}</strong>
               {current.date && <span className="muted" style={{ marginLeft: 8 }}>기록 시작 {current.date}</span>}
             </div>
-            {admin && (
-              <div className="row">
-                <button className="small" onClick={() => renameRound(current)}>이름변경</button>
-                <button className="small danger" onClick={() => deleteRound(current)}>{cfg.roundName}삭제</button>
-              </div>
-            )}
+            <div className="row">
+              <button className="small" onClick={() => window.print()}>🖨 표 인쇄</button>
+              {admin && (
+                <>
+                  <button className="small" onClick={() => renameRound(current)}>이름변경</button>
+                  <button className="small danger" onClick={() => deleteRound(current)}>{cfg.roundName}삭제</button>
+                </>
+              )}
+            </div>
           </div>
 
           {cfg.byDay && (
@@ -160,6 +164,119 @@ export function StatsPage({ kind }: { kind: Kind }) {
           />
         </div>
       )}
+
+      {current && createPortal(
+        <PrintContent kind={kind} cfg={cfg} current={current} prevRound={prevRound} roster={roster} />,
+        document.body,
+      )}
+    </div>
+  )
+}
+
+/** 이름 병합(길드원+외부) 후 점수 있는 사람만 내림차순 정렬 */
+function buildRanked(roster: string[], stored: StatEntry[]): StatEntry[] {
+  const rosterSet = new Set(roster)
+  const extra = stored.map((e) => e.name).filter((n) => !rosterSet.has(n))
+  const map = new Map(stored.map((e) => [e.name, e]))
+  return [...roster, ...extra]
+    .map((name) => ({ name, ...(map.get(name) ?? {}) } as StatEntry))
+    .filter((e) => typeof e.value === 'number')
+    .sort((a, b) => (b.value as number) - (a.value as number))
+}
+
+/** 등락 % 텍스트 (인쇄용, 색 없이 ▲/▼) */
+function pctText(prev?: number, cur?: number): string {
+  if (typeof cur !== 'number' || typeof prev !== 'number' || prev === 0) return '—'
+  const p = ((cur - prev) / Math.abs(prev)) * 100
+  if (Math.abs(p) < 0.05) return '0%'
+  return `${p > 0 ? '▲' : '▼'} ${Math.abs(p).toFixed(1)}%`
+}
+
+/** 화면엔 숨김(.print-root), 인쇄 시에만 보이는 표. body에 portal로 렌더. */
+function PrintContent({
+  kind,
+  cfg,
+  current,
+  prevRound,
+  roster,
+}: {
+  kind: Kind
+  cfg: (typeof CFG)[Kind]
+  current: StatRound
+  prevRound?: StatRound
+  roster: string[]
+}) {
+  const printedAt = new Date().toISOString().slice(0, 10)
+
+  if (cfg.byDay) {
+    // 공성전 — 요일마다 순위표 (각 요일: 지난주 같은 요일 대비 %)
+    const daysWithData = WEEKDAYS.filter((d) => (current.days?.[d] ?? []).some((e) => typeof e.value === 'number'))
+    return (
+      <div className="print-root">
+        <div className="print-head">
+          <h2>{cfg.title} — {current.label}</h2>
+          <span className="print-meta">출력일 {printedAt} · 낭만주의</span>
+        </div>
+        {daysWithData.length === 0 && <p>입력된 점수가 없어요.</p>}
+        {daysWithData.map((d) => {
+          const ranked = buildRanked(roster, current.days?.[d] ?? [])
+          const prevMap = new Map(
+            (prevRound?.days?.[d] ?? []).filter((e) => typeof e.value === 'number').map((e) => [e.name, e.value as number]),
+          )
+          const total = ranked.reduce((s, e) => s + (e.value as number), 0)
+          return (
+            <div key={d} className="print-block">
+              <h3>{d}요일 <span className="print-sub">({ranked.length}명 · 합계 {fmt(total)})</span></h3>
+              <table className="print-table">
+                <thead><tr><th>순위</th><th>길드원</th><th>{cfg.metric}</th><th>{cfg.deltaLabel}</th></tr></thead>
+                <tbody>
+                  {ranked.map((e, i) => (
+                    <tr key={e.name}>
+                      <td>{i + 1}</td><td>{e.name}</td>
+                      <td className="num-tab">{fmt(e.value)}</td>
+                      <td>{pctText(prevMap.get(e.name), e.value)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
+
+  // 파괴신 — 전 시즌 · 이번 시즌 · 상승% 한 표에
+  const curRanked = buildRanked(roster, current.entries)
+  const prevMap = new Map(
+    (prevRound?.entries ?? []).filter((e) => typeof e.value === 'number').map((e) => [e.name, e.value as number]),
+  )
+  const curTotal = curRanked.reduce((s, e) => s + (e.value as number), 0)
+  return (
+    <div className="print-root">
+      <div className="print-head">
+        <h2>{cfg.title}</h2>
+        <span className="print-meta">출력일 {printedAt} · 낭만주의</span>
+      </div>
+      <div className="print-block">
+        <h3>
+          이번 시즌: {current.label}
+          <span className="print-sub"> ({curRanked.length}명 · 합계 {fmt(curTotal)}{prevRound ? ` · 전 시즌: ${prevRound.label} 대비 상승%` : ''})</span>
+        </h3>
+        <table className="print-table">
+          <thead><tr><th>순위</th><th>길드원</th><th>전 시즌</th><th>이번 시즌</th><th>상승%</th></tr></thead>
+          <tbody>
+            {curRanked.map((e, i) => (
+              <tr key={e.name}>
+                <td>{i + 1}</td><td>{e.name}</td>
+                <td className="num-tab">{fmt(prevMap.get(e.name))}</td>
+                <td className="num-tab">{fmt(e.value)}</td>
+                <td>{pctText(prevMap.get(e.name), e.value)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }

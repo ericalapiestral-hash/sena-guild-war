@@ -355,6 +355,26 @@ h2 { font-size: 1.15rem; letter-spacing: -0.02em; margin: 26px 0 10px; font-weig
 .badge.role-정예멤버 { color: var(--info); background: var(--info-soft); border-color: #cfe0f7; }
 .badge.alt { color: var(--muted); background: var(--surface-2, #f0f0f3); border-color: var(--border); }
 
+/* 인쇄 출력 — 화면에선 숨기고, 인쇄 시에만 body의 print-root만 보이게 */
+.print-root { display: none; }
+@media print {
+  @page { margin: 12mm; }
+  body > *:not(.print-root) { display: none !important; }
+  .print-root { display: block; color: #000; font-family: inherit; }
+  .print-head { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 2px solid #000; padding-bottom: 6px; margin-bottom: 12px; }
+  .print-head h2 { margin: 0; font-size: 18px; }
+  .print-meta { font-size: 11px; color: #555; }
+  .print-block { margin-bottom: 16px; break-inside: avoid; page-break-inside: avoid; }
+  .print-block h3 { margin: 0 0 6px; font-size: 14px; }
+  .print-sub { font-weight: 400; font-size: 11px; color: #555; }
+  .print-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .print-table th, .print-table td { border: 1px solid #999; padding: 4px 8px; }
+  .print-table th:first-child, .print-table td:first-child { text-align: center; width: 40px; }
+  .print-table th:nth-child(2), .print-table td:nth-child(2) { text-align: left; }
+  .print-table th:nth-child(n+3), .print-table td:nth-child(n+3) { text-align: right; }
+  .print-table thead th { background: #eee !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+
 /* ---- 영웅 선택 그리드 ---- */
 .hero-picker {
   border: 1px solid var(--border);
