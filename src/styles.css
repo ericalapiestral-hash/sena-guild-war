@@ -445,6 +445,29 @@ tbody tr:hover td { background: var(--surface-2); }
 .rec-team b { color: var(--ink); }
 @media (max-width: 520px) { .rec-items { grid-template-columns: 1fr; } }
 
+/* ---- 관리자 로그인 ---- */
+.nav-lock { color: var(--text-2) !important; font-weight: 600; }
+.topbar nav .nav-lock { padding: 20px 12px; }
+.topbar nav .nav-lock.active { color: var(--accent-strong) !important; }
+.login-wrap { display: flex; justify-content: center; padding: 6vh 0; }
+.login-card { max-width: 380px; width: 100%; text-align: center; padding: 28px 24px; }
+.login-lock { font-size: 2.4rem; margin-bottom: 4px; }
+.admin-tile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: left;
+}
+.admin-tile:hover { background: var(--surface-2); }
+.admin-tile .ic { width: 22px; height: 22px; color: var(--accent-strong); flex: none; }
+
 .footer-note {
   text-align: center;
   color: var(--text-3);
