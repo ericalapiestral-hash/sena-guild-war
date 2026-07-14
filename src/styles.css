@@ -359,7 +359,8 @@ h2 { font-size: 1.15rem; letter-spacing: -0.02em; margin: 26px 0 10px; font-weig
 .print-root { display: none; }
 @media print {
   @page { margin: 12mm; }
-  body > *:not(.print-root) { display: none !important; }
+  /* print-root가 있는 페이지(통계 인쇄)에서만 앱을 숨김 — 다른 페이지 일반 인쇄는 그대로 */
+  body:has(.print-root) > *:not(.print-root) { display: none !important; }
   .print-root { display: block; color: #000; font-family: inherit; }
   .print-head { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 2px solid #000; padding-bottom: 6px; margin-bottom: 12px; }
   .print-head h2 { margin: 0; font-size: 18px; }

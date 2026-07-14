@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom'
 import type { StatEntry, StatRound, UserData } from '../types'
 import { newId, todayLocal, update, useUserData } from '../store'
 import { isAdmin } from '../auth'
+import { Markdown } from '../components/Markdown'
+import { DESTROYER_GUIDES } from '../data/destroyerGuide'
 
 type Kind = 'siege' | 'destroyer'
 
@@ -45,6 +47,9 @@ export function StatsPage({ kind }: { kind: Kind }) {
   const rounds = data[cfg.field]
   const admin = isAdmin()
   const roster = data.members.map((m) => m.name)
+  // 파괴신에만 공략 문서 탭 (감탱이 시트 이관본)
+  const guides = kind === 'destroyer' ? DESTROYER_GUIDES : null
+  const [view, setView] = useState<'stats' | 'guide'>('stats')
 
   const [selId, setSelId] = useState<string | null>(null)
   const [day, setDay] = useState<string>(todayWeekday())
@@ -98,6 +103,36 @@ export function StatsPage({ kind }: { kind: Kind }) {
   return (
     <div>
       <h1>{cfg.title}</h1>
+
+      {/* 파괴신: 통계/공략 전환 탭 */}
+      {guides && (
+        <div className="row" style={{ marginBottom: 12 }}>
+          <button className={`small ${view === 'stats' ? 'primary' : ''}`} onClick={() => setView('stats')}>📊 통계</button>
+          <button className={`small ${view === 'guide' ? 'primary' : ''}`} onClick={() => setView('guide')}>📖 공략</button>
+        </div>
+      )}
+
+      {guides && view === 'guide' && (
+        <>
+          <p className="page-desc">파괴신 공략 정리 — 감탱이 작성 ('파괴신 정리 _ 길드공유용' 시트 이관본)</p>
+          <div className="toc">
+            {guides.map((s) => (
+              <button key={s.id} className="small" onClick={() => {
+                document.getElementById(s.id)?.scrollIntoView({ behavior: 'smooth' })
+              }}>{s.title}</button>
+            ))}
+          </div>
+          {guides.map((s) => (
+            <div className="card" key={s.id} id={s.id}>
+              <h2 style={{ marginTop: 0 }}>{s.title}</h2>
+              <Markdown text={s.body} />
+            </div>
+          ))}
+        </>
+      )}
+
+      {(!guides || view === 'stats') && (
+        <>
       <p className="page-desc">{cfg.desc}</p>
 
       <div className="row" style={{ marginBottom: 12 }}>
@@ -168,6 +203,8 @@ export function StatsPage({ kind }: { kind: Kind }) {
       {current && createPortal(
         <PrintContent kind={kind} cfg={cfg} current={current} prevRound={prevRound} roster={roster} />,
         document.body,
+      )}
+        </>
       )}
     </div>
   )

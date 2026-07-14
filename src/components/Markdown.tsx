@@ -19,14 +19,16 @@ function Block({ block }: { block: string }) {
       .filter((cells) => !cells.every((c) => /^:?-{2,}:?$/.test(c)))
     const [head, ...body] = rows
     return (
-      <table>
-        <thead><tr>{head.map((c, i) => <th key={i}><Inline text={c} /></th>)}</tr></thead>
-        <tbody>
-          {body.map((r, i) => (
-            <tr key={i}>{r.map((c, j) => <td key={j}><Inline text={c} /></td>)}</tr>
-          ))}
-        </tbody>
-      </table>
+      <div className="table-wrap">
+        <table>
+          <thead><tr>{head.map((c, i) => <th key={i}><Inline text={c} /></th>)}</tr></thead>
+          <tbody>
+            {body.map((r, i) => (
+              <tr key={i}>{r.map((c, j) => <td key={j}><Inline text={c} /></td>)}</tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     )
   }
 
