@@ -26,7 +26,7 @@ export function HomePage() {
         </div>
         <div className="stat-tile" style={{ cursor: 'pointer' }} onClick={() => navigate('siege')}>
           <div className="num">{userData.siegeRounds.length}</div>
-          <div className="label">공성전 기록 회차</div>
+          <div className="label">공성전 기록 주차</div>
         </div>
         <div className="stat-tile" style={{ cursor: 'pointer' }} onClick={() => navigate('destroyer')}>
           <div className="num">{userData.destroyerRounds.length}</div>

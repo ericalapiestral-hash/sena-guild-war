@@ -106,14 +106,17 @@ export interface StatEntry {
   memo?: string
 }
 
-/** 통계 한 회차(시즌) */
+/** 통계 한 회차(파괴신=시즌) / 한 주차(공성전=주) */
 export interface StatRound {
   id: string
   /** 예: '1회차', '7월 2주', '시즌 12' */
   label: string
   /** 기록일 YYYY-MM-DD */
   date?: string
+  /** 단일 기록 (파괴신 등 회차별) */
   entries: StatEntry[]
+  /** 요일별 기록 (공성전) — 키: '월'|'화'|'수'|'목'|'금'|'토'|'일' */
+  days?: Record<string, StatEntry[]>
 }
 
 
