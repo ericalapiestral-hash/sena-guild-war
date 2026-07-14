@@ -228,11 +228,12 @@ function PrintContent({
             <div key={d} className="print-block">
               <h3>{d}요일 <span className="print-sub">({ranked.length}명 · 합계 {fmt(total)})</span></h3>
               <table className="print-table">
-                <thead><tr><th>순위</th><th>길드원</th><th>{cfg.metric}</th><th>{cfg.deltaLabel}</th></tr></thead>
+                <thead><tr><th>순위</th><th>길드원</th><th>전 주</th><th>이번 주</th><th>{cfg.deltaLabel}</th></tr></thead>
                 <tbody>
                   {ranked.map((e, i) => (
                     <tr key={e.name}>
                       <td>{i + 1}</td><td>{e.name}</td>
+                      <td className="num-tab">{fmt(prevMap.get(e.name))}</td>
                       <td className="num-tab">{fmt(e.value)}</td>
                       <td>{pctText(prevMap.get(e.name), e.value)}</td>
                     </tr>
