@@ -15,7 +15,6 @@ const EMPTY: UserData = {
   savedDecks: [],
   members: [],
   customGuides: [],
-  castleDecks: {},
 }
 
 function load(): UserData {

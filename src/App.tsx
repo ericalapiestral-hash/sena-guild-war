@@ -8,7 +8,6 @@ import { GuidePage } from './pages/Guide'
 import { MembersPage } from './pages/Members'
 import { SettingsPage } from './pages/Settings'
 import { SearchPage } from './pages/Search'
-import { CastlePage } from './pages/Castle'
 
 interface MenuItem {
   route: string
@@ -21,7 +20,6 @@ const MENU: MenuItem[] = [
   { route: 'counters', label: '카운터덱', icon: 'target' },
   { route: 'heroes', label: '영웅 · 덱', icon: 'shield' },
   { route: 'guide', label: '가이드', icon: 'book' },
-  { route: 'castle', label: '거점 배치', icon: 'flag' },
   { route: 'search', label: 'AI 검색', icon: 'search' },
   { route: 'members', label: '길드원', icon: 'users' },
   { route: 'settings', label: '데이터', icon: 'data' },
@@ -69,7 +67,6 @@ export default function App() {
         {base === 'counters' && <CountersPage />}
         {base === 'heroes' && <HeroesPage />}
         {base === 'guide' && <GuidePage />}
-        {base === 'castle' && <CastlePage />}
         {base === 'search' && <SearchPage />}
         {base === 'members' && <MembersPage />}
         {base === 'settings' && <SettingsPage />}

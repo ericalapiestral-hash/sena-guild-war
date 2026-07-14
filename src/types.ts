@@ -66,15 +66,6 @@ export interface Member {
   records: BattleRecord[]
 }
 
-/** 거점(성)에 배치된 방어덱 */
-export interface CastleDeck {
-  id: string
-  heroes: DeckHeroes
-  memo?: string
-}
-
-/** 거점 키: '본성' | '내성1'~'내성3' | '외성1'~'외성5' */
-export type CastleKey = string
 
 export interface GuideSection {
   id: string
@@ -93,6 +84,4 @@ export interface UserData {
   savedDecks: SavedDeck[]
   members: Member[]
   customGuides: GuideSection[]
-  /** 거점별 배치된 방어덱 (key = 거점명) */
-  castleDecks: Record<CastleKey, CastleDeck[]>
 }
