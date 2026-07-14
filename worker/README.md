@@ -3,6 +3,8 @@
 운영진 비밀번호를 아는 사람만 Claude 웹검색을 돌릴 수 있게 해주는 서버예요.
 API 키는 여기(Cloudflare)에만 저장되고 사이트엔 절대 노출되지 않습니다.
 
+이 워커는 두 가지를 담당해요: **AI 공략검색**(Claude 웹검색)과 **실시간 전황 공유**(KV 저장).
+
 ## 배포 (운영진 본인이 한 번만)
 
 이 `worker` 폴더에서 순서대로 실행하세요. (`npx`라 따로 설치 안 해도 돼요.)
@@ -17,12 +19,22 @@ npx wrangler secret put ANTHROPIC_API_KEY
 # 3) 운영진끼리 쓸 비밀번호 정하기 (원하는 문구 입력)
 npx wrangler secret put GUILD_PASSWORD
 
-# 4) 배포
+# 4) 실시간 전황 저장용 KV 만들기 → 출력된 id 를 wrangler.toml 의 [[kv_namespaces]] id 에 붙여넣기
+npx wrangler kv namespace create WAR_KV
+
+# 5) 배포
 npx wrangler deploy
 ```
 
-4번이 끝나면 `https://sena-guild-search.<계정>.workers.dev` 같은 주소가 출력돼요.
-이 **주소**와 3번에서 정한 **비밀번호**를 사이트의 [AI 공략검색] 페이지 → [서버 설정]에 입력하면 끝.
+마지막에 `https://sena-guild-search.<계정>.workers.dev` 같은 주소가 출력돼요.
+- **AI 공략검색**: 이 주소와 3번 비밀번호를 [AI 공략검색] → [서버 설정]에 입력.
+- **실시간 전황**: 이 주소를 알려주시면 사이트 `src/data/config.ts`의 `WORKER_URL`에 넣어 재배포할게요. 그러면 길드원 전원이 별도 설정 없이 [실시간 전황]을 봅니다.
+
+## 엔드포인트
+
+- `POST /`  — AI 검색 (`{query, password}`)
+- `GET /war` — 현재 전황 JSON 조회 (누구나, 열람용)
+- `POST /war` — 전황 갱신 (`{password, state}`) — 다음 길드전 때 화면 판독기가 이 엔드포인트로 상태를 올림
 
 ## 비용 관리
 

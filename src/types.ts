@@ -83,6 +83,37 @@ export interface GuideSection {
   body: string
 }
 
+// ---- 실시간 길드전 전황 (공유 저장소에서 받아옴) ----
+
+export interface WarAttack {
+  by?: string
+  deck?: DeckHeroes
+  result?: '승' | '패' | '진행중'
+  note?: string
+}
+
+export interface WarCastle {
+  key: string
+  tier: '본성' | '내성' | '외성'
+  captured?: boolean
+  /** 상대(적)가 이 거점에 배치한 방어덱들 */
+  defenses?: { heroes: DeckHeroes; formation?: Formation; note?: string }[]
+  /** 우리 공격 시도·결과 */
+  attacks?: WarAttack[]
+}
+
+export interface WarState {
+  updatedAt: string
+  round?: number
+  /** 준비 / 배치 / 매칭 / 전투 / 종료 */
+  phase?: string
+  timeLeft?: string
+  opponent?: string
+  score?: { us?: number; them?: number }
+  castles?: WarCastle[]
+  note?: string
+}
+
 /** localStorage에 저장되는 사용자 데이터 전체 */
 export interface UserData {
   customHeroes: Hero[]
