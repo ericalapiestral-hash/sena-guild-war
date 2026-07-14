@@ -242,7 +242,7 @@ function EntryTable({
     <div style={{ marginTop: 14 }}>
       <div className="row between" style={{ marginBottom: 8 }}>
         {heading ? <div className="cc-sec">{heading}</div> : <span />}
-        {admin && !editing && <button className="primary small" onClick={startEdit}>✏️ 점수 입력·수정</button>}
+        {admin && !editing && <button className="primary small" onClick={startEdit}>✏️ {metric} 입력·수정</button>}
         {admin && editing && <span className="delta up" style={{ fontSize: '0.85rem' }}>✏️ 편집 중 — 아래 [저장]을 눌러야 반영돼요</span>}
       </div>
 
@@ -275,10 +275,10 @@ function EntryTable({
                 <td><b>{editing ? i + 1 : typeof e.value === 'number' ? i + 1 : '-'}</b></td>
                 <td><b>{e.name}</b>{!rosterSet.has(e.name) && <span className="muted" style={{ marginLeft: 4, fontSize: '0.75rem' }}>(외부)</span>}</td>
                 <td style={{ textAlign: 'right' }}>{editing ? (
-                  <input type="number" value={e.value ?? ''} placeholder="0"
+                  <input type="number" value={e.value ?? ''} placeholder="0" className="num-tab"
                     onChange={(ev) => setField(e.name, { value: ev.target.value === '' ? undefined : Number(ev.target.value) })}
                     style={{ width: 120, textAlign: 'right' }} />
-                ) : (<b>{fmt(e.value)}</b>)}</td>
+                ) : (<b className="num-tab">{fmt(e.value)}</b>)}</td>
                 <td><Delta prev={prevValues.get(e.name)} cur={e.value} /></td>
                 {showJoined && <td>{editing ? (
                   <input type="checkbox" checked={!!e.joined} onChange={(ev) => setField(e.name, { joined: ev.target.checked })} />
