@@ -10,15 +10,16 @@ const todayWeekday = () => WEEKDAYS[(new Date().getDay() + 6) % 7]
 
 const CFG: Record<
   Kind,
-  { title: string; desc: string; metric: string; field: 'siegeRounds' | 'destroyerRounds'; byDay: boolean; roundName: string }
+  { title: string; desc: string; metric: string; field: 'siegeRounds' | 'destroyerRounds'; byDay: boolean; roundName: string; showJoined: boolean }
 > = {
   siege: {
     title: '공성전 통계',
-    desc: '주차를 고르고 요일(월~일)마다 길드원 점수·참여를 기록해요. 요일별 순위와 이번 주 합산 랭킹이 자동 집계됩니다.',
+    desc: '주차를 고르고 요일(월~일)마다 길드원 점수를 기록해요. 요일별 순위와 이번 주 점수 합산 랭킹이 자동 집계됩니다.',
     metric: '점수',
     field: 'siegeRounds',
     byDay: true,
     roundName: '주차',
+    showJoined: false, // 점수제 — 참여 O/X·횟수 없이 점수만
   },
   destroyer: {
     title: '파괴신 통계',
@@ -27,6 +28,7 @@ const CFG: Record<
     field: 'destroyerRounds',
     byDay: false,
     roundName: '회차',
+    showJoined: true,
   },
 }
 
@@ -168,6 +170,7 @@ export function StatsPage({ kind }: { kind: Kind }) {
             entries={entries}
             metric={cfg.metric}
             admin={admin}
+            showJoined={cfg.showJoined}
             heading={cfg.byDay ? `${day}요일 기록` : undefined}
             onAddEntry={addEntry}
             onAddAll={addAllMembers}
@@ -181,10 +184,10 @@ export function StatsPage({ kind }: { kind: Kind }) {
               <div className="cc-sec" style={{ marginBottom: 8 }}>이번 주 합산 ({cfg.metric} 요일 합계)</div>
               <div className="table-wrap">
                 <table>
-                  <thead><tr><th style={{ width: 44 }}>순위</th><th>길드원</th><th style={{ textAlign: 'right' }}>{cfg.metric} 합계</th><th style={{ width: 80 }}>참여일</th></tr></thead>
+                  <thead><tr><th style={{ width: 44 }}>순위</th><th>길드원</th><th style={{ textAlign: 'right' }}>{cfg.metric} 합계</th></tr></thead>
                   <tbody>
                     {weekTotals.map((w, i) => (
-                      <tr key={w.name}><td><b>{i + 1}</b></td><td><b>{w.name}</b></td><td style={{ textAlign: 'right' }}>{fmt(w.total)}</td><td>{w.daysJoined}일</td></tr>
+                      <tr key={w.name}><td><b>{i + 1}</b></td><td><b>{w.name}</b></td><td style={{ textAlign: 'right' }}>{fmt(w.total)}</td></tr>
                     ))}
                   </tbody>
                 </table>
@@ -201,6 +204,7 @@ function EntryTable({
   entries,
   metric,
   admin,
+  showJoined,
   heading,
   onAddEntry,
   onAddAll,
@@ -210,12 +214,14 @@ function EntryTable({
   entries: StatEntry[]
   metric: string
   admin: boolean
+  showJoined: boolean
   heading?: string
   onAddEntry: (name: string) => void
   onAddAll: () => void
   onPatch: (i: number, patch: Partial<StatEntry>) => void
   onRemove: (i: number) => void
 }) {
+  const cols = 4 + (showJoined ? 1 : 0) + (admin ? 1 : 0)
   const [newName, setNewName] = useState('')
 
   const ranked = entries.map((e, i) => ({ e, i })).sort((a, b) => (b.e.value ?? -Infinity) - (a.e.value ?? -Infinity))
@@ -230,7 +236,7 @@ function EntryTable({
 
       <div className="stat-tiles" style={{ margin: '0 0 6px' }}>
         <div className="stat-tile"><div className="num">{entries.length}</div><div className="label">기록 인원</div></div>
-        <div className="stat-tile"><div className="num">{joinedCount}</div><div className="label">참여 인원</div></div>
+        {showJoined && <div className="stat-tile"><div className="num">{joinedCount}</div><div className="label">참여 인원</div></div>}
         <div className="stat-tile"><div className="num">{fmt(total)}</div><div className="label">{metric} 합계</div></div>
         <div className="stat-tile"><div className="num" style={{ fontSize: '1.15rem' }}>{top ? top.name : '-'}</div><div className="label">{metric} 1위 ({fmt(top?.value)})</div></div>
       </div>
@@ -242,14 +248,14 @@ function EntryTable({
               <th style={{ width: 44 }}>순위</th>
               <th>길드원</th>
               <th style={{ textAlign: 'right' }}>{metric}</th>
-              <th style={{ width: 60 }}>참여</th>
+              {showJoined && <th style={{ width: 60 }}>참여</th>}
               <th>메모</th>
               {admin && <th style={{ width: 44 }} />}
             </tr>
           </thead>
           <tbody>
             {ranked.length === 0 && (
-              <tr><td colSpan={admin ? 6 : 5} className="muted">아직 기록이 없어요.{admin ? ' 아래에서 길드원을 추가하세요.' : ''}</td></tr>
+              <tr><td colSpan={cols} className="muted">아직 기록이 없어요.{admin ? ' 아래에서 길드원을 추가하세요.' : ''}</td></tr>
             )}
             {ranked.map(({ e, i }, rank) => (
               <tr key={i}>
@@ -262,9 +268,9 @@ function EntryTable({
                     onChange={(ev) => onPatch(i, { value: ev.target.value === '' ? undefined : Number(ev.target.value) })}
                     style={{ width: 110, textAlign: 'right' }} />
                 ) : (fmt(e.value))}</td>
-                <td>{admin ? (
+                {showJoined && <td>{admin ? (
                   <input type="checkbox" checked={!!e.joined} onChange={(ev) => onPatch(i, { joined: ev.target.checked })} />
-                ) : (<span className={`badge ${e.joined ? 'win' : 'lose'}`}>{e.joined ? 'O' : 'X'}</span>)}</td>
+                ) : (<span className={`badge ${e.joined ? 'win' : 'lose'}`}>{e.joined ? 'O' : 'X'}</span>)}</td>}
                 <td>{admin ? (
                   <input value={e.memo ?? ''} placeholder="메모" onChange={(ev) => onPatch(i, { memo: ev.target.value })} style={{ width: '100%', minWidth: 90 }} />
                 ) : (<span className="muted">{e.memo || ''}</span>)}</td>
