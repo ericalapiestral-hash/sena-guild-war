@@ -34,9 +34,9 @@ function json(obj, status = 200) {
   })
 }
 
-function webSearchTool(model) {
+function webSearchTool(model, maxUses) {
   const newer = /opus-4-(6|7|8)|sonnet-5|sonnet-4-6|fable-5|mythos-5/.test(model)
-  return { type: newer ? 'web_search_20260209' : 'web_search_20250305', name: 'web_search', max_uses: 5 }
+  return { type: newer ? 'web_search_20260209' : 'web_search_20250305', name: 'web_search', max_uses: maxUses }
 }
 
 export default {
@@ -99,7 +99,20 @@ export default {
     if (!query) return json({ error: '질문을 입력하세요.' }, 400)
     if (!env.ANTHROPIC_API_KEY) return json({ error: '서버에 API 키가 설정되지 않았어요.' }, 500)
 
+    // ── 하루 사용 한도 (운영진 전체 합산, 비용 폭탄 방지) ──
+    const DAILY_LIMIT = Number(env.AI_DAILY_LIMIT) || 5
+    const today = new Date().toISOString().slice(0, 10)
+    const rlKey = `ai-search:${today}`
+    let used = 0
+    if (env.GUILD_KV) {
+      used = parseInt((await env.GUILD_KV.get(rlKey)) || '0', 10) || 0
+      if (used >= DAILY_LIMIT) {
+        return json({ error: `오늘 AI 검색 한도(하루 ${DAILY_LIMIT}회, 운영진 전체 합산)를 다 썼어요. 내일 다시 시도하세요.` }, 429)
+      }
+    }
+
     const model = env.CLAUDE_MODEL || 'claude-haiku-4-5'
+    const webSearchUses = Number(env.AI_WEB_SEARCH_USES) || 3
 
     let apiResp
     try {
@@ -116,7 +129,7 @@ export default {
           system:
             SYSTEM_PROMPT +
             `\n\n■ 오늘 날짜: ${new Date().toISOString().slice(0, 10)}. 이 날짜 기준으로 답하세요. 이 날짜보다 과거로 예정됐던 "출시 예정" 정보는 이미 출시된 것으로 간주하세요.`,
-          tools: [webSearchTool(model)],
+          tools: [webSearchTool(model, webSearchUses)],
           messages: [{ role: 'user', content: query }],
         }),
       })
@@ -133,6 +146,11 @@ export default {
       .join('\n')
       .trim()
 
-    return json({ answer: answer || '(빈 응답)', usage: data.usage, model })
+    // 성공한 검색만 오늘 사용량에 +1 (2일 뒤 자동 만료로 날짜 키 정리)
+    if (env.GUILD_KV) {
+      await env.GUILD_KV.put(rlKey, String(used + 1), { expirationTtl: 172800 })
+    }
+
+    return json({ answer: answer || '(빈 응답)', usage: data.usage, model, dailyUsed: used + 1, dailyLimit: DAILY_LIMIT })
   },
 }

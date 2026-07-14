@@ -8,6 +8,10 @@ compatibility_date = "2024-11-01"
 # 바꾸려면 아래 값을 수정하고 `npx wrangler deploy` 로 재배포.
 [vars]
 CLAUDE_MODEL = "claude-haiku-4-5"
+# AI 검색 하루 사용 한도 (운영진 전체 합산). 넘으면 429로 막힘.
+AI_DAILY_LIMIT = "5"
+# AI 검색 1건당 웹검색 횟수 (많을수록 정확·비쌈). 비용의 주 요인.
+AI_WEB_SEARCH_USES = "3"
 
 # 시크릿(키·비밀번호)은 여기 적지 말고 CLI로 설정하세요:
 #   npx wrangler secret put ANTHROPIC_API_KEY
