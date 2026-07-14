@@ -119,6 +119,7 @@ export default function App() {
             {base === 'members' && <MembersPage />}
             {base === 'settings' && <SettingsPage />}
             {base === 'admin' && admin && <AdminHome onLogout={doLogout} />}
+            {!['home', 'counters', 'heroes', 'guide', 'siege', 'destroyer', 'members', 'settings', 'admin'].includes(base) && <HomePage />}
           </>
         )}
       </main>
