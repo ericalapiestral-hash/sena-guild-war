@@ -34,6 +34,9 @@ function json(obj, status = 200) {
   })
 }
 
+// 마지막 백업 시각 (isolate 메모리 — 재시작 시 0으로 돌아가도 무해)
+let lastBackupAt = 0
+
 function webSearchTool(model, maxUses) {
   const newer = /opus-4-(6|7|8)|sonnet-5|sonnet-4-6|fable-5|mythos-5/.test(model)
   return { type: newer ? 'web_search_20260209' : 'web_search_20250305', name: 'web_search', max_uses: maxUses }
@@ -72,9 +75,15 @@ export default {
         // 덱·가이드 등 공유 데이터는 길드원 누구나 편집 가능(공개, 비번 없음).
         // (AI 검색 POST / 은 여전히 GUILD_PASSWORD 필요 — 비용 보호)
         // 실수·장난으로 통째로 지워지는 것 대비: 직전 버전을 guild-data-prev 에 백업.
+        // 단 KV 무료 쓰기 한도(하루 1000회) 절약을 위해 백업은 10분에 1번만.
         const next = JSON.stringify(body.data ?? {})
-        const prev = await env.GUILD_KV.get('guild-data')
-        if (prev && prev !== next) await env.GUILD_KV.put('guild-data-prev', prev)
+        if (Date.now() - lastBackupAt > 10 * 60 * 1000) {
+          const prev = await env.GUILD_KV.get('guild-data')
+          if (prev && prev !== next) {
+            await env.GUILD_KV.put('guild-data-prev', prev)
+            lastBackupAt = Date.now()
+          }
+        }
         await env.GUILD_KV.put('guild-data', next)
         return json({ ok: true })
       }

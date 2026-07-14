@@ -140,9 +140,15 @@ async function push(keepalive = false) {
 }
 
 // 최초 로드 시 공유 데이터를 당겨오고, 이후 주기적으로 동기화
+// (백그라운드 탭은 건너뜀 — KV 무료 한도 절약. 탭으로 돌아오면 즉시 갱신)
 if (typeof window !== 'undefined') {
   pull()
-  window.setInterval(pull, 45000)
+  window.setInterval(() => {
+    if (!document.hidden) pull()
+  }, 60000)
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) pull()
+  })
   // 탭을 닫을 때 아직 안 올라간 입력이 있으면 마지막으로 전송
   window.addEventListener('beforeunload', () => {
     if (pushTimer !== undefined) {
