@@ -3,7 +3,7 @@
 // 로컬 모드: 워커 미연결 시 각자 브라우저(localStorage)에만 저장(기존 동작).
 
 import { useSyncExternalStore } from 'react'
-import type { CounterEntry, Hero, UserData } from './types'
+import type { CounterDeck, CounterEntry, CounterHeroSlot, Hero, UserData } from './types'
 import initialHeroes from './data/heroes.json'
 import initialCounters from './data/counters.json'
 import { WORKER_URL } from './data/config'
@@ -129,6 +129,21 @@ export function update(mutator: (draft: UserData) => void) {
 
 export function newId(prefix: string): string {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`
+}
+
+// ---- 카운터 영웅 슬롯 헬퍼 (구버전 문자열 ↔ 상세 슬롯 호환) ----
+
+export function slotName(h: string | CounterHeroSlot): string {
+  return typeof h === 'string' ? h : h.name
+}
+
+export function toSlot(h: string | CounterHeroSlot): CounterHeroSlot {
+  return typeof h === 'string' ? { name: h } : { ...h }
+}
+
+/** 카운터덱의 영웅 이름 목록 (검색·매칭용) */
+export function counterHeroNames(c: CounterDeck): string[] {
+  return (c.heroes || []).map(slotName)
 }
 
 // ---- 병합된 뷰 (초기 데이터 + 사용자 데이터) ----

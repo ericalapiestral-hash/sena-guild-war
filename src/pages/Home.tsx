@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { getAllCounters, getAllHeroes, useUserData } from '../store'
+import { counterHeroNames, getAllCounters, getAllHeroes, useUserData } from '../store'
 import { navigate } from '../router'
 import { DeckLine } from '../components/HeroChip'
 
@@ -52,7 +52,7 @@ export function HomePage() {
             {c.counters[0] && (
               <div className="row" style={{ marginTop: 6 }}>
                 <span className="muted">카운터:</span>
-                <DeckLine heroIds={c.counters[0].heroes} heroMap={heroMap} />
+                <DeckLine heroIds={counterHeroNames(c.counters[0])} heroMap={heroMap} />
                 {c.counters.length > 1 && <span className="muted">외 {c.counters.length - 1}개</span>}
               </div>
             )}

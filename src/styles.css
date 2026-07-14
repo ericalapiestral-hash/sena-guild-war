@@ -491,3 +491,83 @@ dialog::backdrop { background: rgba(20, 22, 30, 0.4); }
 @media (max-width: 767px) {
   dialog { width: calc(100vw - 24px); padding: 18px; }
 }
+
+/* ==== 카운터덱 상세 카드 ==== */
+.counter-card {
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 16px 18px;
+  margin-top: 12px;
+}
+.counter-card.counter-match {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+  background: #fffdf8;
+}
+.cc-eyebrow { color: var(--text-3); font-size: 0.76rem; font-weight: 700; }
+.cc-title { font-size: 1.18rem; font-weight: 800; letter-spacing: -0.02em; margin: 1px 0 6px; }
+.cc-meta { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+.cc-rating { font-size: 0.9rem; color: var(--text-2); }
+.cc-rating b { color: var(--accent-strong); font-size: 1rem; font-weight: 800; }
+.cc-muted { color: var(--text-3); font-size: 0.8rem; }
+.cc-k { color: var(--text-3); font-weight: 600; margin-right: 5px; font-size: 0.82rem; }
+
+.cc-body { display: grid; grid-template-columns: 1fr 250px; gap: 14px; align-items: start; }
+@media (max-width: 767px) { .cc-body { grid-template-columns: 1fr; } }
+
+.cc-sec { color: var(--text-3); font-size: 0.8rem; font-weight: 700; margin-bottom: 8px; }
+.cc-heroes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+@media (max-width: 560px) { .cc-heroes { grid-template-columns: 1fr; } }
+
+.hero-slot {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  padding: 11px 12px;
+}
+.hero-slot .hs-name { display: flex; align-items: center; gap: 7px; font-weight: 700; margin-bottom: 6px; }
+.hero-slot .hs-name .pos-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.hs-place { color: var(--text-3); font-weight: 500; font-size: 0.84rem; }
+.hs-line { font-size: 0.83rem; color: var(--text-2); line-height: 1.5; white-space: pre-line; }
+.hs-line .hs-k { color: var(--text-3); font-weight: 600; margin-right: 4px; font-size: 0.83rem; }
+.hs-stat { font-size: 0.83rem; color: var(--accent-strong); font-weight: 600; margin-top: 3px; white-space: pre-line; }
+
+.cc-petform { display: flex; gap: 22px; flex-wrap: wrap; margin: 13px 0; font-size: 0.92rem; }
+.cc-petform b { font-weight: 700; }
+
+.cc-cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+@media (max-width: 560px) { .cc-cols { grid-template-columns: 1fr; } }
+.cc-col, .cc-side {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  padding: 10px 12px;
+}
+.cc-side { background: var(--surface-2); height: 100%; }
+.cc-col-h { color: var(--text-3); font-size: 0.77rem; font-weight: 700; margin-bottom: 5px; }
+.cc-col-b { font-size: 0.88rem; color: var(--text); white-space: pre-line; line-height: 1.55; }
+
+/* ==== 카운터 편집 폼 ==== */
+.form-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; }
+@media (max-width: 560px) { .form-grid2 { grid-template-columns: 1fr; } }
+.form-grid2 label, .fld {
+  display: flex; flex-direction: column; gap: 4px;
+  font-size: 0.8rem; color: var(--text-2); font-weight: 600;
+}
+.fld { margin-top: 8px; }
+.form-grid2 label input, .fld input, .fld textarea { width: 100%; font-weight: 400; }
+
+.slot-edit {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  padding: 8px 10px;
+  margin-top: 6px;
+}
+.slot-edit-name { display: flex; align-items: center; gap: 6px; font-size: 0.92rem; margin-bottom: 6px; }
+.slot-edit-name .pos-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.slot-edit-name button { padding: 2px 9px; font-size: 0.78rem; }
+.slot-edit-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.slot-edit-inputs input { width: 100%; padding: 6px 9px; font-size: 0.85rem; }
+@media (max-width: 560px) { .slot-edit-inputs { grid-template-columns: 1fr; } }

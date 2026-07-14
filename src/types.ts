@@ -22,13 +22,43 @@ export type DeckHeroes = string[]
 
 export type Formation = '공격진형' | '밸런스진형' | '보호진형' | '기본진형'
 
+/** 카운터 영웅 1인의 상세 세팅 (배치·반지·장비·스탯) */
+export interface CounterHeroSlot {
+  /** 영웅 이름 (heroes.json id와 매칭되면 유형 표시) */
+  name: string
+  /** 전방/후방/각성 등 배치 라벨 (선택) */
+  place?: string
+  /** 반지(장신구) 추천 */
+  ring?: string
+  /** 장비 추천 (여러 줄 가능) */
+  gear?: string
+  /** 추가 스탯 한 줄 (극속공·막기최대 등) */
+  stat?: string
+}
+
 export interface CounterDeck {
-  heroes: DeckHeroes
-  formation?: Formation
-  /** 공략 포인트: 스킬 순서, 펫, 주의점 등 */
+  /** 덱 별명 (예: 프목실, 밀멜스) */
+  name?: string
+  /** 추천도 0~10 */
+  rating?: number
+  /** 카운터 영웅 — 문자열(구버전) 또는 상세 슬롯 */
+  heroes: Array<string | CounterHeroSlot>
+  /** 진형 (자유 텍스트, 예 '보호진형(멜키르)') */
+  formation?: string
+  /** 펫 */
+  pet?: string
+  /** 추천 속공순서 (여러 줄 가능) */
+  speedOrder?: string
+  /** 추천 카운터 팀속공 */
+  teamSpeed?: string
+  /** 추천 카운터 스킬순서 */
+  skillOrder?: string
+  /** 공략 포인트 / 그외 참고사항 */
   notes: string
   /** 신뢰도: 검증됨(직접 승리) / 커뮤니티 / 추측 */
   confidence: '검증됨' | '커뮤니티' | '추측'
+  /** 최근 수정일 (선택) */
+  updatedAt?: string
 }
 
 export interface CounterEntry {
