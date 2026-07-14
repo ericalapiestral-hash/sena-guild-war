@@ -327,6 +327,14 @@ h2 { font-size: 1.15rem; letter-spacing: -0.02em; margin: 26px 0 10px; font-weig
 
 .deck-line { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 
+/* 검색 시 매칭된 카운터(공격)덱 강조 */
+.counter-match {
+  background: var(--accent-soft);
+  border-radius: 8px;
+  box-shadow: inset 3px 0 0 var(--accent);
+  padding-left: 8px !important;
+}
+
 /* ---- 배지 ---- */
 .badge {
   display: inline-block;

@@ -19,8 +19,12 @@ export function CountersPage() {
 
   const filtered = useMemo(() => {
     if (searchSel.length === 0) return counters
-    // 선택한 영웅이 모두 방어덱에 포함된 엔트리
-    return counters.filter((c) => searchSel.every((id) => c.defense.includes(id)))
+    // 선택한 영웅이 방어덱 또는 카운터(공격)덱 중 하나에 모두 포함된 엔트리
+    return counters.filter(
+      (c) =>
+        searchSel.every((id) => c.defense.includes(id)) ||
+        c.counters.some((ct) => searchSel.every((id) => ct.heroes.includes(id))),
+    )
   }, [counters, searchSel])
 
   function startNew() {
@@ -52,11 +56,11 @@ export function CountersPage() {
     <div>
       <h1>카운터덱 사전</h1>
       <p className="page-desc">
-        상대 방어덱(3인)에 포함된 영웅을 선택하면, 그 조합을 상대하는 카운터 공격덱을 찾아줍니다.
+        영웅을 선택하면 그 영웅이 든 <b>방어덱·카운터(공격)덱을 모두</b> 찾아줍니다. 카운터로 매칭되면 강조 표시돼요.
       </p>
 
       <div className="card">
-        <strong>방어덱 영웅으로 검색</strong>
+        <strong>영웅으로 덱 검색 <span className="muted" style={{ fontWeight: 400 }}>(방덱·카운터 모두)</span></strong>
         <div style={{ marginTop: 8 }}>
           <HeroPicker heroes={heroes} selected={searchSel} max={3}
             onToggle={(id) => setSearchSel((s) => s.includes(id) ? s.filter((x) => x !== id) : [...s, id])} />
@@ -64,8 +68,8 @@ export function CountersPage() {
         <div className="row" style={{ marginTop: 10 }}>
           <span className="muted">
             {searchSel.length === 0
-              ? `전체 ${counters.length}개 방어덱 표시 중`
-              : `${filtered.length}개 방어덱이 선택한 영웅을 포함`}
+              ? `전체 ${counters.length}개 방덱 표시 중`
+              : `${filtered.length}개 덱이 선택한 영웅을 포함 (방덱·카운터)`}
           </span>
           {searchSel.length > 0 && (
             <button className="small" onClick={() => setSearchSel([])}>선택 초기화</button>
@@ -75,38 +79,47 @@ export function CountersPage() {
         </div>
       </div>
 
-      {filtered.map((entry) => (
-        <div className="card" key={entry.id}>
-          <div className="row between">
-            <div>
-              <div className="muted" style={{ marginBottom: 4 }}>
-                상대 방어덱{entry.defenseFormation ? ` · ${entry.defenseFormation}` : ''}
+      {filtered.map((entry) => {
+        const active = searchSel.length > 0
+        const defMatch = active && searchSel.every((id) => entry.defense.includes(id))
+        const matched = (c: CounterDeck) => active && searchSel.every((id) => c.heroes.includes(id))
+        const onlyCounter = active && !defMatch && entry.counters.some(matched)
+        return (
+          <div className="card" key={entry.id}>
+            <div className="row between">
+              <div>
+                <div className="muted" style={{ marginBottom: 4 }}>
+                  상대 방어덱{entry.defenseFormation ? ` · ${entry.defenseFormation}` : ''}
+                </div>
+                <DeckLine heroIds={entry.defense} heroMap={heroMap} />
+                {onlyCounter && (
+                  <div className="badge 커뮤니티" style={{ marginTop: 6 }}>🔎 선택한 영웅 = 이 방덱의 카운터/공격덱</div>
+                )}
+                {entry.defenseNotes && <div className="muted" style={{ marginTop: 6 }}>{entry.defenseNotes}</div>}
               </div>
-              <DeckLine heroIds={entry.defense} heroMap={heroMap} />
-              {entry.defenseNotes && <div className="muted" style={{ marginTop: 6 }}>{entry.defenseNotes}</div>}
-            </div>
-            <div className="row">
-              <button className="small" onClick={() => startEdit(entry)}>수정</button>
-              <button className="small danger" onClick={() => remove(entry)}>삭제</button>
-            </div>
-          </div>
-          <div style={{ marginTop: 12 }}>
-            {entry.counters.length === 0 && <span className="muted">등록된 카운터 없음 — [수정]으로 추가하세요</span>}
-            {entry.counters.map((c, i) => (
-              <div key={i} className="row" style={{ padding: '8px 0', borderTop: '1px solid var(--border)' }}>
-                <span className={`badge ${c.confidence}`}>{c.confidence}</span>
-                <DeckLine heroIds={c.heroes} heroMap={heroMap} />
-                {c.formation && <span className="muted">({c.formation})</span>}
-                {c.notes && <span className="muted" style={{ flexBasis: '100%' }}>💡 {c.notes}</span>}
+              <div className="row">
+                <button className="small" onClick={() => startEdit(entry)}>수정</button>
+                <button className="small danger" onClick={() => remove(entry)}>삭제</button>
               </div>
-            ))}
+            </div>
+            <div style={{ marginTop: 12 }}>
+              {entry.counters.length === 0 && <span className="muted">등록된 카운터 없음 — [수정]으로 추가하세요</span>}
+              {entry.counters.map((c, i) => (
+                <div key={i} className={`row ${matched(c) ? 'counter-match' : ''}`} style={{ padding: '8px 0', borderTop: '1px solid var(--border)' }}>
+                  <span className={`badge ${c.confidence}`}>{c.confidence}</span>
+                  <DeckLine heroIds={c.heroes} heroMap={heroMap} />
+                  {c.formation && <span className="muted">({c.formation})</span>}
+                  {c.notes && <span className="muted" style={{ flexBasis: '100%' }}>💡 {c.notes}</span>}
+                </div>
+              ))}
+            </div>
+            <div className="muted" style={{ marginTop: 8, fontSize: '0.78rem' }}>업데이트: {entry.updatedAt}</div>
           </div>
-          <div className="muted" style={{ marginTop: 8, fontSize: '0.78rem' }}>업데이트: {entry.updatedAt}</div>
-        </div>
-      ))}
+        )
+      })}
       {filtered.length === 0 && (
         <div className="card muted">
-          일치하는 방어덱이 없습니다. [+ 새 방어덱/카운터 등록]으로 지금 검색한 조합을 바로 등록할 수 있어요.
+          일치하는 덱이 없습니다. [+ 새 방어덱/카운터 등록]으로 지금 검색한 조합을 바로 등록할 수 있어요.
         </div>
       )}
 
