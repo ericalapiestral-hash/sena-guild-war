@@ -133,13 +133,23 @@
     ]
   },
   {
+    "id": "라드그리드",
+    "name": "라드그리드",
+    "grade": "전설",
+    "position": "방어형",
+    "pvpRelevant": true,
+    "tags": [
+      "천상의 수호자"
+    ]
+  },
+  {
     "id": "란드그리드",
     "name": "란드그리드",
     "grade": "전설",
     "position": "공격형",
     "pvpRelevant": true,
     "tags": [
-      "천상의 수호자"
+      "공덱 핵심"
     ]
   },
   {
