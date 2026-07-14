@@ -8,7 +8,6 @@ import { GuidePage } from './pages/Guide'
 import { StatsPage } from './pages/Stats'
 import { MembersPage } from './pages/Members'
 import { SettingsPage } from './pages/Settings'
-import { SearchPage } from './pages/Search'
 import { AdminLogin } from './pages/AdminLogin'
 import { ADMIN_ROUTES, isAdmin, logout } from './auth'
 
@@ -26,7 +25,6 @@ const MENU: MenuItem[] = [
   { route: 'guide', label: '가이드', icon: 'book' },
   { route: 'siege', label: '공성전', icon: 'siege' },
   { route: 'destroyer', label: '파괴신', icon: 'destroyer' },
-  { route: 'search', label: 'AI 검색', icon: 'search', admin: true },
   { route: 'members', label: '길드원', icon: 'users', admin: true },
   { route: 'settings', label: '데이터', icon: 'data', admin: true },
 ]
@@ -35,7 +33,7 @@ const PRIMARY = ['home', 'counters', 'heroes', 'guide']
 const SECONDARY = ['siege', 'destroyer'] // 모바일 '더보기' 시트에 노출 (전원 열람)
 const ADMIN_ITEMS = MENU.filter((m) => m.admin)
 const fullLabel = (label: string) =>
-  ({ 'AI 검색': 'AI 공략검색', 데이터: '데이터 관리', 길드원: '길드원 관리', 공성전: '공성전 통계', 파괴신: '파괴신 통계' } as Record<string, string>)[label] ?? label
+  ({ 데이터: '데이터 관리', 길드원: '길드원 관리', 공성전: '공성전 통계', 파괴신: '파괴신 통계' } as Record<string, string>)[label] ?? label
 
 const Brand = () => (
   <span className="logo"><span className="em">⚔️</span>낭만주의</span>
@@ -107,7 +105,7 @@ export default function App() {
           <AdminLogin
             onSuccess={() => {
               setAdmin(true)
-              if (base === 'admin') navigate('search')
+              if (base === 'admin') navigate('members')
             }}
           />
         ) : (
@@ -118,7 +116,6 @@ export default function App() {
             {base === 'guide' && <GuidePage />}
             {base === 'siege' && <StatsPage kind="siege" />}
             {base === 'destroyer' && <StatsPage kind="destroyer" />}
-            {base === 'search' && <SearchPage />}
             {base === 'members' && <MembersPage />}
             {base === 'settings' && <SettingsPage />}
             {base === 'admin' && admin && <AdminHome onLogout={doLogout} />}

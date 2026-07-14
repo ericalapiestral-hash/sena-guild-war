@@ -3,7 +3,7 @@
 import { ADMIN_PW_HASH } from './data/config'
 
 const KEY = 'sena-guild-war:admin'
-export const ADMIN_ROUTES = ['search', 'members', 'settings']
+export const ADMIN_ROUTES = ['members', 'settings']
 
 export function isAdmin(): boolean {
   try {
