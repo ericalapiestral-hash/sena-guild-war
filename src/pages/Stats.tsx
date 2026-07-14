@@ -14,7 +14,7 @@ const CFG: Record<
 > = {
   siege: {
     title: '공성전 통계',
-    desc: '주차를 고르고 요일(월~일)마다 길드원 점수를 기록해요. 각 요일 점수를 지난주 같은 요일과 비교해 등락(%)이 표시돼요. 명단은 [길드원] 메뉴에 등록된 사람이 자동으로 들어옵니다.',
+    desc: '주차를 고르고 요일(월~일)마다 [편집]을 눌러 점수를 입력하고 [저장]하면 잠겨요. 각 요일 점수를 지난주 같은 요일과 비교해 등락(%)이 표시돼요. 명단은 [길드원] 메뉴 등록자가 자동으로 들어옵니다.',
     metric: '점수',
     field: 'siegeRounds',
     byDay: true,
@@ -24,7 +24,7 @@ const CFG: Record<
   },
   destroyer: {
     title: '파괴신 통계',
-    desc: '회차별로 길드원 딜량을 기록해요. 각 회차를 직전 회차와 비교해 등락(%)이 표시돼요. 명단은 [길드원] 메뉴에 등록된 사람이 자동으로 들어옵니다.',
+    desc: '회차별로 [편집]을 눌러 길드원 딜량을 입력하고 [저장]하면 잠겨요. 각 회차를 직전 회차와 비교해 등락(%)이 표시돼요. 명단은 [길드원] 메뉴 등록자가 자동으로 들어옵니다.',
     metric: '딜량',
     field: 'destroyerRounds',
     byDay: false,
@@ -41,16 +41,14 @@ export function StatsPage({ kind }: { kind: Kind }) {
   const cfg = CFG[kind]
   const rounds = data[cfg.field]
   const admin = isAdmin()
-  const roster = data.members.map((m) => m.name) // [길드원] 메뉴 명단 = 자동 표시
+  const roster = data.members.map((m) => m.name)
 
   const [selId, setSelId] = useState<string | null>(null)
   const [day, setDay] = useState<string>(todayWeekday())
   const current = rounds.find((r) => r.id === selId) ?? rounds[rounds.length - 1] ?? null
 
-  // 이 회차/요일에 저장된 값들 (이름 → 기록)
   const stored: StatEntry[] = current ? (cfg.byDay ? current.days?.[day] ?? [] : current.entries) : []
 
-  // 직전 주차(회차) 같은 요일과 비교
   const currentIndex = current ? rounds.findIndex((r) => r.id === current.id) : -1
   const prevRound = currentIndex > 0 ? rounds[currentIndex - 1] : undefined
   const prevList: StatEntry[] = prevRound ? (cfg.byDay ? prevRound.days?.[day] ?? [] : prevRound.entries) : []
@@ -61,19 +59,6 @@ export function StatsPage({ kind }: { kind: Kind }) {
   }
   function patchRound(roundId: string, fn: (r: StatRound) => void) {
     patchRounds((rs) => { const r = rs.find((x) => x.id === roundId); if (r) fn(r) })
-  }
-  /** 현재 회차/요일의 저장 배열을 확보해 조작 */
-  function editStored(fn: (list: StatEntry[]) => void) {
-    if (!current) return
-    patchRound(current.id, (r) => {
-      if (cfg.byDay) {
-        if (!r.days) r.days = {}
-        if (!r.days[day]) r.days[day] = []
-        fn(r.days[day])
-      } else {
-        fn(r.entries)
-      }
-    })
   }
 
   function addRound() {
@@ -93,17 +78,17 @@ export function StatsPage({ kind }: { kind: Kind }) {
     setSelId(null)
   }
 
-  // 이름 기준 upsert
-  const setEntry = (name: string, patch: Partial<StatEntry>) => {
-    editStored((l) => { let e = l.find((x) => x.name === name); if (!e) { e = { name }; l.push(e) } Object.assign(e, patch) })
-  }
-  const addName = (name: string) => {
-    const n = name.trim()
-    if (!n) return
-    editStored((l) => { if (!l.some((x) => x.name === n)) l.push({ name: n }) })
-  }
-  const removeName = (name: string) => {
-    editStored((l) => { const i = l.findIndex((x) => x.name === name); if (i >= 0) l.splice(i, 1) })
+  /** [저장] — 현재 회차/요일의 기록을 통째로 교체 (편집 모드 결과 한 번에 커밋) */
+  const saveAll = (list: StatEntry[]) => {
+    if (!current) return
+    patchRound(current.id, (r) => {
+      if (cfg.byDay) {
+        if (!r.days) r.days = {}
+        r.days[day] = list
+      } else {
+        r.entries = list
+      }
+    })
   }
 
   return (
@@ -111,7 +96,6 @@ export function StatsPage({ kind }: { kind: Kind }) {
       <h1>{cfg.title}</h1>
       <p className="page-desc">{cfg.desc}</p>
 
-      {/* 주차/회차 선택 */}
       <div className="row" style={{ marginBottom: 12 }}>
         {rounds.map((r) => (
           <button key={r.id} className={`small ${current?.id === r.id ? 'primary' : ''}`} onClick={() => setSelId(r.id)}>
@@ -144,7 +128,6 @@ export function StatsPage({ kind }: { kind: Kind }) {
             )}
           </div>
 
-          {/* 요일 탭 (공성전) */}
           {cfg.byDay && (
             <div className="row" style={{ marginTop: 12, gap: 6 }}>
               {WEEKDAYS.map((d) => {
@@ -168,9 +151,7 @@ export function StatsPage({ kind }: { kind: Kind }) {
             heading={cfg.byDay ? `${day}요일 기록` : undefined}
             prevValues={prevValues}
             deltaLabel={cfg.deltaLabel}
-            onSet={setEntry}
-            onAddName={addName}
-            onRemoveName={removeName}
+            onSaveAll={saveAll}
           />
         </div>
       )}
@@ -196,9 +177,7 @@ function EntryTable({
   heading,
   prevValues,
   deltaLabel,
-  onSet,
-  onAddName,
-  onRemoveName,
+  onSaveAll,
 }: {
   roster: string[]
   stored: StatEntry[]
@@ -208,28 +187,64 @@ function EntryTable({
   heading?: string
   prevValues: Map<string, number>
   deltaLabel: string
-  onSet: (name: string, patch: Partial<StatEntry>) => void
-  onAddName: (name: string) => void
-  onRemoveName: (name: string) => void
+  onSaveAll: (list: StatEntry[]) => void
 }) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState<Record<string, Partial<StatEntry>>>({})
+  const [localExtra, setLocalExtra] = useState<string[]>([])
   const [newName, setNewName] = useState('')
 
   const rosterSet = new Set(roster)
   const storedMap = new Map(stored.map((e) => [e.name, e]))
-  // 표시 행 = [길드원] 명단 전원 + 명단에 없지만 기록된 이름(게스트/전 멤버)
-  const extra = stored.map((e) => e.name).filter((n) => !rosterSet.has(n))
-  const rows: StatEntry[] = [...roster, ...extra].map((n) => storedMap.get(n) ?? { name: n })
+  const storedExtra = stored.map((e) => e.name).filter((n) => !rosterSet.has(n))
+  const baseNames = [...roster, ...storedExtra, ...localExtra.filter((n) => !rosterSet.has(n) && !storedExtra.includes(n))]
 
-  const ranked = rows.map((e) => e).sort((a, b) => (b.value ?? -Infinity) - (a.value ?? -Infinity))
+  const valOf = (name: string): Partial<StatEntry> => (editing ? draft[name] ?? {} : storedMap.get(name) ?? {})
+  const rows: StatEntry[] = baseNames.map((name) => ({ name, ...valOf(name) }))
+
   const scored = rows.filter((e) => typeof e.value === 'number')
   const total = scored.reduce((s, e) => s + (e.value as number), 0)
   const joinedCount = rows.filter((e) => e.joined).length
+  const ranked = [...rows].sort((a, b) => (b.value ?? -Infinity) - (a.value ?? -Infinity))
   const top = scored.length ? ranked[0] : undefined
-  const cols = 5 + (showJoined ? 1 : 0) + (admin ? 1 : 0)
+  const displayRows = editing ? rows : ranked // 편집 중엔 명단 순서 고정, 잠금 시 점수순 정렬
+  const cols = 5 + (showJoined ? 1 : 0) + (editing ? 1 : 0)
+
+  function startEdit() {
+    const d: Record<string, Partial<StatEntry>> = {}
+    for (const name of baseNames) { const e = storedMap.get(name); if (e) d[name] = { value: e.value, joined: e.joined, memo: e.memo } }
+    setDraft(d)
+    setLocalExtra([])
+    setEditing(true)
+  }
+  const setField = (name: string, patch: Partial<StatEntry>) => setDraft((prev) => ({ ...prev, [name]: { ...prev[name], ...patch } }))
+  function save() {
+    const list = baseNames
+      .map((name) => ({ name, ...(draft[name] ?? {}) } as StatEntry))
+      .filter((e) => typeof e.value === 'number' || e.joined || (e.memo ?? '').trim())
+    onSaveAll(list)
+    setEditing(false)
+    setLocalExtra([])
+  }
+  function cancel() {
+    setEditing(false)
+    setLocalExtra([])
+    setDraft({})
+  }
+  function addExternal() {
+    const n = newName.trim()
+    setNewName('')
+    if (!n || baseNames.includes(n)) return
+    setLocalExtra((prev) => [...prev, n])
+  }
 
   return (
     <div style={{ marginTop: 14 }}>
-      {heading && <div className="cc-sec" style={{ marginBottom: 8 }}>{heading}</div>}
+      <div className="row between" style={{ marginBottom: 8 }}>
+        {heading ? <div className="cc-sec">{heading}</div> : <span />}
+        {admin && !editing && <button className="primary small" onClick={startEdit}>✏️ 점수 입력·수정</button>}
+        {admin && editing && <span className="delta up" style={{ fontSize: '0.85rem' }}>✏️ 편집 중 — 아래 [저장]을 눌러야 반영돼요</span>}
+      </div>
 
       <div className="stat-tiles" style={{ margin: '0 0 6px' }}>
         <div className="stat-tile"><div className="num">{scored.length}<span style={{ fontSize: '0.9rem', color: 'var(--text-3)' }}>/{rows.length}</span></div><div className="label">{metric} 입력</div></div>
@@ -242,49 +257,55 @@ function EntryTable({
         <table>
           <thead>
             <tr>
-              <th style={{ width: 44 }}>순위</th>
+              <th style={{ width: 44 }}>{editing ? '#' : '순위'}</th>
               <th>길드원</th>
               <th style={{ textAlign: 'right' }}>{metric}</th>
               <th style={{ width: 100 }}>{deltaLabel}</th>
               {showJoined && <th style={{ width: 60 }}>참여</th>}
               <th>메모</th>
-              {admin && <th style={{ width: 44 }} />}
+              {editing && <th style={{ width: 44 }} />}
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 && (
               <tr><td colSpan={cols} className="muted">[길드원] 메뉴에 등록된 사람이 없어요. 먼저 길드원을 등록해주세요.</td></tr>
             )}
-            {ranked.map((e, rank) => (
+            {displayRows.map((e, i) => (
               <tr key={e.name}>
-                <td><b>{typeof e.value === 'number' ? rank + 1 : '-'}</b></td>
+                <td><b>{editing ? i + 1 : typeof e.value === 'number' ? i + 1 : '-'}</b></td>
                 <td><b>{e.name}</b>{!rosterSet.has(e.name) && <span className="muted" style={{ marginLeft: 4, fontSize: '0.75rem' }}>(외부)</span>}</td>
-                <td style={{ textAlign: 'right' }}>{admin ? (
+                <td style={{ textAlign: 'right' }}>{editing ? (
                   <input type="number" value={e.value ?? ''} placeholder="0"
-                    onChange={(ev) => onSet(e.name, { value: ev.target.value === '' ? undefined : Number(ev.target.value) })}
-                    style={{ width: 110, textAlign: 'right' }} />
-                ) : (fmt(e.value))}</td>
+                    onChange={(ev) => setField(e.name, { value: ev.target.value === '' ? undefined : Number(ev.target.value) })}
+                    style={{ width: 120, textAlign: 'right' }} />
+                ) : (<b>{fmt(e.value)}</b>)}</td>
                 <td><Delta prev={prevValues.get(e.name)} cur={e.value} /></td>
-                {showJoined && <td>{admin ? (
-                  <input type="checkbox" checked={!!e.joined} onChange={(ev) => onSet(e.name, { joined: ev.target.checked })} />
+                {showJoined && <td>{editing ? (
+                  <input type="checkbox" checked={!!e.joined} onChange={(ev) => setField(e.name, { joined: ev.target.checked })} />
                 ) : (<span className={`badge ${e.joined ? 'win' : 'lose'}`}>{e.joined ? 'O' : 'X'}</span>)}</td>}
-                <td>{admin ? (
-                  <input value={e.memo ?? ''} placeholder="메모" onChange={(ev) => onSet(e.name, { memo: ev.target.value })} style={{ width: '100%', minWidth: 90 }} />
+                <td>{editing ? (
+                  <input value={e.memo ?? ''} placeholder="메모" onChange={(ev) => setField(e.name, { memo: ev.target.value })} style={{ width: '100%', minWidth: 90 }} />
                 ) : (<span className="muted">{e.memo || ''}</span>)}</td>
-                {admin && <td>{!rosterSet.has(e.name) && <button className="small danger" onClick={() => onRemoveName(e.name)}>✕</button>}</td>}
+                {editing && <td>{!rosterSet.has(e.name) && <button className="small danger" onClick={() => setLocalExtra((prev) => prev.filter((x) => x !== e.name))}>✕</button>}</td>}
               </tr>
             ))}
           </tbody>
         </table>
       </div>
 
-      {admin && (
-        <div className="row" style={{ marginTop: 12 }}>
-          <input placeholder="외부(비길드원) 이름 추가" value={newName} onChange={(e) => setNewName(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') { onAddName(newName); setNewName('') } }} />
-          <button className="small" onClick={() => { onAddName(newName); setNewName('') }}>+ 추가</button>
-          <span className="muted" style={{ fontSize: '0.8rem' }}>길드원은 [길드원] 메뉴 등록만으로 자동 표시돼요</span>
-        </div>
+      {/* 하단 저장/취소 (편집 모드) */}
+      {admin && editing && (
+        <>
+          <div className="row" style={{ marginTop: 12 }}>
+            <input placeholder="외부(비길드원) 이름 추가" value={newName} onChange={(e) => setNewName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') addExternal() }} />
+            <button className="small" onClick={addExternal}>+ 추가</button>
+          </div>
+          <div className="row" style={{ marginTop: 14, justifyContent: 'flex-end', gap: 10 }}>
+            <button onClick={cancel}>취소</button>
+            <button className="primary" onClick={save}>💾 저장</button>
+          </div>
+        </>
       )}
     </div>
   )
