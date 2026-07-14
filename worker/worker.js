@@ -1,9 +1,7 @@
-// 세나 리버스 길드전 AI 검색 프록시 (Cloudflare Worker)
-// - ANTHROPIC_API_KEY 는 서버(Cloudflare)에만 보관 → 사이트에 노출되지 않음
-// - GUILD_PASSWORD 를 아는 운영진만 호출 가능
-// - 한 번 호출당 max_tokens·웹검색 횟수를 제한해 $ 소진 속도를 억제
-//
-// 배포 방법은 이 폴더의 README.md 참고.
+// 낭만주의 길드전 공유 백엔드 (Cloudflare Worker)
+//  1) AI 공략검색 프록시 (POST /)          — ANTHROPIC_API_KEY 로 Claude 웹검색
+//  2) 공유 데이터 (GET/POST /data)          — KV(GUILD_KV)에 길드 공유 데이터(카운터덱·영웅·가이드 등) 저장
+// 시크릿·KV 설정은 worker/README.md 참고.
 
 const SYSTEM_PROMPT = `당신은 모바일 게임 "세븐나이츠 리버스(Seven Knights Re:BIRTH, 넷마블)"의 길드전 공략 전문가입니다.
 
@@ -19,7 +17,7 @@ const SYSTEM_PROMPT = `당신은 모바일 게임 "세븐나이츠 리버스(Sev
 function corsHeaders() {
   return {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'content-type',
   }
 }
@@ -31,7 +29,6 @@ function json(obj, status = 200) {
   })
 }
 
-// 신형 모델은 동적 필터링 웹검색, 그 외(Haiku 등)는 기본 웹검색 사용
 function webSearchTool(model) {
   const newer = /opus-4-(6|7|8)|sonnet-5|sonnet-4-6|fable-5|mythos-5/.test(model)
   return { type: newer ? 'web_search_20260209' : 'web_search_20250305', name: 'web_search', max_uses: 5 }
@@ -40,6 +37,35 @@ function webSearchTool(model) {
 export default {
   async fetch(request, env) {
     if (request.method === 'OPTIONS') return new Response(null, { headers: corsHeaders() })
+
+    const path = new URL(request.url).pathname.replace(/\/+$/, '')
+
+    // ===== 공유 데이터 (카운터덱·영웅·가이드 등) =====
+    if (path.endsWith('/data')) {
+      if (request.method === 'GET') {
+        const raw = env.GUILD_KV ? await env.GUILD_KV.get('guild-data') : null
+        return new Response(raw || '{}', {
+          headers: { 'content-type': 'application/json; charset=utf-8', ...corsHeaders() },
+        })
+      }
+      if (request.method === 'POST') {
+        let body
+        try {
+          body = await request.json()
+        } catch {
+          return json({ error: '요청 형식이 올바르지 않아요.' }, 400)
+        }
+        if (!env.GUILD_PASSWORD || body.password !== env.GUILD_PASSWORD) {
+          return json({ error: '비밀번호가 틀렸어요.' }, 401)
+        }
+        if (!env.GUILD_KV) return json({ error: '서버에 GUILD_KV가 설정되지 않았어요.' }, 500)
+        await env.GUILD_KV.put('guild-data', JSON.stringify(body.data ?? {}))
+        return json({ ok: true })
+      }
+      return json({ error: 'GET 또는 POST만 지원해요.' }, 405)
+    }
+
+    // ===== AI 공략검색 =====
     if (request.method !== 'POST') return json({ error: 'POST 요청만 지원해요.' }, 405)
 
     let body

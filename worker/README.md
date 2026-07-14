@@ -17,12 +17,22 @@ npx wrangler secret put ANTHROPIC_API_KEY
 # 3) 운영진끼리 쓸 비밀번호 정하기 (원하는 문구 입력)
 npx wrangler secret put GUILD_PASSWORD
 
-# 4) 배포
+# 4) 공유 데이터(카운터덱·영웅·가이드) 저장용 KV 만들기 → 출력된 id 를 wrangler.toml 의 [[kv_namespaces]] id 에 붙여넣기
+npx wrangler kv namespace create GUILD_KV
+
+# 5) 배포
 npx wrangler deploy
 ```
 
-4번이 끝나면 `https://sena-guild-search.<계정>.workers.dev` 같은 주소가 출력돼요.
-이 **주소**와 3번에서 정한 **비밀번호**를 사이트의 [AI 공략검색] 페이지 → [서버 설정]에 입력하면 끝.
+마지막에 `https://sena-guild-search.<계정>.workers.dev` 같은 주소가 출력돼요.
+- **AI 공략검색 + 공유 편집**: 이 주소와 3번 비밀번호를 사이트 [AI 공략검색] → [서버 설정]에 입력. (운영진이 등록·수정한 게 이 비밀번호로 공유 저장소에 올라감)
+- **전원 열람(공유 데이터 읽기)**: 이 주소를 알려주시면 사이트 `src/data/config.ts`의 `WORKER_URL`에 넣어 재배포할게요. 그러면 모든 길드원이 별도 설정 없이 운영진이 등록한 덱을 봅니다.
+
+## 엔드포인트
+
+- `POST /`     — AI 검색 (`{query, password}`)
+- `GET /data`  — 공유 데이터(카운터덱·영웅·가이드 등) JSON 조회 (누구나, 열람용)
+- `POST /data` — 공유 데이터 갱신 (`{password, data}`) — 사이트에서 관리자가 편집하면 자동 호출
 
 ## 비용 관리
 

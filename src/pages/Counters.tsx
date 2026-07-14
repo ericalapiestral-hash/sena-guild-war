@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { CounterDeck, CounterEntry, Formation, Hero } from '../types'
-import { getAllCounters, getAllHeroes, isBuiltinCounter, newId, update, useUserData } from '../store'
+import { canEdit, getAllCounters, getAllHeroes, isBuiltinCounter, newId, update, useUserData } from '../store'
 import { DeckLine } from '../components/HeroChip'
 import { HeroPicker } from '../components/HeroPicker'
 
@@ -75,7 +75,11 @@ export function CountersPage() {
             <button className="small" onClick={() => setSearchSel([])}>선택 초기화</button>
           )}
           <span className="spacer" />
-          <button className="primary" onClick={startNew}>+ 새 방어덱/카운터 등록</button>
+          {canEdit() ? (
+            <button className="primary" onClick={startNew}>+ 새 방어덱/카운터 등록</button>
+          ) : (
+            <span className="muted">🔒 등록·수정은 운영진만</span>
+          )}
         </div>
       </div>
 
@@ -97,10 +101,12 @@ export function CountersPage() {
                 )}
                 {entry.defenseNotes && <div className="muted" style={{ marginTop: 6 }}>{entry.defenseNotes}</div>}
               </div>
-              <div className="row">
-                <button className="small" onClick={() => startEdit(entry)}>수정</button>
-                <button className="small danger" onClick={() => remove(entry)}>삭제</button>
-              </div>
+              {canEdit() && (
+                <div className="row">
+                  <button className="small" onClick={() => startEdit(entry)}>수정</button>
+                  <button className="small danger" onClick={() => remove(entry)}>삭제</button>
+                </div>
+              )}
             </div>
             <div style={{ marginTop: 12 }}>
               {entry.counters.length === 0 && <span className="muted">등록된 카운터 없음 — [수정]으로 추가하세요</span>}

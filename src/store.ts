@@ -1,12 +1,16 @@
-// 데이터 계층: 번들된 초기 데이터(JSON) + localStorage 사용자 데이터 오버레이.
-// 나중에 공유 DB(Supabase 등)로 바꿀 때 이 파일만 교체하면 되도록 UI와 분리.
+// 데이터 계층: 번들된 초기 데이터(JSON) + 사용자/공유 데이터 오버레이.
+// 공유 모드: 워커(KV)가 연결되면 길드 공유 데이터를 받아오고, 관리자 편집은 워커로 자동 업로드.
+// 로컬 모드: 워커 미연결 시 각자 브라우저(localStorage)에만 저장(기존 동작).
 
 import { useSyncExternalStore } from 'react'
 import type { CounterEntry, Hero, UserData } from './types'
 import initialHeroes from './data/heroes.json'
 import initialCounters from './data/counters.json'
+import { WORKER_URL } from './data/config'
+import { isAdmin } from './auth'
 
 const LS_KEY = 'sena-guild-war:v1'
+const SEARCH_CFG = 'sena-guild-war:search-config'
 
 const EMPTY: UserData = {
   customHeroes: [],
@@ -30,9 +34,75 @@ function load(): UserData {
 let state: UserData = load()
 const listeners = new Set<() => void>()
 
-function persist() {
-  localStorage.setItem(LS_KEY, JSON.stringify(state))
+function persistLocal() {
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify(state))
+  } catch {
+    /* noop */
+  }
   listeners.forEach((l) => l())
+}
+
+// ---- 공유 저장소(워커 KV) 연동 ----
+
+function searchCfg(): { workerUrl?: string; password?: string } {
+  try {
+    return JSON.parse(localStorage.getItem(SEARCH_CFG) || '{}')
+  } catch {
+    return {}
+  }
+}
+
+function readBase(): string {
+  const url = WORKER_URL || String(searchCfg().workerUrl || '')
+  return url.replace(/\/+$/, '')
+}
+
+/** 공유 저장소가 연결된 상태인지 (워커 URL 존재) */
+export function sharedMode(): boolean {
+  return !!readBase()
+}
+
+/** 편집(등록/수정/삭제) 가능 여부: 공유모드면 관리자만, 로컬모드면 누구나 */
+export function canEdit(): boolean {
+  return !sharedMode() || isAdmin()
+}
+
+async function pull() {
+  const base = readBase()
+  if (!base) return
+  try {
+    const r = await fetch(`${base}/data`, { cache: 'no-store' })
+    if (!r.ok) return
+    const data = await r.json()
+    if (data && typeof data === 'object' && Object.keys(data).length) {
+      state = { ...structuredClone(EMPTY), ...data }
+      persistLocal()
+    }
+  } catch {
+    /* 오프라인: 로컬 캐시 유지 */
+  }
+}
+
+async function push() {
+  const base = readBase()
+  const pw = String(searchCfg().password || '')
+  if (!base || !isAdmin() || !pw) return
+  try {
+    await fetch(`${base}/data`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ password: pw, data: state }),
+    })
+  } catch {
+    /* noop */
+  }
+}
+
+// 최초 로드 시 공유 데이터를 당겨오고, 이후 주기적으로 동기화
+if (typeof window !== 'undefined') {
+  pull()
+  window.setInterval(pull, 45000)
 }
 
 export function subscribe(listener: () => void): () => void {
@@ -44,7 +114,7 @@ export function getUserData(): UserData {
   return state
 }
 
-/** React 훅: 사용자 데이터 구독 */
+/** React 훅: 사용자/공유 데이터 구독 */
 export function useUserData(): UserData {
   return useSyncExternalStore(subscribe, getUserData)
 }
@@ -53,7 +123,8 @@ export function update(mutator: (draft: UserData) => void) {
   const draft = structuredClone(state)
   mutator(draft)
   state = draft
-  persist()
+  persistLocal()
+  push()
 }
 
 export function newId(prefix: string): string {
@@ -91,7 +162,8 @@ export function importJson(raw: string): { ok: boolean; error?: string } {
     const parsed = JSON.parse(raw)
     if (typeof parsed !== 'object' || parsed === null) throw new Error('형식이 올바르지 않음')
     state = { ...structuredClone(EMPTY), ...parsed }
-    persist()
+    persistLocal()
+    push()
     return { ok: true }
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) }
@@ -100,5 +172,6 @@ export function importJson(raw: string): { ok: boolean; error?: string } {
 
 export function resetAll() {
   state = structuredClone(EMPTY)
-  persist()
+  persistLocal()
+  push()
 }

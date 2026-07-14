@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { INITIAL_GUIDES } from '../data/guide'
-import { newId, update, useUserData } from '../store'
+import { canEdit, newId, update, useUserData } from '../store'
 import { Markdown } from '../components/Markdown'
 
 export function GuidePage() {
@@ -21,7 +21,7 @@ export function GuidePage() {
             document.getElementById(s.id)?.scrollIntoView({ behavior: 'smooth' })
           }}>{s.title}</button>
         ))}
-        <button className="small primary" onClick={() => setShowAdd(true)}>+ 섹션 추가</button>
+        {canEdit() && <button className="small primary" onClick={() => setShowAdd(true)}>+ 섹션 추가</button>}
       </div>
 
       {sections.map((s) => {
@@ -30,7 +30,7 @@ export function GuidePage() {
           <div className="card" key={s.id} id={s.id}>
             <div className="row between">
               <h2 style={{ margin: 0 }}>{s.title}</h2>
-              {isCustom && (
+              {isCustom && canEdit() && (
                 <button className="small danger" onClick={() => {
                   if (confirm(`'${s.title}' 섹션을 삭제할까요?`)) {
                     update((d) => { d.customGuides = d.customGuides.filter((g) => g.id !== s.id) })

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { Grade, Hero, Position, SavedDeck } from '../types'
-import { getAllHeroes, newId, update, useUserData } from '../store'
+import { canEdit, getAllHeroes, newId, update, useUserData } from '../store'
 import { DeckLine, HeroChip } from '../components/HeroChip'
 import { HeroPicker } from '../components/HeroPicker'
 import { recFor } from '../data/heroRecs'
@@ -65,15 +65,17 @@ function DeckBuilder({
             onRemove={(i) => setSel((s) => s.filter((_, j) => j !== i))} />
         </div>
         {sel.length > 0 && <DeckRecs heroIds={sel} heroMap={heroMap} />}
-        <div className="row">
-          <input placeholder="덱 이름" value={name} onChange={(e) => setName(e.target.value)} style={{ width: 150 }} />
-          <select value={kind} onChange={(e) => setKind(e.target.value as SavedDeck['kind'])}>
-            <option value="공격덱">공격덱</option>
-            <option value="방어덱">방어덱</option>
-          </select>
-          <input placeholder="메모 (선택)" value={memo} onChange={(e) => setMemo(e.target.value)} style={{ flex: 1, minWidth: 140 }} />
-          <button className="primary" disabled={sel.length === 0 || !name.trim()} onClick={save}>덱 저장</button>
-        </div>
+        {canEdit() && (
+          <div className="row">
+            <input placeholder="덱 이름" value={name} onChange={(e) => setName(e.target.value)} style={{ width: 150 }} />
+            <select value={kind} onChange={(e) => setKind(e.target.value as SavedDeck['kind'])}>
+              <option value="공격덱">공격덱</option>
+              <option value="방어덱">방어덱</option>
+            </select>
+            <input placeholder="메모 (선택)" value={memo} onChange={(e) => setMemo(e.target.value)} style={{ flex: 1, minWidth: 140 }} />
+            <button className="primary" disabled={sel.length === 0 || !name.trim()} onClick={save}>덱 저장</button>
+          </div>
+        )}
       </div>
 
       {savedDecks.length > 0 && (
@@ -82,7 +84,7 @@ function DeckBuilder({
           <div className="table-wrap">
             <table style={{ marginTop: 8 }}>
               <thead>
-                <tr><th>이름</th><th>종류</th><th>구성</th><th>메모</th><th /></tr>
+                <tr><th>이름</th><th>종류</th><th>구성</th><th>메모</th>{canEdit() && <th />}</tr>
               </thead>
               <tbody>
                 {savedDecks.map((d) => (
@@ -91,13 +93,15 @@ function DeckBuilder({
                     <td>{d.kind}</td>
                     <td><DeckLine heroIds={d.heroes} heroMap={heroMap} /></td>
                     <td className="muted">{d.memo}</td>
-                    <td>
-                      <button className="small danger" onClick={() => {
-                        if (confirm(`'${d.name}' 덱을 삭제할까요?`)) {
-                          update((u) => { u.savedDecks = u.savedDecks.filter((x) => x.id !== d.id) })
-                        }
-                      }}>삭제</button>
-                    </td>
+                    {canEdit() && (
+                      <td>
+                        <button className="small danger" onClick={() => {
+                          if (confirm(`'${d.name}' 덱을 삭제할까요?`)) {
+                            update((u) => { u.savedDecks = u.savedDecks.filter((x) => x.id !== d.id) })
+                          }
+                        }}>삭제</button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -151,7 +155,7 @@ function HeroTable({ heroes }: { heroes: Hero[] }) {
     <div className="card">
       <div className="row between">
         <strong>영웅 목록 ({filtered.length}/{heroes.length})</strong>
-        <button className="small" onClick={() => setShowAdd(true)}>+ 영웅 직접 추가</button>
+        {canEdit() && <button className="small" onClick={() => setShowAdd(true)}>+ 영웅 직접 추가</button>}
       </div>
       <div className="row" style={{ margin: '10px 0' }}>
         <input placeholder="이름 검색" value={q} onChange={(e) => setQ(e.target.value)} style={{ width: 140 }} />
@@ -183,7 +187,7 @@ function HeroTable({ heroes }: { heroes: Hero[] }) {
                 <td className="muted">{h.tags?.join(', ') ?? ''}</td>
                 <td>{h.pvpRelevant ? '⭐' : ''}</td>
                 <td>
-                  {h.custom && (
+                  {h.custom && canEdit() && (
                     <button className="small danger" onClick={() => {
                       if (confirm(`'${h.name}' 영웅을 삭제할까요?`)) {
                         update((u) => { u.customHeroes = u.customHeroes.filter((x) => x.id !== h.id) })
