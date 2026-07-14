@@ -59,6 +59,7 @@ function MemberCard({ member, expanded, onToggle }: { member: Member; expanded: 
   const wins = member.records.filter((r) => r.result === '승').length
   const losses = member.records.length - wins
   const [memo, setMemo] = useState(member.note ?? '')
+  const [owner, setOwner] = useState(member.owner ?? '')
   const [oppo, setOppo] = useState('')
   const [recMemo, setRecMemo] = useState('')
 
@@ -83,6 +84,8 @@ function MemberCard({ member, expanded, onToggle }: { member: Member; expanded: 
         <div className="row">
           <strong>{member.name}</strong>
           {member.role && member.role !== '멤버' && <span className={`badge role-${member.role}`}>{member.role}</span>}
+          {member.isAlt && <span className="badge alt">부계정</span>}
+          {member.owner && <span className="muted">· 주인 {member.owner}</span>}
           {member.note && <span className="muted">— {member.note}</span>}
         </div>
         <div className="row">
@@ -102,6 +105,20 @@ function MemberCard({ member, expanded, onToggle }: { member: Member; expanded: 
             }}>
               {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
             </select>
+            <label className="row" style={{ gap: 6, fontSize: '0.85rem', cursor: 'pointer', marginLeft: 4 }}>
+              <input type="checkbox" checked={!!member.isAlt} onChange={(e) => {
+                const v = e.target.checked
+                update((d) => { const t = d.members.find((x) => x.id === member.id); if (t) t.isAlt = v || undefined })
+              }} />
+              부계정
+            </label>
+          </div>
+          <div className="row" style={{ marginBottom: 10 }}>
+            <label style={{ fontWeight: 600, fontSize: '0.85rem' }}>계정 주인</label>
+            <input placeholder="계정 주인 이름 (선택 — 비우면 표시 안 됨)" value={owner}
+              onChange={(e) => setOwner(e.target.value)}
+              onBlur={(e) => { const v = e.target.value.trim(); update((d) => { const t = d.members.find((x) => x.id === member.id); if (t) t.owner = v || undefined }) }}
+              style={{ flex: 1 }} />
           </div>
           <div className="row">
             <input placeholder="담당/메모 (예: 1번 방덱 담당, 주력: 연희 카르마 린)" value={memo}

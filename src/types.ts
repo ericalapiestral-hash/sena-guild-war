@@ -96,6 +96,10 @@ export interface Member {
   name: string
   /** 길드 내 역할 (미지정=멤버) */
   role?: MemberRole
+  /** 부계정 여부 (true일 때만 '부계정' 표시) */
+  isAlt?: boolean
+  /** 계정 주인 이름 (부계정의 본주인 등, 설정 시에만 표시) */
+  owner?: string
   /** 담당/메모: 주력덱, 담당 상대 등 */
   note?: string
   records: BattleRecord[]
