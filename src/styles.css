@@ -549,6 +549,11 @@ dialog::backdrop { background: rgba(20, 22, 30, 0.4); }
 .cc-col-h { color: var(--text-3); font-size: 0.77rem; font-weight: 700; margin-bottom: 5px; }
 .cc-col-b { font-size: 0.88rem; color: var(--text); white-space: pre-line; line-height: 1.55; }
 
+/* ---- 통계 전주 대비 등락 ---- */
+.delta { font-size: 0.8rem; font-weight: 700; white-space: nowrap; color: var(--text-2); }
+.delta.up { color: var(--ok); }
+.delta.down { color: var(--danger); }
+
 /* ==== 카운터 편집 폼 ==== */
 .form-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; }
 @media (max-width: 560px) { .form-grid2 { grid-template-columns: 1fr; } }

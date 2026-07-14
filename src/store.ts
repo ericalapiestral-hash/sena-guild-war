@@ -10,6 +10,7 @@ import { WORKER_URL } from './data/config'
 
 const LS_KEY = 'sena-guild-war:v1'
 const SEARCH_CFG = 'sena-guild-war:search-config'
+const REV_KEY = 'sena-guild-war:rev'
 
 const EMPTY: UserData = {
   customHeroes: [],
@@ -70,6 +71,24 @@ export function canEdit(): boolean {
   return true
 }
 
+// 편집 버전(타임스탬프). KV는 최종 일관성이라 방금 저장한 것보다 오래된 데이터가
+// 읽힐 수 있음 — 버전을 비교해 "내 최신 편집보다 오래된 pull"이 입력을 덮어쓰지 않게 함.
+let rev = 0
+try {
+  rev = Number(localStorage.getItem(REV_KEY) || 0) || 0
+} catch {
+  /* noop */
+}
+
+function saveRev(v: number) {
+  rev = v
+  try {
+    localStorage.setItem(REV_KEY, String(v))
+  } catch {
+    /* noop */
+  }
+}
+
 async function pull() {
   const base = readBase()
   if (!base) return
@@ -78,7 +97,12 @@ async function pull() {
     if (!r.ok) return
     const data = await r.json()
     if (data && typeof data === 'object' && Object.keys(data).length) {
+      const incRev = Number(data._rev || 0) || 0
+      // 내 최신 편집(rev)보다 오래되거나 같은 버전이면 무시 — 입력 중 덮어쓰기 방지
+      if (rev && incRev <= rev) return
+      delete data._rev
       state = { ...structuredClone(EMPTY), ...data }
+      if (incRev) saveRev(incRev)
       persistLocal()
     }
   } catch {
@@ -86,15 +110,29 @@ async function pull() {
   }
 }
 
-async function push() {
+let pushTimer: number | undefined
+
+/** 잦은 입력(키 입력마다)을 1.2초로 몰아서 한 번만 업로드 */
+function schedulePush() {
+  if (!readBase()) return
+  if (pushTimer !== undefined) window.clearTimeout(pushTimer)
+  pushTimer = window.setTimeout(() => {
+    pushTimer = undefined
+    void push()
+  }, 1200)
+}
+
+async function push(keepalive = false) {
   const base = readBase()
   if (!base) return
+  saveRev(Date.now())
   // 덱·가이드 편집은 공개(비번 없음) — 워커가 /data POST를 누구나 허용.
   try {
     await fetch(`${base}/data`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ data: state }),
+      body: JSON.stringify({ data: { ...state, _rev: rev } }),
+      keepalive,
     })
   } catch {
     /* noop */
@@ -105,6 +143,14 @@ async function push() {
 if (typeof window !== 'undefined') {
   pull()
   window.setInterval(pull, 45000)
+  // 탭을 닫을 때 아직 안 올라간 입력이 있으면 마지막으로 전송
+  window.addEventListener('beforeunload', () => {
+    if (pushTimer !== undefined) {
+      window.clearTimeout(pushTimer)
+      pushTimer = undefined
+      void push(true)
+    }
+  })
 }
 
 export function subscribe(listener: () => void): () => void {
@@ -126,7 +172,7 @@ export function update(mutator: (draft: UserData) => void) {
   mutator(draft)
   state = draft
   persistLocal()
-  push()
+  schedulePush()
 }
 
 export function newId(prefix: string): string {
@@ -180,7 +226,7 @@ export function importJson(raw: string): { ok: boolean; error?: string } {
     if (typeof parsed !== 'object' || parsed === null) throw new Error('형식이 올바르지 않음')
     state = { ...structuredClone(EMPTY), ...parsed }
     persistLocal()
-    push()
+    void push()
     return { ok: true }
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) }
@@ -190,5 +236,5 @@ export function importJson(raw: string): { ok: boolean; error?: string } {
 export function resetAll() {
   state = structuredClone(EMPTY)
   persistLocal()
-  push()
+  void push()
 }

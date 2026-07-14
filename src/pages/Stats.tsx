@@ -47,6 +47,26 @@ export function StatsPage({ kind }: { kind: Kind }) {
   // 현재 화면의 기록 배열 (공성전=선택 요일, 파괴신=회차 자체)
   const entries: StatEntry[] = current ? (cfg.byDay ? current.days?.[day] ?? [] : current.entries) : []
 
+  // 직전 주차(회차)와 비교 — 같은 요일 기준 상승/하락 %
+  const currentIndex = current ? rounds.findIndex((r) => r.id === current.id) : -1
+  const prevRound = currentIndex > 0 ? rounds[currentIndex - 1] : undefined
+  const prevList: StatEntry[] = prevRound ? (cfg.byDay ? prevRound.days?.[day] ?? [] : prevRound.entries) : []
+  const prevValues = new Map(
+    prevList.filter((e) => typeof e.value === 'number').map((e) => [e.name, e.value as number]),
+  )
+  const deltaLabel = cfg.byDay ? '전주 대비' : '전 회차 대비'
+
+  /** 한 주(모든 요일) 합산: 이름 → 총점 */
+  const totalsOf = (r?: StatRound) => {
+    const map = new Map<string, number>()
+    if (!r) return map
+    for (const d of WEEKDAYS)
+      for (const e of r.days?.[d] ?? [])
+        if (typeof e.value === 'number') map.set(e.name, (map.get(e.name) ?? 0) + e.value)
+    return map
+  }
+  const prevWeekTotals = cfg.byDay ? totalsOf(prevRound) : new Map<string, number>()
+
   function patchRounds(fn: (rs: StatRound[]) => void) {
     update((d: UserData) => { fn(d[cfg.field]) })
   }
@@ -70,7 +90,18 @@ export function StatsPage({ kind }: { kind: Kind }) {
     const label = prompt(`${cfg.roundName} 이름을 입력하세요. (예: ${cfg.byDay ? '7월 2주 / 시즌 12' : '1회차 / 시즌 12'})`)?.trim()
     if (!label) return
     const id = newId(kind)
-    patchRounds((rs) => rs.push({ id, label, date: new Date().toISOString().slice(0, 10), entries: [], ...(cfg.byDay ? { days: {} } : {}) }))
+    // [길드원 관리]에 등록된 로스터를 자동으로 채워넣음 (매번 손으로 추가할 필요 없게)
+    const roster = getUserData().members
+    const mk = (): StatEntry[] => roster.map((m) => (cfg.showJoined ? { name: m.name, joined: true } : { name: m.name }))
+    patchRounds((rs) =>
+      rs.push({
+        id,
+        label,
+        date: new Date().toISOString().slice(0, 10),
+        entries: cfg.byDay ? [] : mk(),
+        ...(cfg.byDay ? { days: Object.fromEntries(WEEKDAYS.map((d) => [d, mk()])) } : {}),
+      }),
+    )
     setSelId(id)
   }
   function renameRound(r: StatRound) {
@@ -99,19 +130,9 @@ export function StatsPage({ kind }: { kind: Kind }) {
   const removeEntry = (i: number) => { if (current) editEntries(current.id, (l) => l.splice(i, 1)) }
 
   // 공성전: 이번 주 요일 합산 (요일 전체를 합쳐 길드원별 총점)
-  const weekTotals = (() => {
-    if (!current || !cfg.byDay) return []
-    const map = new Map<string, { name: string; total: number; daysJoined: number }>()
-    for (const d of WEEKDAYS) {
-      for (const e of current.days?.[d] ?? []) {
-        const m = map.get(e.name) ?? { name: e.name, total: 0, daysJoined: 0 }
-        if (typeof e.value === 'number') m.total += e.value
-        if (e.joined) m.daysJoined += 1
-        map.set(e.name, m)
-      }
-    }
-    return [...map.values()].sort((a, b) => b.total - a.total)
-  })()
+  const weekTotals = cfg.byDay && current
+    ? [...totalsOf(current).entries()].map(([name, total]) => ({ name, total })).sort((a, b) => b.total - a.total)
+    : []
 
   return (
     <div>
@@ -172,6 +193,8 @@ export function StatsPage({ kind }: { kind: Kind }) {
             admin={admin}
             showJoined={cfg.showJoined}
             heading={cfg.byDay ? `${day}요일 기록` : undefined}
+            prevValues={prevValues}
+            deltaLabel={deltaLabel}
             onAddEntry={addEntry}
             onAddAll={addAllMembers}
             onPatch={patchEntry}
@@ -184,10 +207,15 @@ export function StatsPage({ kind }: { kind: Kind }) {
               <div className="cc-sec" style={{ marginBottom: 8 }}>이번 주 합산 ({cfg.metric} 요일 합계)</div>
               <div className="table-wrap">
                 <table>
-                  <thead><tr><th style={{ width: 44 }}>순위</th><th>길드원</th><th style={{ textAlign: 'right' }}>{cfg.metric} 합계</th></tr></thead>
+                  <thead><tr><th style={{ width: 44 }}>순위</th><th>길드원</th><th style={{ textAlign: 'right' }}>{cfg.metric} 합계</th><th style={{ width: 110 }}>전주 대비</th></tr></thead>
                   <tbody>
                     {weekTotals.map((w, i) => (
-                      <tr key={w.name}><td><b>{i + 1}</b></td><td><b>{w.name}</b></td><td style={{ textAlign: 'right' }}>{fmt(w.total)}</td></tr>
+                      <tr key={w.name}>
+                        <td><b>{i + 1}</b></td>
+                        <td><b>{w.name}</b></td>
+                        <td style={{ textAlign: 'right' }}>{fmt(w.total)}</td>
+                        <td><Delta prev={prevWeekTotals.get(w.name)} cur={w.total} /></td>
+                      </tr>
                     ))}
                   </tbody>
                 </table>
@@ -200,12 +228,25 @@ export function StatsPage({ kind }: { kind: Kind }) {
   )
 }
 
+/** 전 주차(회차) 대비 상승/하락 % */
+function Delta({ prev, cur }: { prev?: number; cur?: number }) {
+  if (typeof cur !== 'number' || typeof prev !== 'number' || prev === 0) {
+    return <span className="muted">—</span>
+  }
+  const pct = ((cur - prev) / Math.abs(prev)) * 100
+  if (Math.abs(pct) < 0.05) return <span className="delta">0%</span>
+  const up = pct > 0
+  return <span className={`delta ${up ? 'up' : 'down'}`}>{up ? '▲' : '▼'} {Math.abs(pct).toFixed(1)}%</span>
+}
+
 function EntryTable({
   entries,
   metric,
   admin,
   showJoined,
   heading,
+  prevValues,
+  deltaLabel,
   onAddEntry,
   onAddAll,
   onPatch,
@@ -216,12 +257,14 @@ function EntryTable({
   admin: boolean
   showJoined: boolean
   heading?: string
+  prevValues: Map<string, number>
+  deltaLabel: string
   onAddEntry: (name: string) => void
   onAddAll: () => void
   onPatch: (i: number, patch: Partial<StatEntry>) => void
   onRemove: (i: number) => void
 }) {
-  const cols = 4 + (showJoined ? 1 : 0) + (admin ? 1 : 0)
+  const cols = 5 + (showJoined ? 1 : 0) + (admin ? 1 : 0)
   const [newName, setNewName] = useState('')
 
   const ranked = entries.map((e, i) => ({ e, i })).sort((a, b) => (b.e.value ?? -Infinity) - (a.e.value ?? -Infinity))
@@ -248,6 +291,7 @@ function EntryTable({
               <th style={{ width: 44 }}>순위</th>
               <th>길드원</th>
               <th style={{ textAlign: 'right' }}>{metric}</th>
+              <th style={{ width: 100 }}>{deltaLabel}</th>
               {showJoined && <th style={{ width: 60 }}>참여</th>}
               <th>메모</th>
               {admin && <th style={{ width: 44 }} />}
@@ -268,6 +312,7 @@ function EntryTable({
                     onChange={(ev) => onPatch(i, { value: ev.target.value === '' ? undefined : Number(ev.target.value) })}
                     style={{ width: 110, textAlign: 'right' }} />
                 ) : (fmt(e.value))}</td>
+                <td><Delta prev={prevValues.get(e.name)} cur={e.value} /></td>
                 {showJoined && <td>{admin ? (
                   <input type="checkbox" checked={!!e.joined} onChange={(ev) => onPatch(i, { joined: ev.target.checked })} />
                 ) : (<span className={`badge ${e.joined ? 'win' : 'lose'}`}>{e.joined ? 'O' : 'X'}</span>)}</td>}
