@@ -14,7 +14,7 @@ const CFG: Record<
 > = {
   siege: {
     title: '공성전 통계',
-    desc: '주차를 고르고 요일(월~일)마다 길드원 점수를 기록해요. 요일별 순위와 이번 주 점수 합산 랭킹이 자동 집계됩니다.',
+    desc: '주차를 고르고 요일(월~일)마다 길드원 점수를 기록해요. 각 요일 점수를 지난주 같은 요일과 비교해 등락(%)이 자동 표시됩니다.',
     metric: '점수',
     field: 'siegeRounds',
     byDay: true,
@@ -55,17 +55,6 @@ export function StatsPage({ kind }: { kind: Kind }) {
     prevList.filter((e) => typeof e.value === 'number').map((e) => [e.name, e.value as number]),
   )
   const deltaLabel = cfg.byDay ? '전주 대비' : '전 회차 대비'
-
-  /** 한 주(모든 요일) 합산: 이름 → 총점 */
-  const totalsOf = (r?: StatRound) => {
-    const map = new Map<string, number>()
-    if (!r) return map
-    for (const d of WEEKDAYS)
-      for (const e of r.days?.[d] ?? [])
-        if (typeof e.value === 'number') map.set(e.name, (map.get(e.name) ?? 0) + e.value)
-    return map
-  }
-  const prevWeekTotals = cfg.byDay ? totalsOf(prevRound) : new Map<string, number>()
 
   function patchRounds(fn: (rs: StatRound[]) => void) {
     update((d: UserData) => { fn(d[cfg.field]) })
@@ -128,11 +117,6 @@ export function StatsPage({ kind }: { kind: Kind }) {
   }
   const patchEntry = (i: number, patch: Partial<StatEntry>) => { if (current) editEntries(current.id, (l) => Object.assign(l[i], patch)) }
   const removeEntry = (i: number) => { if (current) editEntries(current.id, (l) => l.splice(i, 1)) }
-
-  // 공성전: 이번 주 요일 합산 (요일 전체를 합쳐 길드원별 총점)
-  const weekTotals = cfg.byDay && current
-    ? [...totalsOf(current).entries()].map(([name, total]) => ({ name, total })).sort((a, b) => b.total - a.total)
-    : []
 
   return (
     <div>
@@ -200,28 +184,6 @@ export function StatsPage({ kind }: { kind: Kind }) {
             onPatch={patchEntry}
             onRemove={removeEntry}
           />
-
-          {/* 이번 주 합산 (공성전) */}
-          {cfg.byDay && weekTotals.length > 0 && (
-            <div style={{ marginTop: 18 }}>
-              <div className="cc-sec" style={{ marginBottom: 8 }}>이번 주 합산 ({cfg.metric} 요일 합계)</div>
-              <div className="table-wrap">
-                <table>
-                  <thead><tr><th style={{ width: 44 }}>순위</th><th>길드원</th><th style={{ textAlign: 'right' }}>{cfg.metric} 합계</th><th style={{ width: 110 }}>전주 대비</th></tr></thead>
-                  <tbody>
-                    {weekTotals.map((w, i) => (
-                      <tr key={w.name}>
-                        <td><b>{i + 1}</b></td>
-                        <td><b>{w.name}</b></td>
-                        <td style={{ textAlign: 'right' }}>{fmt(w.total)}</td>
-                        <td><Delta prev={prevWeekTotals.get(w.name)} cur={w.total} /></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
         </div>
       )}
     </div>
