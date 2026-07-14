@@ -17,4 +17,4 @@ CLAUDE_MODEL = "claude-haiku-4-5"
 #   npx wrangler kv namespace create GUILD_KV
 [[kv_namespaces]]
 binding = "GUILD_KV"
-id = "여기에_kv_namespace_id_붙여넣기"
+id = "a31934f6fd8d46d7bc45039f1d1b8d93"

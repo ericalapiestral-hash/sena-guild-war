@@ -7,4 +7,4 @@ export const ADMIN_PW_HASH = 'a5dc6c6f3e1625157b655547f5ffc74de885e87568038fc909
 // 워커를 배포한 뒤 그 주소를 여기에 넣으면, 길드원 전원이 별도 설정 없이 운영진이 등록한 덱을 봐요.
 // 예: 'https://sena-guild-search.<계정>.workers.dev'
 // 비워두면 각자 브라우저에만 저장되는 로컬 모드로 동작.
-export const WORKER_URL: string = ''
+export const WORKER_URL: string = 'https://sena-guild-search.ericalapiestral.workers.dev'
