@@ -98,6 +98,16 @@
     ]
   },
   {
+    "id": "관우",
+    "name": "관우",
+    "grade": "전설",
+    "position": "만능형",
+    "pvpRelevant": true,
+    "tags": [
+      "삼국호걸"
+    ]
+  },
+  {
     "id": "니아",
     "name": "니아",
     "grade": "전설",
@@ -347,6 +357,16 @@
     "pvpRelevant": true,
     "tags": [
       "숨은 강자들"
+    ]
+  },
+  {
+    "id": "아일린",
+    "name": "아일린",
+    "grade": "전설",
+    "position": "만능형",
+    "pvpRelevant": true,
+    "tags": [
+      "세븐나이츠"
     ]
   },
   {
@@ -634,6 +654,17 @@
     "tags": [
       "에반 원정대",
       "각성 형태"
+    ]
+  },
+  {
+    "id": "카론",
+    "name": "카론",
+    "grade": "희귀",
+    "position": "지원형",
+    "role": "힐러",
+    "pvpRelevant": true,
+    "tags": [
+      "모험가"
     ]
   },
   {
