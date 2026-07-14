@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { Member, MemberRole } from '../types'
-import { newId, update, useUserData } from '../store'
+import { newId, todayLocal, update, useUserData } from '../store'
 
 const ROLES: MemberRole[] = ['길드마스터', '부길드마스터', '정예멤버', '멤버']
 const roleRank = (r?: MemberRole) => {
@@ -69,7 +69,7 @@ function MemberCard({ member, expanded, onToggle }: { member: Member; expanded: 
       if (!target) return
       target.records.unshift({
         id: newId('rec'),
-        date: new Date().toISOString().slice(0, 10),
+        date: todayLocal(),
         opponent: oppo.trim() || undefined,
         result,
         memo: recMemo.trim() || undefined,

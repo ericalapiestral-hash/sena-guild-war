@@ -23,14 +23,35 @@ const EMPTY: UserData = {
   destroyerRounds: [],
 }
 
+const ARRAY_FIELDS = Object.keys(EMPTY) as (keyof UserData)[]
+
+/** 외부에서 온 데이터(공유 pull·localStorage·가져오기)를 안전한 형태로 정규화.
+ *  배열이어야 할 필드가 다른 타입이면 버림 — 오염된 공유 데이터 하나로
+ *  전 길드원 화면이 깨지는 것 방지. (워커도 같은 검증을 하지만 이중 방어) */
+function normalize(raw: unknown): UserData {
+  const base = structuredClone(EMPTY)
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return base
+  const src = raw as Record<string, unknown>
+  for (const k of ARRAY_FIELDS) {
+    if (Array.isArray(src[k])) (base as unknown as Record<string, unknown>)[k] = src[k]
+  }
+  return base
+}
+
 function load(): UserData {
   try {
     const raw = localStorage.getItem(LS_KEY)
     if (!raw) return structuredClone(EMPTY)
-    return { ...structuredClone(EMPTY), ...JSON.parse(raw) }
+    return normalize(JSON.parse(raw))
   } catch {
     return structuredClone(EMPTY)
   }
+}
+
+/** 오늘 날짜 YYYY-MM-DD — 로컬 시간대 기준 (toISOString은 UTC라 오전 9시 전엔 하루 전으로 찍힘) */
+export function todayLocal(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 let state: UserData = load()
@@ -79,6 +100,8 @@ try {
 } catch {
   /* noop */
 }
+// 과거에 조작된 미래 시각 rev가 저장돼 있으면 동기화가 영영 얼어붙음 — 해제
+if (rev > Date.now() + 60 * 60 * 1000) rev = 0
 
 function saveRev(v: number) {
   rev = v
@@ -97,11 +120,12 @@ async function pull() {
     if (!r.ok) return
     const data = await r.json()
     if (data && typeof data === 'object' && Object.keys(data).length) {
-      const incRev = Number(data._rev || 0) || 0
+      let incRev = Number(data._rev || 0) || 0
+      // 미래 시각으로 조작된 rev 방어 — 그대로 저장하면 이후 모든 pull이 무시됨
+      if (incRev > Date.now() + 60 * 60 * 1000) incRev = Date.now()
       // 내 최신 편집(rev)보다 오래되거나 같은 버전이면 무시 — 입력 중 덮어쓰기 방지
       if (rev && incRev <= rev) return
-      delete data._rev
-      state = { ...structuredClone(EMPTY), ...data }
+      state = normalize(data)
       if (incRev) saveRev(incRev)
       persistLocal()
     }
@@ -125,15 +149,21 @@ function schedulePush() {
 async function push(keepalive = false) {
   const base = readBase()
   if (!base) return
-  saveRev(Date.now())
+  saveRev(Math.max(Date.now(), rev + 1))
   // 덱·가이드 편집은 공개(비번 없음) — 워커가 /data POST를 누구나 허용.
   try {
-    await fetch(`${base}/data`, {
+    const r = await fetch(`${base}/data`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ data: { ...state, _rev: rev } }),
       keepalive,
     })
+    // 워커가 서버 시각으로 스탬프한 최종 rev를 돌려줌 — 클라이언트 시계 오차와
+    // 무관하게 모두가 한 시계(서버)를 기준으로 버전 비교하도록 맞춤
+    if (r.ok) {
+      const j = (await r.json().catch(() => null)) as { rev?: number } | null
+      if (j && typeof j.rev === 'number' && j.rev > 0) saveRev(j.rev)
+    }
   } catch {
     /* noop */
   }
@@ -230,7 +260,7 @@ export function importJson(raw: string): { ok: boolean; error?: string } {
   try {
     const parsed = JSON.parse(raw)
     if (typeof parsed !== 'object' || parsed === null) throw new Error('형식이 올바르지 않음')
-    state = { ...structuredClone(EMPTY), ...parsed }
+    state = normalize(parsed)
     persistLocal()
     void push()
     return { ok: true }

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { StatEntry, StatRound, UserData } from '../types'
-import { newId, update, useUserData } from '../store'
+import { newId, todayLocal, update, useUserData } from '../store'
 import { isAdmin } from '../auth'
 
 type Kind = 'siege' | 'destroyer'
@@ -68,7 +68,7 @@ export function StatsPage({ kind }: { kind: Kind }) {
     const label = prompt(`${cfg.roundName} 이름을 입력하세요. (예: ${cfg.byDay ? '7월 2주 / 시즌 12' : '1회차 / 시즌 12'})`)?.trim()
     if (!label) return
     const id = newId(kind)
-    patchRounds((rs) => rs.push({ id, label, date: new Date().toISOString().slice(0, 10), entries: [], ...(cfg.byDay ? { days: {} } : {}) }))
+    patchRounds((rs) => rs.push({ id, label, date: todayLocal(), entries: [], ...(cfg.byDay ? { days: {} } : {}) }))
     setSelId(id)
   }
   function renameRound(r: StatRound) {
@@ -206,7 +206,7 @@ function PrintContent({
   prevRound?: StatRound
   roster: string[]
 }) {
-  const printedAt = new Date().toISOString().slice(0, 10)
+  const printedAt = todayLocal()
 
   if (cfg.byDay) {
     // 공성전 — 요일마다 순위표 (각 요일: 지난주 같은 요일 대비 %)

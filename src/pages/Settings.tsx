@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { exportJson, importJson, resetAll, useUserData } from '../store'
+import { exportJson, importJson, resetAll, todayLocal, useUserData } from '../store'
 
 export function SettingsPage() {
   useUserData()
@@ -11,7 +11,7 @@ export function SettingsPage() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `sena-guild-war-${new Date().toISOString().slice(0, 10)}.json`
+    a.download = `sena-guild-war-${todayLocal()}.json`
     a.click()
     URL.revokeObjectURL(url)
     setMsg('내보내기 완료 — 다운로드 폴더를 확인하세요.')

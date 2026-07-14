@@ -9,6 +9,7 @@ import {
   newId,
   slotName,
   toSlot,
+  todayLocal,
   update,
   useUserData,
 } from '../store'
@@ -43,7 +44,7 @@ export function CountersPage() {
       id: newId('counter'),
       defense: searchSel.slice(0, 3),
       counters: [],
-      updatedAt: new Date().toISOString().slice(0, 10),
+      updatedAt: todayLocal(),
     })
     setShowForm(true)
   }
@@ -145,7 +146,7 @@ export function CountersPage() {
           onClose={() => setShowForm(false)}
           onSave={(e) => {
             update((d) => {
-              const today = new Date().toISOString().slice(0, 10)
+              const today = todayLocal()
               e.updatedAt = today
               e.counters.forEach((c) => { if (!c.updatedAt) c.updatedAt = today })
               const idx = d.counters.findIndex((c) => c.id === e.id)

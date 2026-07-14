@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { navigate, useRoute } from './router'
 import { Icon } from './components/Icon'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import { HomePage } from './pages/Home'
 import { CountersPage } from './pages/Counters'
 import { HeroesPage } from './pages/Heroes'
@@ -101,27 +102,30 @@ export default function App() {
       </header>
 
       <main>
-        {needLogin ? (
-          <AdminLogin
-            onSuccess={() => {
-              setAdmin(true)
-              if (base === 'admin') navigate('members')
-            }}
-          />
-        ) : (
-          <>
-            {base === 'home' && <HomePage />}
-            {base === 'counters' && <CountersPage />}
-            {base === 'heroes' && <HeroesPage />}
-            {base === 'guide' && <GuidePage />}
-            {base === 'siege' && <StatsPage kind="siege" />}
-            {base === 'destroyer' && <StatsPage kind="destroyer" />}
-            {base === 'members' && <MembersPage />}
-            {base === 'settings' && <SettingsPage />}
-            {base === 'admin' && admin && <AdminHome onLogout={doLogout} />}
-            {!['home', 'counters', 'heroes', 'guide', 'siege', 'destroyer', 'members', 'settings', 'admin'].includes(base) && <HomePage />}
-          </>
-        )}
+        {/* key={base}: 오류가 나도 다른 페이지로 이동하면 오류 상태가 풀림 */}
+        <ErrorBoundary key={base}>
+          {needLogin ? (
+            <AdminLogin
+              onSuccess={() => {
+                setAdmin(true)
+                if (base === 'admin') navigate('members')
+              }}
+            />
+          ) : (
+            <>
+              {base === 'home' && <HomePage />}
+              {base === 'counters' && <CountersPage />}
+              {base === 'heroes' && <HeroesPage />}
+              {base === 'guide' && <GuidePage />}
+              {base === 'siege' && <StatsPage kind="siege" />}
+              {base === 'destroyer' && <StatsPage kind="destroyer" />}
+              {base === 'members' && <MembersPage />}
+              {base === 'settings' && <SettingsPage />}
+              {base === 'admin' && admin && <AdminHome onLogout={doLogout} />}
+              {!['home', 'counters', 'heroes', 'guide', 'siege', 'destroyer', 'members', 'settings', 'admin'].includes(base) && <HomePage />}
+            </>
+          )}
+        </ErrorBoundary>
       </main>
 
       <div className="footer-note">

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { Grade, Hero, Position, SavedDeck } from '../types'
-import { canEdit, getAllHeroes, newId, update, useUserData } from '../store'
+import { canEdit, getAllHeroes, newId, todayLocal, update, useUserData } from '../store'
 import { DeckLine, HeroChip } from '../components/HeroChip'
 import { HeroPicker } from '../components/HeroPicker'
 import { recFor } from '../data/heroRecs'
@@ -46,7 +46,7 @@ function DeckBuilder({
         heroes: sel,
         memo: memo.trim() || undefined,
         kind,
-        updatedAt: new Date().toISOString().slice(0, 10),
+        updatedAt: todayLocal(),
       })
     })
     setSel([]); setName(''); setMemo('')
