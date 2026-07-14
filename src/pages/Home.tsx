@@ -8,32 +8,29 @@ export function HomePage() {
   const heroes = getAllHeroes()
   const heroMap = useMemo(() => new Map(heroes.map((h) => [h.id, h])), [heroes])
   const counters = getAllCounters()
-
-  const totalRecords = userData.members.flatMap((m) => m.records)
-  const wins = totalRecords.filter((r) => r.result === '승').length
   const recent = [...counters].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 3)
 
   return (
     <div>
-      <h1>길드전 도우미</h1>
-      <p className="page-desc">세븐나이츠 리버스 길드전 — 카운터덱 검색, 덱 관리, 길드 운영을 한곳에서.</p>
+      <h1>낭만주의 길드</h1>
+      <p className="page-desc">세븐나이츠 리버스 · 낭만주의 — 길드전 카운터덱, 공성전·파괴신 통계, 덱·영웅 관리를 한곳에서.</p>
 
       <div className="stat-tiles">
         <div className="stat-tile" style={{ cursor: 'pointer' }} onClick={() => navigate('counters')}>
           <div className="num">{counters.length}</div>
-          <div className="label">등록된 방어덱 공략</div>
+          <div className="label">길드전 방어덱 공략</div>
         </div>
         <div className="stat-tile" style={{ cursor: 'pointer' }} onClick={() => navigate('heroes')}>
           <div className="num">{heroes.length}</div>
           <div className="label">영웅 DB</div>
         </div>
-        <div className="stat-tile" style={{ cursor: 'pointer' }} onClick={() => navigate('heroes')}>
-          <div className="num">{userData.savedDecks.length}</div>
-          <div className="label">저장된 덱</div>
+        <div className="stat-tile" style={{ cursor: 'pointer' }} onClick={() => navigate('siege')}>
+          <div className="num">{userData.siegeRounds.length}</div>
+          <div className="label">공성전 기록 회차</div>
         </div>
-        <div className="stat-tile" style={{ cursor: 'pointer' }} onClick={() => navigate('members')}>
-          <div className="num">{wins}승 {totalRecords.length - wins}패</div>
-          <div className="label">길드전 전적 ({userData.members.length}명)</div>
+        <div className="stat-tile" style={{ cursor: 'pointer' }} onClick={() => navigate('destroyer')}>
+          <div className="num">{userData.destroyerRounds.length}</div>
+          <div className="label">파괴신 기록 회차</div>
         </div>
       </div>
 
@@ -66,16 +63,16 @@ export function HomePage() {
           <ul style={{ paddingLeft: 20, margin: '8px 0 0' }}>
             <li><a href="#/counters">상대 방덱으로 카운터 검색</a></li>
             <li><a href="#/heroes">우리 덱 짜서 저장하기</a></li>
+            <li><a href="#/siege">공성전 통계 보기</a></li>
+            <li><a href="#/destroyer">파괴신 통계 보기</a></li>
             <li><a href="#/guide">길드전 규칙 읽기</a></li>
-            <li><a href="#/members">길드원 등록·전적 기록</a></li>
           </ul>
         </div>
         <div className="card">
           <strong>데이터 안내</strong>
           <p className="muted" style={{ margin: '8px 0 0' }}>
-            직접 입력한 데이터는 이 브라우저에만 저장돼요.
-            기기를 옮기거나 길드원과 최신 데이터를 공유하려면{' '}
-            <a href="#/settings">[데이터 관리]</a>에서 내보내기/가져오기를 쓰세요.
+            덱·가이드는 길드원 누구나, <b>공성전·파괴신 통계는 운영진만</b> 입력할 수 있어요.
+            등록·수정한 내용은 <b>길드 공유 저장소</b>에 자동 저장돼 전원에게 반영됩니다.
           </p>
         </div>
       </div>

@@ -116,6 +116,7 @@ textarea { resize: vertical; min-height: 70px; }
   align-items: center;
   gap: 26px;
   padding: 0 26px;
+  overflow-x: auto;
   background: rgba(255, 255, 255, 0.82);
   backdrop-filter: saturate(1.4) blur(14px);
   border-bottom: 1px solid var(--border);

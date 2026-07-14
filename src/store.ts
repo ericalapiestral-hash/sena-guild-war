@@ -18,6 +18,8 @@ const EMPTY: UserData = {
   savedDecks: [],
   members: [],
   customGuides: [],
+  siegeRounds: [],
+  destroyerRounds: [],
 }
 
 function load(): UserData {

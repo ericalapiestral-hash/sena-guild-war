@@ -96,6 +96,26 @@ export interface Member {
   records: BattleRecord[]
 }
 
+/** 공성전/파괴신 통계 — 회차 안의 길드원 1명 기록 */
+export interface StatEntry {
+  name: string
+  /** 공성전=점수 / 파괴신=딜량 */
+  value?: number
+  /** 참여 여부 */
+  joined?: boolean
+  memo?: string
+}
+
+/** 통계 한 회차(시즌) */
+export interface StatRound {
+  id: string
+  /** 예: '1회차', '7월 2주', '시즌 12' */
+  label: string
+  /** 기록일 YYYY-MM-DD */
+  date?: string
+  entries: StatEntry[]
+}
+
 
 export interface GuideSection {
   id: string
@@ -114,4 +134,8 @@ export interface UserData {
   savedDecks: SavedDeck[]
   members: Member[]
   customGuides: GuideSection[]
+  /** 공성전 통계 (회차별) */
+  siegeRounds: StatRound[]
+  /** 파괴신 통계 (회차별) */
+  destroyerRounds: StatRound[]
 }

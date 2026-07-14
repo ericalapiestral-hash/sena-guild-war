@@ -5,6 +5,7 @@ import { HomePage } from './pages/Home'
 import { CountersPage } from './pages/Counters'
 import { HeroesPage } from './pages/Heroes'
 import { GuidePage } from './pages/Guide'
+import { StatsPage } from './pages/Stats'
 import { MembersPage } from './pages/Members'
 import { SettingsPage } from './pages/Settings'
 import { SearchPage } from './pages/Search'
@@ -23,15 +24,18 @@ const MENU: MenuItem[] = [
   { route: 'counters', label: '카운터덱', icon: 'target' },
   { route: 'heroes', label: '영웅 · 덱', icon: 'shield' },
   { route: 'guide', label: '가이드', icon: 'book' },
+  { route: 'siege', label: '공성전', icon: 'siege' },
+  { route: 'destroyer', label: '파괴신', icon: 'destroyer' },
   { route: 'search', label: 'AI 검색', icon: 'search', admin: true },
   { route: 'members', label: '길드원', icon: 'users', admin: true },
   { route: 'settings', label: '데이터', icon: 'data', admin: true },
 ]
 
 const PRIMARY = ['home', 'counters', 'heroes', 'guide']
+const SECONDARY = ['siege', 'destroyer'] // 모바일 '더보기' 시트에 노출 (전원 열람)
 const ADMIN_ITEMS = MENU.filter((m) => m.admin)
 const fullLabel = (label: string) =>
-  ({ 'AI 검색': 'AI 공략검색', 데이터: '데이터 관리', 길드원: '길드원 관리' } as Record<string, string>)[label] ?? label
+  ({ 'AI 검색': 'AI 공략검색', 데이터: '데이터 관리', 길드원: '길드원 관리', 공성전: '공성전 통계', 파괴신: '파괴신 통계' } as Record<string, string>)[label] ?? label
 
 const Brand = () => (
   <span className="logo"><span className="em">⚔️</span>낭만주의</span>
@@ -63,6 +67,7 @@ export default function App() {
 
   const visible = MENU.filter((m) => !m.admin || admin)
   const adminActive = ADMIN_ITEMS.some((m) => m.route === base) || base === 'admin'
+  const moreActive = adminActive || SECONDARY.includes(base)
   const needLogin = (ADMIN_ROUTES.includes(base) || base === 'admin') && !admin
 
   function doLogout() {
@@ -111,6 +116,8 @@ export default function App() {
             {base === 'counters' && <CountersPage />}
             {base === 'heroes' && <HeroesPage />}
             {base === 'guide' && <GuidePage />}
+            {base === 'siege' && <StatsPage kind="siege" />}
+            {base === 'destroyer' && <StatsPage kind="destroyer" />}
             {base === 'search' && <SearchPage />}
             {base === 'members' && <MembersPage />}
             {base === 'settings' && <SettingsPage />}
@@ -120,7 +127,7 @@ export default function App() {
       </main>
 
       <div className="footer-note">
-        낭만주의 · 세븐나이츠 리버스 길드전 도우미 — 데이터는 이 브라우저에 저장됩니다. 공유하려면 [데이터 관리]에서 내보내기.
+        낭만주의 · 세븐나이츠 리버스 길드 사이트 — 길드전 · 공성전 · 파괴신을 한곳에서.
       </div>
 
       {/* 모바일 하단 탭바 */}
@@ -134,9 +141,9 @@ export default function App() {
             </button>
           )
         })}
-        <button className={adminActive ? 'active' : ''} onClick={() => setSheet(true)}>
-          <Icon name="lock" className="ic" />
-          관리
+        <button className={moreActive ? 'active' : ''} onClick={() => setSheet(true)}>
+          <Icon name="menu" className="ic" />
+          더보기
         </button>
       </nav>
 
@@ -144,8 +151,22 @@ export default function App() {
       {sheet && (
         <>
           <div className="sheet-backdrop" onClick={() => setSheet(false)} />
-          <div className="sheet" role="dialog" aria-label="관리 메뉴">
+          <div className="sheet" role="dialog" aria-label="더보기 메뉴">
             <div className="sheet-handle" />
+            {SECONDARY.map((r) => {
+              const m = MENU.find((x) => x.route === r)!
+              return (
+                <button
+                  key={r}
+                  className={`sheet-item ${base === r ? 'active' : ''}`}
+                  onClick={() => { navigate(r); setSheet(false) }}
+                >
+                  <Icon name={m.icon} className="ic" />
+                  {fullLabel(m.label)}
+                </button>
+              )
+            })}
+            <div style={{ borderTop: '1px solid var(--border)', margin: '8px 0' }} />
             {admin ? (
               <>
                 {ADMIN_ITEMS.map((m) => (
