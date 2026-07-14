@@ -7,7 +7,6 @@ import type { CounterDeck, CounterEntry, CounterHeroSlot, Hero, UserData } from 
 import initialHeroes from './data/heroes.json'
 import initialCounters from './data/counters.json'
 import { WORKER_URL } from './data/config'
-import { isAdmin } from './auth'
 
 const LS_KEY = 'sena-guild-war:v1'
 const SEARCH_CFG = 'sena-guild-war:search-config'
@@ -63,9 +62,10 @@ export function sharedMode(): boolean {
   return !!readBase()
 }
 
-/** 편집(등록/수정/삭제) 가능 여부: 공유모드면 관리자만, 로컬모드면 누구나 */
+/** 편집(등록/수정/삭제) 가능 여부: 길드원 누구나 덱·가이드 편집 가능(공개).
+ *  (관리자 전용 페이지 접근은 별개 — auth.isAdmin) */
 export function canEdit(): boolean {
-  return !sharedMode() || isAdmin()
+  return true
 }
 
 async function pull() {
@@ -86,13 +86,13 @@ async function pull() {
 
 async function push() {
   const base = readBase()
-  const pw = String(searchCfg().password || '')
-  if (!base || !isAdmin() || !pw) return
+  if (!base) return
+  // 덱·가이드 편집은 공개(비번 없음) — 워커가 /data POST를 누구나 허용.
   try {
     await fetch(`${base}/data`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ password: pw, data: state }),
+      body: JSON.stringify({ data: state }),
     })
   } catch {
     /* noop */
