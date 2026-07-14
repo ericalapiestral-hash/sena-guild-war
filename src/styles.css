@@ -350,6 +350,9 @@ h2 { font-size: 1.15rem; letter-spacing: -0.02em; margin: 26px 0 10px; font-weig
 .badge.추측 { color: var(--text-2); background: var(--surface-2); border-color: var(--border-2); }
 .badge.win { color: var(--ok); background: var(--ok-soft); border-color: #c8e8d5; }
 .badge.lose { color: var(--danger); background: var(--danger-soft); border-color: #f0cfcc; }
+.badge.role-길드마스터 { color: var(--accent-strong); background: var(--accent-soft); border-color: #e6d6a8; }
+.badge.role-부길드마스터 { color: #7c4dcf; background: #f1ebfb; border-color: #ddd0f5; }
+.badge.role-정예멤버 { color: var(--info); background: var(--info-soft); border-color: #cfe0f7; }
 
 /* ---- 영웅 선택 그리드 ---- */
 .hero-picker {

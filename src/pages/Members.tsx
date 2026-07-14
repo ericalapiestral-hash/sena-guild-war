@@ -1,11 +1,21 @@
 import { useState } from 'react'
-import type { Member } from '../types'
+import type { Member, MemberRole } from '../types'
 import { newId, update, useUserData } from '../store'
+
+const ROLES: MemberRole[] = ['길드마스터', '부길드마스터', '정예멤버', '멤버']
+const roleRank = (r?: MemberRole) => {
+  const i = ROLES.indexOf(r ?? '멤버')
+  return i < 0 ? ROLES.length : i
+}
 
 export function MembersPage() {
   const { members } = useUserData()
   const [newName, setNewName] = useState('')
   const [expanded, setExpanded] = useState<string | null>(null)
+
+  // 역할 순으로 정렬 (마스터 → 부마스터 → 정예 → 멤버)
+  const sorted = [...members].sort((a, b) => roleRank(a.role) - roleRank(b.role))
+  const roleCount = (r: MemberRole) => members.filter((m) => (m.role ?? '멤버') === r).length
 
   function addMember() {
     const name = newName.trim()
@@ -17,7 +27,7 @@ export function MembersPage() {
   return (
     <div>
       <h1>길드원 관리</h1>
-      <p className="page-desc">길드원별 담당·메모와 길드전 승패 기록을 관리합니다.</p>
+      <p className="page-desc">길드원별 역할·담당·메모와 길드전 승패 기록을 관리합니다.</p>
 
       <div className="card">
         <div className="row">
@@ -26,11 +36,14 @@ export function MembersPage() {
             onKeyDown={(e) => e.key === 'Enter' && addMember()} />
           <button className="primary" disabled={!newName.trim()} onClick={addMember}>+ 추가</button>
           <span className="spacer" />
-          <span className="muted">총 {members.length}명</span>
+          <span className="muted">
+            총 {members.length}명
+            {ROLES.slice(0, 3).map((r) => roleCount(r) > 0 && <span key={r}> · {r} {roleCount(r)}</span>)}
+          </span>
         </div>
       </div>
 
-      {members.map((m) => (
+      {sorted.map((m) => (
         <MemberCard key={m.id} member={m}
           expanded={expanded === m.id}
           onToggle={() => setExpanded(expanded === m.id ? null : m.id)} />
@@ -69,6 +82,7 @@ function MemberCard({ member, expanded, onToggle }: { member: Member; expanded: 
       <div className="row between" style={{ cursor: 'pointer' }} onClick={onToggle}>
         <div className="row">
           <strong>{member.name}</strong>
+          {member.role && member.role !== '멤버' && <span className={`badge role-${member.role}`}>{member.role}</span>}
           {member.note && <span className="muted">— {member.note}</span>}
         </div>
         <div className="row">
@@ -80,6 +94,15 @@ function MemberCard({ member, expanded, onToggle }: { member: Member; expanded: 
 
       {expanded && (
         <div style={{ marginTop: 12 }}>
+          <div className="row" style={{ marginBottom: 10 }}>
+            <label style={{ fontWeight: 600, fontSize: '0.85rem' }}>역할</label>
+            <select value={member.role ?? '멤버'} onChange={(e) => {
+              const role = e.target.value as MemberRole
+              update((d) => { const t = d.members.find((x) => x.id === member.id); if (t) t.role = role === '멤버' ? undefined : role })
+            }}>
+              {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+            </select>
+          </div>
           <div className="row">
             <input placeholder="담당/메모 (예: 1번 방덱 담당, 주력: 연희 카르마 린)" value={memo}
               onChange={(e) => setMemo(e.target.value)} style={{ flex: 1 }} />

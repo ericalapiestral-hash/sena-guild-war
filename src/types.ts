@@ -88,9 +88,14 @@ export interface BattleRecord {
   memo?: string
 }
 
+/** 길드 내 역할 (기본=멤버) */
+export type MemberRole = '길드마스터' | '부길드마스터' | '정예멤버' | '멤버'
+
 export interface Member {
   id: string
   name: string
+  /** 길드 내 역할 (미지정=멤버) */
+  role?: MemberRole
   /** 담당/메모: 주력덱, 담당 상대 등 */
   note?: string
   records: BattleRecord[]
