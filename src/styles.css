@@ -445,23 +445,6 @@ tbody tr:hover td { background: var(--surface-2); }
 .rec-team b { color: var(--ink); }
 @media (max-width: 520px) { .rec-items { grid-template-columns: 1fr; } }
 
-/* ---- 실시간 전황 ---- */
-.live-dot {
-  display: inline-block;
-  width: 8px; height: 8px; border-radius: 50%;
-  background: var(--danger);
-  box-shadow: 0 0 0 0 rgba(207, 63, 54, 0.5);
-  animation: livepulse 1.6s infinite;
-}
-@keyframes livepulse {
-  0% { box-shadow: 0 0 0 0 rgba(207, 63, 54, 0.5); }
-  70% { box-shadow: 0 0 0 6px rgba(207, 63, 54, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(207, 63, 54, 0); }
-}
-.war-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 0.95rem; }
-.war-head .spacer-right { margin-left: auto; font-size: 1.15rem; }
-.castle-card.captured { opacity: 0.7; background: var(--surface-2); }
-
 /* ---- 거점 배치 ---- */
 .tier-head { display: flex; align-items: center; gap: 10px; margin: 4px 0 8px; flex-wrap: wrap; }
 .tier-badge {

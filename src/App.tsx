@@ -9,7 +9,6 @@ import { MembersPage } from './pages/Members'
 import { SettingsPage } from './pages/Settings'
 import { SearchPage } from './pages/Search'
 import { CastlePage } from './pages/Castle'
-import { LiveWarPage } from './pages/LiveWar'
 
 interface MenuItem {
   route: string
@@ -19,7 +18,6 @@ interface MenuItem {
 
 const MENU: MenuItem[] = [
   { route: 'home', label: '홈', icon: 'home' },
-  { route: 'live', label: '실시간 전황', icon: 'live' },
   { route: 'counters', label: '카운터덱', icon: 'target' },
   { route: 'heroes', label: '영웅 · 덱', icon: 'shield' },
   { route: 'guide', label: '가이드', icon: 'book' },
@@ -68,7 +66,6 @@ export default function App() {
 
       <main>
         {base === 'home' && <HomePage />}
-        {base === 'live' && <LiveWarPage />}
         {base === 'counters' && <CountersPage />}
         {base === 'heroes' && <HeroesPage />}
         {base === 'guide' && <GuidePage />}

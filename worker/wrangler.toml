@@ -12,9 +12,3 @@ CLAUDE_MODEL = "claude-haiku-4-5"
 # 시크릿(키·비밀번호)은 여기 적지 말고 CLI로 설정하세요:
 #   npx wrangler secret put ANTHROPIC_API_KEY
 #   npx wrangler secret put GUILD_PASSWORD
-
-# 실시간 전황 저장용 KV. 아래 명령으로 만들고 출력된 id를 넣으세요:
-#   npx wrangler kv namespace create WAR_KV
-[[kv_namespaces]]
-binding = "WAR_KV"
-id = "여기에_kv_namespace_id_붙여넣기"
