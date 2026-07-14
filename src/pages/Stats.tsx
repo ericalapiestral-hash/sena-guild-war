@@ -10,7 +10,7 @@ const todayWeekday = () => WEEKDAYS[(new Date().getDay() + 6) % 7]
 
 const CFG: Record<
   Kind,
-  { title: string; desc: string; metric: string; field: 'siegeRounds' | 'destroyerRounds'; byDay: boolean; roundName: string; showJoined: boolean; deltaLabel: string }
+  { title: string; desc: string; metric: string; field: 'siegeRounds' | 'destroyerRounds'; byDay: boolean; roundName: string; showJoined: boolean; hasCutline: boolean; deltaLabel: string }
 > = {
   siege: {
     title: '공성전 통계',
@@ -20,16 +20,18 @@ const CFG: Record<
     byDay: true,
     roundName: '주차',
     showJoined: false,
+    hasCutline: false,
     deltaLabel: '전주 대비',
   },
   destroyer: {
     title: '파괴신 통계',
-    desc: '회차별로 [편집]을 눌러 길드원 딜량을 입력하고 [저장]하면 잠겨요. 각 회차를 직전 회차와 비교해 등락(%)이 표시돼요. 명단은 [길드원] 메뉴 등록자가 자동으로 들어옵니다.',
+    desc: '회차별로 [편집]을 눌러 길드원 딜량과 커트라인을 입력하고 [저장]하면 잠겨요. 커트라인 이하는 미달로 표시되고, 각 회차를 직전 회차와 비교해 등락(%)이 나와요. 명단은 [길드원] 메뉴 등록자가 자동으로 들어옵니다.',
     metric: '딜량',
     field: 'destroyerRounds',
     byDay: false,
     roundName: '회차',
-    showJoined: true,
+    showJoined: false,
+    hasCutline: true,
     deltaLabel: '전 회차 대비',
   },
 }
@@ -79,9 +81,10 @@ export function StatsPage({ kind }: { kind: Kind }) {
   }
 
   /** [저장] — 현재 회차/요일의 기록을 통째로 교체 (편집 모드 결과 한 번에 커밋) */
-  const saveAll = (list: StatEntry[]) => {
+  const saveAll = (list: StatEntry[], cutline?: number) => {
     if (!current) return
     patchRound(current.id, (r) => {
+      if (cfg.hasCutline) r.cutline = cutline
       if (cfg.byDay) {
         if (!r.days) r.days = {}
         r.days[day] = list
@@ -148,6 +151,8 @@ export function StatsPage({ kind }: { kind: Kind }) {
             metric={cfg.metric}
             admin={admin}
             showJoined={cfg.showJoined}
+            hasCutline={cfg.hasCutline}
+            cutline={current.cutline}
             heading={cfg.byDay ? `${day}요일 기록` : undefined}
             prevValues={prevValues}
             deltaLabel={cfg.deltaLabel}
@@ -174,6 +179,8 @@ function EntryTable({
   metric,
   admin,
   showJoined,
+  hasCutline,
+  cutline,
   heading,
   prevValues,
   deltaLabel,
@@ -184,13 +191,16 @@ function EntryTable({
   metric: string
   admin: boolean
   showJoined: boolean
+  hasCutline: boolean
+  cutline?: number
   heading?: string
   prevValues: Map<string, number>
   deltaLabel: string
-  onSaveAll: (list: StatEntry[]) => void
+  onSaveAll: (list: StatEntry[], cutline?: number) => void
 }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState<Record<string, Partial<StatEntry>>>({})
+  const [draftCutline, setDraftCutline] = useState<number | undefined>(undefined)
   const [localExtra, setLocalExtra] = useState<string[]>([])
   const [newName, setNewName] = useState('')
 
@@ -208,12 +218,18 @@ function EntryTable({
   const ranked = [...rows].sort((a, b) => (b.value ?? -Infinity) - (a.value ?? -Infinity))
   const top = scored.length ? ranked[0] : undefined
   const displayRows = editing ? rows : ranked // 편집 중엔 명단 순서 고정, 잠금 시 점수순 정렬
-  const cols = 5 + (showJoined ? 1 : 0) + (editing ? 1 : 0)
+
+  const effCutline = editing ? draftCutline : cutline
+  const showVerdict = hasCutline && typeof effCutline === 'number'
+  const isFail = (e: StatEntry) => showVerdict && typeof e.value === 'number' && e.value <= (effCutline as number)
+  const failCount = rows.filter(isFail).length
+  const cols = 5 + (showJoined ? 1 : 0) + (showVerdict ? 1 : 0) + (editing ? 1 : 0)
 
   function startEdit() {
     const d: Record<string, Partial<StatEntry>> = {}
     for (const name of baseNames) { const e = storedMap.get(name); if (e) d[name] = { value: e.value, joined: e.joined, memo: e.memo } }
     setDraft(d)
+    setDraftCutline(cutline)
     setLocalExtra([])
     setEditing(true)
   }
@@ -222,7 +238,7 @@ function EntryTable({
     const list = baseNames
       .map((name) => ({ name, ...(draft[name] ?? {}) } as StatEntry))
       .filter((e) => typeof e.value === 'number' || e.joined || (e.memo ?? '').trim())
-    onSaveAll(list)
+    onSaveAll(list, hasCutline ? draftCutline : undefined)
     setEditing(false)
     setLocalExtra([])
   }
@@ -246,9 +262,23 @@ function EntryTable({
         {admin && editing && <span className="delta up" style={{ fontSize: '0.85rem' }}>✏️ 편집 중 — 아래 [저장]을 눌러야 반영돼요</span>}
       </div>
 
+      {hasCutline && editing && (
+        <div className="row" style={{ marginBottom: 10 }}>
+          <label style={{ fontWeight: 600, fontSize: '0.85rem' }}>커트라인 ({metric})</label>
+          <input type="number" className="num-tab" value={draftCutline ?? ''} placeholder="예: 8000000"
+            onChange={(ev) => setDraftCutline(ev.target.value === '' ? undefined : Number(ev.target.value))}
+            style={{ width: 170, textAlign: 'right' }} />
+          <span className="muted" style={{ fontSize: '0.8rem' }}>이 값 이하는 미달로 표시돼요</span>
+        </div>
+      )}
+      {hasCutline && !editing && typeof cutline === 'number' && (
+        <div className="muted" style={{ marginBottom: 10 }}>커트라인 <b className="num-tab" style={{ color: 'var(--text)' }}>{fmt(cutline)}</b> {metric} 이하는 <span className="badge lose">미달</span></div>
+      )}
+
       <div className="stat-tiles" style={{ margin: '0 0 6px' }}>
         <div className="stat-tile"><div className="num">{scored.length}<span style={{ fontSize: '0.9rem', color: 'var(--text-3)' }}>/{rows.length}</span></div><div className="label">{metric} 입력</div></div>
         {showJoined && <div className="stat-tile"><div className="num">{joinedCount}</div><div className="label">참여 인원</div></div>}
+        {showVerdict && <div className="stat-tile"><div className="num" style={{ color: failCount ? 'var(--danger)' : 'var(--ok)' }}>{failCount}</div><div className="label">미달 인원</div></div>}
         <div className="stat-tile"><div className="num">{fmt(total)}</div><div className="label">{metric} 합계</div></div>
         <div className="stat-tile"><div className="num" style={{ fontSize: '1.15rem' }}>{top ? top.name : '-'}</div><div className="label">{metric} 1위 ({fmt(top?.value)})</div></div>
       </div>
@@ -261,6 +291,7 @@ function EntryTable({
               <th>길드원</th>
               <th style={{ textAlign: 'right' }}>{metric}</th>
               <th style={{ width: 100 }}>{deltaLabel}</th>
+              {showVerdict && <th style={{ width: 64 }}>판정</th>}
               {showJoined && <th style={{ width: 60 }}>참여</th>}
               <th>메모</th>
               {editing && <th style={{ width: 44 }} />}
@@ -271,7 +302,7 @@ function EntryTable({
               <tr><td colSpan={cols} className="muted">[길드원] 메뉴에 등록된 사람이 없어요. 먼저 길드원을 등록해주세요.</td></tr>
             )}
             {displayRows.map((e, i) => (
-              <tr key={e.name}>
+              <tr key={e.name} className={isFail(e) ? 'row-fail' : ''}>
                 <td><b>{editing ? i + 1 : typeof e.value === 'number' ? i + 1 : '-'}</b></td>
                 <td><b>{e.name}</b>{!rosterSet.has(e.name) && <span className="muted" style={{ marginLeft: 4, fontSize: '0.75rem' }}>(외부)</span>}</td>
                 <td style={{ textAlign: 'right' }}>{editing ? (
@@ -280,6 +311,7 @@ function EntryTable({
                     style={{ width: 120, textAlign: 'right' }} />
                 ) : (<b className="num-tab">{fmt(e.value)}</b>)}</td>
                 <td><Delta prev={prevValues.get(e.name)} cur={e.value} /></td>
+                {showVerdict && <td>{typeof e.value === 'number' ? (isFail(e) ? <span className="badge lose">미달</span> : <span className="badge win">통과</span>) : <span className="muted">—</span>}</td>}
                 {showJoined && <td>{editing ? (
                   <input type="checkbox" checked={!!e.joined} onChange={(ev) => setField(e.name, { joined: ev.target.checked })} />
                 ) : (<span className={`badge ${e.joined ? 'win' : 'lose'}`}>{e.joined ? 'O' : 'X'}</span>)}</td>}

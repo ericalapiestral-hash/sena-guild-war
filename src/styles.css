@@ -557,6 +557,9 @@ dialog::backdrop { background: rgba(20, 22, 30, 0.4); }
 .cc-col-h { color: var(--text-3); font-size: 0.77rem; font-weight: 700; margin-bottom: 5px; }
 .cc-col-b { font-size: 0.88rem; color: var(--text); white-space: pre-line; line-height: 1.55; }
 
+/* ---- 통계: 커트라인 미달 행 강조 ---- */
+tbody tr.row-fail td { background: var(--danger-soft); }
+
 /* ---- 통계 전주 대비 등락 ---- */
 .delta { font-size: 0.8rem; font-weight: 700; white-space: nowrap; color: var(--text-2); }
 .delta.up { color: var(--ok); }

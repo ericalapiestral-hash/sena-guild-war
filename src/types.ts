@@ -117,6 +117,8 @@ export interface StatRound {
   entries: StatEntry[]
   /** 요일별 기록 (공성전) — 키: '월'|'화'|'수'|'목'|'금'|'토'|'일' */
   days?: Record<string, StatEntry[]>
+  /** 커트라인 — 이 값 이하는 '미달' (파괴신) */
+  cutline?: number
 }
 
 
