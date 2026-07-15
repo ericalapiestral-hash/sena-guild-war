@@ -11,45 +11,63 @@ const roleRank = (r?: MemberRole) => {
 export function MembersPage() {
   const { members } = useUserData()
   const [newName, setNewName] = useState('')
+  const [q, setQ] = useState('')
   const [expanded, setExpanded] = useState<string | null>(null)
 
   // 역할 순으로 정렬 (마스터 → 부마스터 → 정예 → 멤버)
   const sorted = [...members].sort((a, b) => roleRank(a.role) - roleRank(b.role))
+  const query = q.trim()
+  const shown = query
+    ? sorted.filter((m) => m.name.includes(query) || (m.owner ?? '').includes(query) || (m.note ?? '').includes(query))
+    : sorted
   const roleCount = (r: MemberRole) => members.filter((m) => (m.role ?? '멤버') === r).length
 
+  /** 쉼표·줄바꿈으로 여러 명 한 번에 추가 (이미 있는 이름은 건너뜀) */
   function addMember() {
-    const name = newName.trim()
-    if (!name) return
-    update((d) => { d.members.push({ id: newId('member'), name, records: [] }) })
+    const names = newName.split(/[,\n]/).map((s) => s.trim()).filter(Boolean)
+    if (!names.length) return
+    update((d) => {
+      const existing = new Set(d.members.map((m) => m.name))
+      for (const n of names) {
+        if (existing.has(n)) continue
+        d.members.push({ id: newId('member'), name: n, records: [] })
+        existing.add(n)
+      }
+    })
     setNewName('')
   }
 
   return (
     <div>
       <h1>길드원 관리</h1>
-      <p className="page-desc">길드원별 역할·담당·메모와 길드전 승패 기록을 관리합니다.</p>
+      <p className="page-desc">길드원별 역할·담당·메모와 길드전 승패 기록을 관리합니다. 여러 명은 쉼표로 한 번에 추가하고, 삭제는 각 줄의 ✕를 누르세요.</p>
 
       <div className="card">
         <div className="row">
-          <input placeholder="길드원 이름" value={newName}
+          <input placeholder="길드원 이름 (쉼표로 여러 명 한 번에)" value={newName}
             onChange={(e) => setNewName(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && addMember()} />
+            onKeyDown={(e) => e.key === 'Enter' && addMember()} style={{ flex: 1, minWidth: 180 }} />
           <button className="primary" disabled={!newName.trim()} onClick={addMember}>+ 추가</button>
-          <span className="spacer" />
+        </div>
+        <div className="row" style={{ marginTop: 8 }}>
+          <input placeholder="🔍 이름·주인·메모 검색" value={q} onChange={(e) => setQ(e.target.value)} style={{ flex: 1, minWidth: 180 }} />
           <span className="muted">
-            총 {members.length}명
+            {query ? `${shown.length}명 표시 / ` : ''}총 {members.length}명
             {ROLES.slice(0, 3).map((r) => roleCount(r) > 0 && <span key={r}> · {r} {roleCount(r)}</span>)}
           </span>
         </div>
       </div>
 
-      {sorted.map((m) => (
+      {shown.map((m) => (
         <MemberCard key={m.id} member={m}
           expanded={expanded === m.id}
           onToggle={() => setExpanded(expanded === m.id ? null : m.id)} />
       ))}
       {members.length === 0 && (
         <div className="card muted">아직 길드원이 없어요. 위에서 이름을 입력해 추가하세요.</div>
+      )}
+      {members.length > 0 && shown.length === 0 && (
+        <div className="card muted">'{query}' 검색 결과가 없어요.</div>
       )}
     </div>
   )
@@ -92,6 +110,12 @@ function MemberCard({ member, expanded, onToggle }: { member: Member; expanded: 
           <span className="badge win">{wins}승</span>
           <span className="badge lose">{losses}패</span>
           <span className="muted">{expanded ? '▲' : '▼'}</span>
+          <button className="small danger" title="길드원 삭제" onClick={(e) => {
+            e.stopPropagation()
+            if (confirm(`'${member.name}' 길드원을 삭제할까요? 기록도 함께 삭제됩니다.`)) {
+              update((d) => { d.members = d.members.filter((x) => x.id !== member.id) })
+            }
+          }}>✕</button>
         </div>
       </div>
 
@@ -129,11 +153,6 @@ function MemberCard({ member, expanded, onToggle }: { member: Member; expanded: 
                 if (t) t.note = memo.trim() || undefined
               })
             }}>메모 저장</button>
-            <button className="small danger" onClick={() => {
-              if (confirm(`'${member.name}' 길드원을 삭제할까요? 기록도 함께 삭제됩니다.`)) {
-                update((d) => { d.members = d.members.filter((x) => x.id !== member.id) })
-              }
-            }}>길드원 삭제</button>
           </div>
 
           <div className="row" style={{ marginTop: 10 }}>
