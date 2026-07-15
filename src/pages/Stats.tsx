@@ -201,7 +201,7 @@ export function StatsPage({ kind }: { kind: Kind }) {
       )}
 
       {current && createPortal(
-        <PrintContent kind={kind} cfg={cfg} current={current} prevRound={prevRound} roster={roster} />,
+        <PrintContent kind={kind} cfg={cfg} current={current} prevRound={prevRound} roster={roster} day={day} />,
         document.body,
       )}
         </>
@@ -236,50 +236,52 @@ function PrintContent({
   current,
   prevRound,
   roster,
+  day,
 }: {
   kind: Kind
   cfg: (typeof CFG)[Kind]
   current: StatRound
   prevRound?: StatRound
   roster: string[]
+  /** 공성전: 화면에서 선택된 요일 — 그 요일만 인쇄 */
+  day?: string
 }) {
   const printedAt = todayLocal()
 
   if (cfg.byDay) {
-    // 공성전 — 요일마다 순위표 (각 요일: 지난주 같은 요일 대비 %)
-    const daysWithData = WEEKDAYS.filter((d) => (current.days?.[d] ?? []).some((e) => typeof e.value === 'number'))
+    // 공성전 — 화면에서 보고 있는 요일 하나만 인쇄 (지난주 같은 요일 대비 %)
+    const d = day && WEEKDAYS.includes(day) ? day : WEEKDAYS[0]
+    const ranked = buildRanked(roster, current.days?.[d] ?? [])
+    const prevMap = new Map(
+      (prevRound?.days?.[d] ?? []).filter((e) => typeof e.value === 'number').map((e) => [e.name, e.value as number]),
+    )
+    const total = ranked.reduce((s, e) => s + (e.value as number), 0)
     return (
       <div className="print-root">
         <div className="print-head">
-          <h2>{cfg.title} — {current.label}</h2>
+          <h2>{cfg.title} — {current.label} · {d}요일</h2>
           <span className="print-meta">출력일 {printedAt} · 낭만주의</span>
         </div>
-        {daysWithData.length === 0 && <p>입력된 점수가 없어요.</p>}
-        {daysWithData.map((d) => {
-          const ranked = buildRanked(roster, current.days?.[d] ?? [])
-          const prevMap = new Map(
-            (prevRound?.days?.[d] ?? []).filter((e) => typeof e.value === 'number').map((e) => [e.name, e.value as number]),
-          )
-          const total = ranked.reduce((s, e) => s + (e.value as number), 0)
-          return (
-            <div key={d} className="print-block">
-              <h3>{d}요일 <span className="print-sub">({ranked.length}명 · 합계 {fmt(total)})</span></h3>
-              <table className="print-table">
-                <thead><tr><th>순위</th><th>길드원</th><th>전 주</th><th>이번 주</th><th>{cfg.deltaLabel}</th></tr></thead>
-                <tbody>
-                  {ranked.map((e, i) => (
-                    <tr key={e.name}>
-                      <td>{i + 1}</td><td>{e.name}</td>
-                      <td className="num-tab">{fmt(prevMap.get(e.name))}</td>
-                      <td className="num-tab">{fmt(e.value)}</td>
-                      <td>{pctText(prevMap.get(e.name), e.value)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )
-        })}
+        {ranked.length === 0 ? (
+          <p>{d}요일에 입력된 점수가 없어요.</p>
+        ) : (
+          <div className="print-block">
+            <h3>{d}요일 <span className="print-sub">({ranked.length}명 · 합계 {fmt(total)})</span></h3>
+            <table className="print-table">
+              <thead><tr><th>순위</th><th>길드원</th><th>전 주</th><th>이번 주</th><th>{cfg.deltaLabel}</th></tr></thead>
+              <tbody>
+                {ranked.map((e, i) => (
+                  <tr key={e.name}>
+                    <td>{i + 1}</td><td>{e.name}</td>
+                    <td className="num-tab">{fmt(prevMap.get(e.name))}</td>
+                    <td className="num-tab">{fmt(e.value)}</td>
+                    <td>{pctText(prevMap.get(e.name), e.value)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     )
   }
