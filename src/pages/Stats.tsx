@@ -86,6 +86,57 @@ export function StatsPage({ kind }: { kind: Kind }) {
     setSelId(null)
   }
 
+  /** 현재 보고 있는 표를 PNG 이미지로 저장 */
+  function saveImage() {
+    if (!current) return
+    const safe = (s: string) => s.replace(/[\\/:*?"<>|]/g, '-').replace(/\s+/g, '')
+    const meta = `출력일 ${todayLocal()} · 낭만주의`
+    if (cfg.byDay) {
+      const d = WEEKDAYS.includes(day) ? day : WEEKDAYS[0]
+      const ranked = buildRanked(roster, current.days?.[d] ?? [])
+      if (!ranked.length) { alert(`${d}요일에 입력된 점수가 없어요.`); return }
+      const prevMap = new Map(
+        (prevRound?.days?.[d] ?? []).filter((e) => typeof e.value === 'number').map((e) => [e.name, e.value as number]),
+      )
+      const total = ranked.reduce((s, e) => s + (e.value as number), 0)
+      void saveTableAsPng({
+        fileName: `공성전-${safe(current.label)}-${d}요일.png`,
+        title: `${cfg.title} — ${current.label} · ${d}요일`,
+        meta,
+        sub: `${d}요일 (${ranked.length}명 · 합계 ${fmt(total)})`,
+        headers: ['순위', '길드원', '전 주', '이번 주', cfg.deltaLabel],
+        aligns: ['center', 'left', 'right', 'right', 'right'],
+        rows: ranked.map((e, i) => ({
+          cells: [String(i + 1), e.name, fmt(prevMap.get(e.name)), fmt(e.value), pctText(prevMap.get(e.name), e.value)],
+        })),
+        nameCol: 1,
+        deltaCol: 4,
+      })
+    } else {
+      const ranked = buildRanked(roster, current.entries)
+      if (!ranked.length) { alert('입력된 딜량이 없어요.'); return }
+      const prevMap = new Map(
+        (prevRound?.entries ?? []).filter((e) => typeof e.value === 'number').map((e) => [e.name, e.value as number]),
+      )
+      const total = ranked.reduce((s, e) => s + (e.value as number), 0)
+      const fail = (e: StatEntry) => typeof current.cutline === 'number' && typeof e.value === 'number' && e.value <= current.cutline
+      void saveTableAsPng({
+        fileName: `파괴신-${safe(current.label)}.png`,
+        title: `${cfg.title} — ${current.label}`,
+        meta,
+        sub: `${ranked.length}명 · 합계 ${fmt(total)}${typeof current.cutline === 'number' ? ` · 커트라인 ${fmt(current.cutline)} 이하 미달` : ''}`,
+        headers: ['순위', '길드원', '전 시즌', '이번 시즌', '상승%'],
+        aligns: ['center', 'left', 'right', 'right', 'right'],
+        rows: ranked.map((e, i) => ({
+          cells: [String(i + 1), e.name, fmt(prevMap.get(e.name)), fmt(e.value), pctText(prevMap.get(e.name), e.value)],
+          fail: fail(e),
+        })),
+        nameCol: 1,
+        deltaCol: 4,
+      })
+    }
+  }
+
   /** [저장] — 현재 회차/요일의 기록을 통째로 교체 (편집 모드 결과 한 번에 커밋) */
   const saveAll = (list: StatEntry[], cutline?: number) => {
     if (!current) return
@@ -161,6 +212,7 @@ export function StatsPage({ kind }: { kind: Kind }) {
             </div>
             <div className="row">
               <button className="small" onClick={() => window.print()}>🖨 표 인쇄</button>
+              <button className="small" onClick={saveImage}>🖼 이미지 저장</button>
               {admin && (
                 <>
                   <button className="small" onClick={() => renameRound(current)}>이름변경</button>
@@ -227,6 +279,126 @@ function pctText(prev?: number, cur?: number): string {
   const p = ((cur - prev) / Math.abs(prev)) * 100
   if (Math.abs(p) < 0.05) return '0%'
   return `${p > 0 ? '▲' : '▼'} ${Math.abs(p).toFixed(1)}%`
+}
+
+/** 표를 캔버스에 그려 PNG 파일로 저장 (카톡·디코 공유용) */
+async function saveTableAsPng(opts: {
+  fileName: string
+  title: string
+  meta: string
+  sub: string
+  headers: string[]
+  aligns: Array<'left' | 'center' | 'right'>
+  rows: Array<{ cells: string[]; fail?: boolean }>
+  /** 미달 강조를 채울 열 (이름칸) */
+  nameCol: number
+  /** ▲/▼ 색을 입힐 열 */
+  deltaCol: number
+}) {
+  try { await document.fonts.ready } catch { /* noop */ }
+  const FONT = "'Pretendard Variable', Pretendard, -apple-system, 'Segoe UI', sans-serif"
+  const dpr = 2
+  const padX = 10
+  const rowH = 32
+  const headH = 34
+  const margin = 20
+  const titleH = 52
+  const subH = 26
+  const c = document.createElement('canvas')
+  const g = c.getContext('2d')
+  if (!g) return
+
+  // 열 너비: 헤더·본문 실측 최대값
+  const widths = opts.headers.map((h, i) => {
+    g.font = `700 13px ${FONT}`
+    let w = g.measureText(h).width
+    g.font = `500 14px ${FONT}`
+    for (const r of opts.rows) w = Math.max(w, g.measureText(r.cells[i] ?? '').width)
+    return Math.ceil(w) + padX * 2
+  })
+  const tableW = widths.reduce((a, b) => a + b, 0)
+  const W = tableW + margin * 2
+  const H = margin + titleH + subH + headH + rowH * opts.rows.length + margin
+  c.width = W * dpr
+  c.height = H * dpr
+  g.scale(dpr, dpr)
+  g.textBaseline = 'middle'
+
+  const colX = (i: number) => margin + widths.slice(0, i).reduce((a, b) => a + b, 0)
+  const drawText = (text: string, i: number, top: number, h: number, font: string, color: string) => {
+    g.font = `${font} ${FONT}`
+    g.fillStyle = color
+    const tw = g.measureText(text).width
+    const tx = opts.aligns[i] === 'right' ? colX(i) + widths[i] - padX - tw
+      : opts.aligns[i] === 'center' ? colX(i) + (widths[i] - tw) / 2
+      : colX(i) + padX
+    g.fillText(text, tx, top + h / 2 + 1)
+  }
+
+  // 배경·제목·메타
+  g.fillStyle = '#fff'
+  g.fillRect(0, 0, W, H)
+  g.fillStyle = '#111'
+  g.font = `800 19px ${FONT}`
+  g.fillText(opts.title, margin, margin + 13)
+  g.fillStyle = '#777'
+  g.font = `500 11px ${FONT}`
+  g.fillText(opts.meta, W - margin - g.measureText(opts.meta).width, margin + 16)
+  g.strokeStyle = '#111'
+  g.lineWidth = 2
+  g.beginPath(); g.moveTo(margin, margin + 33); g.lineTo(W - margin, margin + 33); g.stroke()
+  g.fillStyle = '#444'
+  g.font = `600 13px ${FONT}`
+  g.fillText(opts.sub, margin, margin + titleH + 9)
+
+  // 헤더
+  const y0 = margin + titleH + subH
+  g.fillStyle = '#eee'
+  g.fillRect(margin, y0, tableW, headH)
+  opts.headers.forEach((h, i) => drawText(h, i, y0, headH, '700 13px', '#111'))
+
+  // 본문
+  opts.rows.forEach((r, k) => {
+    const top = y0 + headH + k * rowH
+    if (r.fail) {
+      g.fillStyle = '#f4bfba'
+      g.fillRect(colX(opts.nameCol), top, widths[opts.nameCol], rowH)
+    }
+    r.cells.forEach((cell, i) => {
+      let color = '#111'
+      let font = '500 14px'
+      if (i === opts.nameCol) font = '600 14px'
+      if (i === opts.deltaCol) {
+        color = cell.startsWith('▲') ? '#188a42' : cell.startsWith('▼') ? '#cf3f36' : '#888'
+        font = '600 13px'
+      }
+      drawText(cell, i, top, rowH, font, color)
+    })
+  })
+
+  // 격자선
+  g.strokeStyle = '#bbb'
+  g.lineWidth = 1
+  for (let k = 0; k <= opts.rows.length; k++) {
+    const ly = y0 + headH + k * rowH
+    g.beginPath(); g.moveTo(margin, ly); g.lineTo(margin + tableW, ly); g.stroke()
+  }
+  for (let i = 0; i <= opts.headers.length; i++) {
+    const lx = i === opts.headers.length ? margin + tableW : colX(i)
+    g.beginPath(); g.moveTo(lx, y0); g.lineTo(lx, y0 + headH + rowH * opts.rows.length); g.stroke()
+  }
+  g.strokeStyle = '#999'
+  g.beginPath(); g.moveTo(margin, y0 + headH); g.lineTo(margin + tableW, y0 + headH); g.stroke()
+
+  c.toBlob((blob) => {
+    if (!blob) return
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = opts.fileName
+    a.click()
+    URL.revokeObjectURL(url)
+  }, 'image/png')
 }
 
 /** 화면엔 숨김(.print-root), 인쇄 시에만 보이는 표. body에 portal로 렌더. */
