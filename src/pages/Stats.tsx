@@ -109,9 +109,9 @@ export function StatsPage({ kind }: { kind: Kind }) {
 
     const src = document.querySelector('.print-root')
     if (!(src instanceof HTMLElement)) return
-    // 인쇄와 똑같은 모습으로: A4 폭 래퍼에 복제해 화면 밖에서 렌더 후 캡처
+    // 인쇄와 같은 스타일로, 폭만 촘촘하게(600px) 렌더해 캡처 — 칸 안 빈 공간 축소
     const wrap = document.createElement('div')
-    wrap.style.cssText = 'position:fixed;left:-10000px;top:0;width:794px;background:#fff;padding:28px;z-index:-1;'
+    wrap.style.cssText = 'position:fixed;left:-10000px;top:0;width:600px;background:#fff;padding:20px;z-index:-1;'
     const clone = src.cloneNode(true) as HTMLElement
     clone.style.display = 'block'
     wrap.appendChild(clone)
