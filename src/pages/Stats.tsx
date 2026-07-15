@@ -18,13 +18,13 @@ const CFG: Record<
 > = {
   siege: {
     title: '공성전 통계',
-    desc: '주차를 고르고 요일(월~일)마다 [편집]을 눌러 점수를 입력하고 [저장]하면 잠겨요. 각 요일 점수를 지난주 같은 요일과 비교해 등락(%)이 표시돼요. 명단은 [길드원] 메뉴 등록자가 자동으로 들어옵니다.',
+    desc: '주차를 고르고 요일(월~일)마다 [편집]을 눌러 점수를 입력하고 [저장]하면 잠겨요. 각 요일 점수를 지난주 같은 요일과 비교해 등락(%)이 표시돼요. 커트라인을 설정하면(주차 공통) 이하 점수는 미달로 표시돼요. 명단은 [길드원] 메뉴 등록자가 자동으로 들어옵니다.',
     metric: '점수',
     field: 'siegeRounds',
     byDay: true,
     roundName: '주차',
     showJoined: false,
-    hasCutline: false,
+    hasCutline: true,
     deltaLabel: '전주 대비',
   },
   destroyer: {
@@ -304,6 +304,7 @@ function PrintContent({
       (prevRound?.days?.[d] ?? []).filter((e) => typeof e.value === 'number').map((e) => [e.name, e.value as number]),
     )
     const total = ranked.reduce((s, e) => s + (e.value as number), 0)
+    const isFail = (e: StatEntry) => typeof current.cutline === 'number' && typeof e.value === 'number' && e.value <= current.cutline
     return (
       <div className="print-root">
         <div className="print-head">
@@ -314,13 +315,13 @@ function PrintContent({
           <p>{d}요일에 입력된 점수가 없어요.</p>
         ) : (
           <div className="print-block">
-            <h3>{d}요일 <span className="print-sub">({ranked.length}명 · 합계 {fmt(total)})</span></h3>
+            <h3>{d}요일 <span className="print-sub">({ranked.length}명 · 합계 {fmt(total)}{typeof current.cutline === 'number' ? ` · 커트라인 ${fmt(current.cutline)} 이하 미달` : ''})</span></h3>
             <table className="print-table">
               <thead><tr><th>순위</th><th>길드원</th><th>전 주</th><th>이번 주</th><th>{cfg.deltaLabel}</th></tr></thead>
               <tbody>
                 {ranked.map((e, i) => (
                   <tr key={e.name}>
-                    <td>{i + 1}</td><td>{e.name}</td>
+                    <td>{i + 1}</td><td className={isFail(e) ? 'cell-fail' : ''}>{e.name}</td>
                     <td className="num-tab">{fmt(prevMap.get(e.name))}</td>
                     <td className="num-tab">{fmt(e.value)}</td>
                     <td>{pctText(prevMap.get(e.name), e.value)}</td>
@@ -351,7 +352,7 @@ function PrintContent({
       <div className="print-block">
         <h3>
           이번 시즌: {current.label}
-          <span className="print-sub"> ({curRanked.length}명 · 합계 {fmt(curTotal)}{prevRound ? ` · 전 시즌: ${prevRound.label} 대비 상승%` : ''})</span>
+          <span className="print-sub"> ({curRanked.length}명 · 합계 {fmt(curTotal)}{prevRound ? ` · 전 시즌: ${prevRound.label} 대비 상승%` : ''}{typeof current.cutline === 'number' ? ` · 커트라인 ${fmt(current.cutline)} 이하 미달` : ''})</span>
         </h3>
         <table className="print-table">
           <thead><tr><th>순위</th><th>길드원</th><th>전 시즌</th><th>이번 시즌</th><th>상승%</th></tr></thead>
