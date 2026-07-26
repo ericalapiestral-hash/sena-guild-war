@@ -382,7 +382,7 @@ function PrintContent({
           <span className="print-sub"> ({curRanked.length}명 · 합계 {fmt(curTotal)}{prevRound ? ` · 전 시즌: ${prevRound.label} 대비 상승%` : ''}{typeof current.cutline === 'number' ? ` · 커트라인 ${fmt(current.cutline)} 이하 미달` : ''})</span>
         </h3>
         <table className="print-table">
-          <thead><tr><th>순위</th><th>길드원</th><th>전 시즌</th>{hasMid && <th>중간집계</th>}<th>이번 시즌 집계</th><th>상승%</th></tr></thead>
+          <thead><tr><th>순위</th><th>길드원</th><th>전 시즌</th>{hasMid && <th>중간집계</th>}<th>이번 시즌 집계</th><th>전 시즌 대비</th>{hasMid && <th>중간집계 대비</th>}</tr></thead>
           <tbody>
             {curRanked.map((e, i) => (
               <tr key={e.name}>
@@ -391,6 +391,7 @@ function PrintContent({
                 {hasMid && <td className="num-tab">{fmt(e.mid)}</td>}
                 <td className="num-tab">{fmt(e.value)}</td>
                 <td>{pctText(prevMap.get(e.name), effValue(e))}</td>
+                {hasMid && <td>{pctText(e.mid, e.value)}</td>}
               </tr>
             ))}
           </tbody>
@@ -471,7 +472,7 @@ function EntryTable({
   const showVerdict = hasCutline && typeof effCutline === 'number'
   const isFail = (e: StatEntry) => showVerdict && typeof effOf(e) === 'number' && (effOf(e) as number) <= (effCutline as number)
   const failCount = rows.filter(isFail).length
-  const cols = 5 + (showMid ? 2 : 0) + (showJoined ? 1 : 0) + (showVerdict ? 1 : 0) + (editing ? 1 : 0)
+  const cols = 5 + (showMid ? 3 : 0) + (showJoined ? 1 : 0) + (showVerdict ? 1 : 0) + (editing ? 1 : 0)
 
   function startEdit() {
     const d: Record<string, Partial<StatEntry>> = {}
@@ -548,6 +549,7 @@ function EntryTable({
               {showMid && <th style={{ textAlign: 'right' }}>중간집계</th>}
               <th style={{ textAlign: 'right' }}>{showMid ? finalLabel : metric}</th>
               <th style={{ width: 100 }}>{deltaLabel}</th>
+              {showMid && <th style={{ width: 110 }}>중간집계 대비</th>}
               {showVerdict && <th style={{ width: 64 }}>판정</th>}
               {showJoined && <th style={{ width: 60 }}>참여</th>}
               <th>메모</th>
@@ -574,6 +576,7 @@ function EntryTable({
                     style={{ width: 120, textAlign: 'right' }} />
                 ) : (<b className="num-tab">{fmt(e.value)}</b>)}</td>
                 <td><Delta prev={prevValues.get(e.name)} cur={effOf(e)} /></td>
+                {showMid && <td><Delta prev={e.mid} cur={e.value} /></td>}
                 {showVerdict && <td>{typeof effOf(e) === 'number' ? (isFail(e) ? <span className="badge lose">미달</span> : <span className="badge win">통과</span>) : <span className="muted">—</span>}</td>}
                 {showJoined && <td>{editing ? (
                   <input type="checkbox" checked={!!e.joined} onChange={(ev) => setField(e.name, { joined: ev.target.checked })} />
