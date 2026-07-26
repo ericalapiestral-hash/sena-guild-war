@@ -14,7 +14,16 @@ const todayWeekday = () => WEEKDAYS[(new Date().getDay() + 6) % 7]
 
 const CFG: Record<
   Kind,
-  { title: string; desc: string; metric: string; field: 'siegeRounds' | 'destroyerRounds'; byDay: boolean; roundName: string; showJoined: boolean; hasCutline: boolean; deltaLabel: string }
+  {
+    title: string; desc: string; metric: string; field: 'siegeRounds' | 'destroyerRounds'
+    byDay: boolean; roundName: string; showJoined: boolean; hasCutline: boolean; deltaLabel: string
+    /** 중간집계 열 사용 (파괴신) */
+    showMid: boolean
+    /** 직전 기록 열 제목 */
+    prevLabel: string
+    /** 최종 집계 열 제목 */
+    finalLabel: string
+  }
 > = {
   siege: {
     title: '공성전 통계',
@@ -26,17 +35,23 @@ const CFG: Record<
     showJoined: false,
     hasCutline: true,
     deltaLabel: '전주 대비',
+    showMid: false,
+    prevLabel: '전 주',
+    finalLabel: '이번 주',
   },
   destroyer: {
     title: '파괴신 통계',
-    desc: '회차별로 [편집]을 눌러 길드원 딜량과 커트라인을 입력하고 [저장]하면 잠겨요. 커트라인 이하는 미달로 표시되고, 각 회차를 직전 회차와 비교해 등락(%)이 나와요. 명단은 [길드원] 메뉴 등록자가 자동으로 들어옵니다.',
+    desc: '시즌별로 [편집]을 눌러 중간집계·최종 딜량과 커트라인을 입력하고 [저장]하면 잠겨요. 전 시즌 / 이번 시즌 중간집계 / 이번 시즌 집계를 나란히 비교하고, 커트라인 이하는 미달로 표시돼요. 명단은 [길드원] 메뉴 등록자가 자동으로 들어옵니다.',
     metric: '딜량',
     field: 'destroyerRounds',
     byDay: false,
-    roundName: '회차',
+    roundName: '시즌',
     showJoined: false,
     hasCutline: true,
-    deltaLabel: '전 회차 대비',
+    deltaLabel: '전 시즌 대비',
+    showMid: true,
+    prevLabel: '전 시즌',
+    finalLabel: '이번 시즌 집계',
   },
 }
 
@@ -100,7 +115,7 @@ export function StatsPage({ kind }: { kind: Kind }) {
       }
       fileName = `공성전-${safe(current.label)}-${d}요일.png`
     } else {
-      if (!current.entries.some((e) => typeof e.value === 'number')) {
+      if (!current.entries.some((e) => typeof e.value === 'number' || typeof e.mid === 'number')) {
         alert('입력된 딜량이 없어요.')
         return
       }
@@ -242,6 +257,10 @@ export function StatsPage({ kind }: { kind: Kind }) {
             heading={cfg.byDay ? `${day}요일 기록` : undefined}
             prevValues={prevValues}
             deltaLabel={cfg.deltaLabel}
+            showMid={cfg.showMid}
+            prevLabel={cfg.prevLabel}
+            finalLabel={cfg.finalLabel}
+            prevRoundLabel={prevRound?.label}
             onSaveAll={saveAll}
           />
         </div>
@@ -262,10 +281,17 @@ function buildRanked(roster: string[], stored: StatEntry[]): StatEntry[] {
   const rosterSet = new Set(roster)
   const extra = stored.map((e) => e.name).filter((n) => !rosterSet.has(n))
   const map = new Map(stored.map((e) => [e.name, e]))
+  // 최종 집계가 없으면 중간집계 기준 (시즌 도중에도 출력 가능)
+  const eff = (e: StatEntry) => (typeof e.value === 'number' ? e.value : e.mid)
   return [...roster, ...extra]
     .map((name) => ({ name, ...(map.get(name) ?? {}) } as StatEntry))
-    .filter((e) => typeof e.value === 'number')
-    .sort((a, b) => (b.value as number) - (a.value as number))
+    .filter((e) => typeof eff(e) === 'number')
+    .sort((a, b) => (eff(b) as number) - (eff(a) as number))
+}
+
+/** 집계 기준값 — 최종 우선, 없으면 중간집계 */
+function effValue(e: StatEntry): number | undefined {
+  return typeof e.value === 'number' ? e.value : e.mid
 }
 
 /** 등락 % 텍스트 (인쇄용, 색 없이 ▲/▼) */
@@ -340,9 +366,10 @@ function PrintContent({
   const prevMap = new Map(
     (prevRound?.entries ?? []).filter((e) => typeof e.value === 'number').map((e) => [e.name, e.value as number]),
   )
-  const curTotal = curRanked.reduce((s, e) => s + (e.value as number), 0)
+  const curTotal = curRanked.reduce((s, e) => s + (effValue(e) as number), 0)
+  const hasMid = curRanked.some((e) => typeof e.mid === 'number')
   // 커트라인 이하 미달자 — 이름칸 강조
-  const isFail = (e: StatEntry) => typeof current.cutline === 'number' && typeof e.value === 'number' && e.value <= current.cutline
+  const isFail = (e: StatEntry) => typeof current.cutline === 'number' && typeof effValue(e) === 'number' && (effValue(e) as number) <= current.cutline
   return (
     <div className="print-root">
       <div className="print-head">
@@ -355,14 +382,15 @@ function PrintContent({
           <span className="print-sub"> ({curRanked.length}명 · 합계 {fmt(curTotal)}{prevRound ? ` · 전 시즌: ${prevRound.label} 대비 상승%` : ''}{typeof current.cutline === 'number' ? ` · 커트라인 ${fmt(current.cutline)} 이하 미달` : ''})</span>
         </h3>
         <table className="print-table">
-          <thead><tr><th>순위</th><th>길드원</th><th>전 시즌</th><th>이번 시즌</th><th>상승%</th></tr></thead>
+          <thead><tr><th>순위</th><th>길드원</th><th>전 시즌</th>{hasMid && <th>중간집계</th>}<th>이번 시즌 집계</th><th>상승%</th></tr></thead>
           <tbody>
             {curRanked.map((e, i) => (
               <tr key={e.name}>
                 <td>{i + 1}</td><td className={isFail(e) ? 'cell-fail' : ''}>{e.name}</td>
                 <td className="num-tab">{fmt(prevMap.get(e.name))}</td>
+                {hasMid && <td className="num-tab">{fmt(e.mid)}</td>}
                 <td className="num-tab">{fmt(e.value)}</td>
-                <td>{pctText(prevMap.get(e.name), e.value)}</td>
+                <td>{pctText(prevMap.get(e.name), effValue(e))}</td>
               </tr>
             ))}
           </tbody>
@@ -392,6 +420,10 @@ function EntryTable({
   heading,
   prevValues,
   deltaLabel,
+  showMid,
+  prevLabel,
+  finalLabel,
+  prevRoundLabel,
   onSaveAll,
 }: {
   roster: string[]
@@ -404,6 +436,10 @@ function EntryTable({
   heading?: string
   prevValues: Map<string, number>
   deltaLabel: string
+  showMid: boolean
+  prevLabel: string
+  finalLabel: string
+  prevRoundLabel?: string
   onSaveAll: (list: StatEntry[], cutline?: number) => void
 }) {
   const [editing, setEditing] = useState(false)
@@ -420,22 +456,26 @@ function EntryTable({
   const valOf = (name: string): Partial<StatEntry> => (editing ? draft[name] ?? {} : storedMap.get(name) ?? {})
   const rows: StatEntry[] = baseNames.map((name) => ({ name, ...valOf(name) }))
 
-  const scored = rows.filter((e) => typeof e.value === 'number')
-  const total = scored.reduce((s, e) => s + (e.value as number), 0)
+  // 집계 기준값 — 최종이 있으면 최종, 없으면 중간집계 (시즌 도중에도 순위·합계가 나오게)
+  const effOf = (e: StatEntry) => (typeof e.value === 'number' ? e.value : showMid ? e.mid : undefined)
+  const scored = rows.filter((e) => typeof effOf(e) === 'number')
+  const total = scored.reduce((s, e) => s + (effOf(e) as number), 0)
+  const midCount = rows.filter((e) => typeof e.mid === 'number').length
+  const finalCount = rows.filter((e) => typeof e.value === 'number').length
   const joinedCount = rows.filter((e) => e.joined).length
-  const ranked = [...rows].sort((a, b) => (b.value ?? -Infinity) - (a.value ?? -Infinity))
+  const ranked = [...rows].sort((a, b) => (effOf(b) ?? -Infinity) - (effOf(a) ?? -Infinity))
   const top = scored.length ? ranked[0] : undefined
   const displayRows = editing ? rows : ranked // 편집 중엔 명단 순서 고정, 잠금 시 점수순 정렬
 
   const effCutline = editing ? draftCutline : cutline
   const showVerdict = hasCutline && typeof effCutline === 'number'
-  const isFail = (e: StatEntry) => showVerdict && typeof e.value === 'number' && e.value <= (effCutline as number)
+  const isFail = (e: StatEntry) => showVerdict && typeof effOf(e) === 'number' && (effOf(e) as number) <= (effCutline as number)
   const failCount = rows.filter(isFail).length
-  const cols = 5 + (showJoined ? 1 : 0) + (showVerdict ? 1 : 0) + (editing ? 1 : 0)
+  const cols = 5 + (showMid ? 2 : 0) + (showJoined ? 1 : 0) + (showVerdict ? 1 : 0) + (editing ? 1 : 0)
 
   function startEdit() {
     const d: Record<string, Partial<StatEntry>> = {}
-    for (const name of baseNames) { const e = storedMap.get(name); if (e) d[name] = { value: e.value, joined: e.joined, memo: e.memo } }
+    for (const name of baseNames) { const e = storedMap.get(name); if (e) d[name] = { value: e.value, mid: e.mid, joined: e.joined, memo: e.memo } }
     setDraft(d)
     setDraftCutline(cutline)
     setLocalExtra([])
@@ -445,7 +485,7 @@ function EntryTable({
   function save() {
     const list = baseNames
       .map((name) => ({ name, ...(draft[name] ?? {}) } as StatEntry))
-      .filter((e) => typeof e.value === 'number' || e.joined || (e.memo ?? '').trim())
+      .filter((e) => typeof e.value === 'number' || typeof e.mid === 'number' || e.joined || (e.memo ?? '').trim())
     onSaveAll(list, hasCutline ? draftCutline : undefined)
     setEditing(false)
     setLocalExtra([])
@@ -484,11 +524,18 @@ function EntryTable({
       )}
 
       <div className="stat-tiles" style={{ margin: '0 0 6px' }}>
-        <div className="stat-tile"><div className="num">{scored.length}<span style={{ fontSize: '0.9rem', color: 'var(--text-3)' }}>/{rows.length}</span></div><div className="label">{metric} 입력</div></div>
+        {showMid ? (
+          <>
+            <div className="stat-tile"><div className="num">{midCount}<span style={{ fontSize: '0.9rem', color: 'var(--text-3)' }}>/{rows.length}</span></div><div className="label">중간집계 입력</div></div>
+            <div className="stat-tile"><div className="num">{finalCount}<span style={{ fontSize: '0.9rem', color: 'var(--text-3)' }}>/{rows.length}</span></div><div className="label">최종 집계 입력</div></div>
+          </>
+        ) : (
+          <div className="stat-tile"><div className="num">{scored.length}<span style={{ fontSize: '0.9rem', color: 'var(--text-3)' }}>/{rows.length}</span></div><div className="label">{metric} 입력</div></div>
+        )}
         {showJoined && <div className="stat-tile"><div className="num">{joinedCount}</div><div className="label">참여 인원</div></div>}
         {showVerdict && <div className="stat-tile"><div className="num" style={{ color: failCount ? 'var(--danger)' : 'var(--ok)' }}>{failCount}</div><div className="label">미달 인원</div></div>}
         <div className="stat-tile"><div className="num">{fmt(total)}</div><div className="label">{metric} 합계</div></div>
-        <div className="stat-tile"><div className="num" style={{ fontSize: '1.15rem' }}>{top ? top.name : '-'}</div><div className="label">{metric} 1위 ({fmt(top?.value)})</div></div>
+        <div className="stat-tile"><div className="num" style={{ fontSize: '1.15rem' }}>{top ? top.name : '-'}</div><div className="label">{metric} 1위 ({fmt(top ? effOf(top) : undefined)})</div></div>
       </div>
 
       <div className="table-wrap" style={{ marginTop: 8 }}>
@@ -497,7 +544,9 @@ function EntryTable({
             <tr>
               <th style={{ width: 44 }}>{editing ? '#' : '순위'}</th>
               <th>길드원</th>
-              <th style={{ textAlign: 'right' }}>{metric}</th>
+              {showMid && <th style={{ textAlign: 'right' }}>{prevLabel}{prevRoundLabel ? <span className="muted" style={{ fontWeight: 400, fontSize: '0.75rem' }}> ({prevRoundLabel})</span> : ''}</th>}
+              {showMid && <th style={{ textAlign: 'right' }}>중간집계</th>}
+              <th style={{ textAlign: 'right' }}>{showMid ? finalLabel : metric}</th>
               <th style={{ width: 100 }}>{deltaLabel}</th>
               {showVerdict && <th style={{ width: 64 }}>판정</th>}
               {showJoined && <th style={{ width: 60 }}>참여</th>}
@@ -511,15 +560,21 @@ function EntryTable({
             )}
             {displayRows.map((e, i) => (
               <tr key={e.name} className={isFail(e) ? 'row-fail' : ''}>
-                <td><b>{editing ? i + 1 : typeof e.value === 'number' ? i + 1 : '-'}</b></td>
+                <td><b>{editing ? i + 1 : typeof effOf(e) === 'number' ? i + 1 : '-'}</b></td>
                 <td className={isFail(e) ? 'cell-fail' : ''}><b>{e.name}</b>{!rosterSet.has(e.name) && <span className="muted" style={{ marginLeft: 4, fontSize: '0.75rem' }}>(외부)</span>}</td>
+                {showMid && <td style={{ textAlign: 'right' }} className="num-tab muted">{fmt(prevValues.get(e.name))}</td>}
+                {showMid && <td style={{ textAlign: 'right' }}>{editing ? (
+                  <input type="number" value={e.mid ?? ''} placeholder="0" className="num-tab"
+                    onChange={(ev) => setField(e.name, { mid: ev.target.value === '' ? undefined : Number(ev.target.value) })}
+                    style={{ width: 120, textAlign: 'right' }} />
+                ) : (<span className="num-tab">{fmt(e.mid)}</span>)}</td>}
                 <td style={{ textAlign: 'right' }}>{editing ? (
                   <input type="number" value={e.value ?? ''} placeholder="0" className="num-tab"
                     onChange={(ev) => setField(e.name, { value: ev.target.value === '' ? undefined : Number(ev.target.value) })}
                     style={{ width: 120, textAlign: 'right' }} />
                 ) : (<b className="num-tab">{fmt(e.value)}</b>)}</td>
-                <td><Delta prev={prevValues.get(e.name)} cur={e.value} /></td>
-                {showVerdict && <td>{typeof e.value === 'number' ? (isFail(e) ? <span className="badge lose">미달</span> : <span className="badge win">통과</span>) : <span className="muted">—</span>}</td>}
+                <td><Delta prev={prevValues.get(e.name)} cur={effOf(e)} /></td>
+                {showVerdict && <td>{typeof effOf(e) === 'number' ? (isFail(e) ? <span className="badge lose">미달</span> : <span className="badge win">통과</span>) : <span className="muted">—</span>}</td>}
                 {showJoined && <td>{editing ? (
                   <input type="checkbox" checked={!!e.joined} onChange={(ev) => setField(e.name, { joined: ev.target.checked })} />
                 ) : (<span className={`badge ${e.joined ? 'win' : 'lose'}`}>{e.joined ? 'O' : 'X'}</span>)}</td>}

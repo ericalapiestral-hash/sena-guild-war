@@ -108,8 +108,10 @@ export interface Member {
 /** 공성전/파괴신 통계 — 회차 안의 길드원 1명 기록 */
 export interface StatEntry {
   name: string
-  /** 공성전=점수 / 파괴신=딜량 */
+  /** 공성전=점수 / 파괴신=이번 시즌 최종 딜량 */
   value?: number
+  /** 파괴신 중간집계 (시즌 도중 기록) */
+  mid?: number
   /** 참여 여부 */
   joined?: boolean
   memo?: string

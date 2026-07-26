@@ -78,8 +78,31 @@ function MemberCard({ member, expanded, onToggle }: { member: Member; expanded: 
   const losses = member.records.length - wins
   const [memo, setMemo] = useState(member.note ?? '')
   const [owner, setOwner] = useState(member.owner ?? '')
+  const [nick, setNick] = useState(member.name)
   const [oppo, setOppo] = useState('')
   const [recMemo, setRecMemo] = useState('')
+
+  /** 닉네임 변경 — 공성전·파괴신 기록과 부계정 주인 표기까지 함께 바꿔 과거 기록이 끊기지 않게 */
+  function renameMember(next: string) {
+    const to = next.trim()
+    const from = member.name
+    if (!to || to === from) { setNick(from); return }
+    update((d) => {
+      if (d.members.some((m) => m.id !== member.id && m.name === to)) {
+        alert(`'${to}' 이름을 가진 길드원이 이미 있어요.`)
+        return
+      }
+      const target = d.members.find((m) => m.id === member.id)
+      if (!target) return
+      target.name = to
+      for (const m of d.members) if (m.owner === from) m.owner = to
+      const renameEntries = (list?: { name: string }[]) => list?.forEach((e) => { if (e.name === from) e.name = to })
+      for (const r of [...d.siegeRounds, ...d.destroyerRounds]) {
+        renameEntries(r.entries)
+        if (r.days) for (const day of Object.keys(r.days)) renameEntries(r.days[day])
+      }
+    })
+  }
 
   function addRecord(result: '승' | '패') {
     update((d) => {
@@ -121,6 +144,15 @@ function MemberCard({ member, expanded, onToggle }: { member: Member; expanded: 
 
       {expanded && (
         <div style={{ marginTop: 12 }}>
+          <div className="row" style={{ marginBottom: 10 }}>
+            <label style={{ fontWeight: 600, fontSize: '0.85rem' }}>닉네임</label>
+            <input value={nick} onChange={(e) => setNick(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') renameMember((e.target as HTMLInputElement).value) }}
+              onBlur={(e) => renameMember(e.target.value)}
+              style={{ flex: 1, minWidth: 140 }} />
+            <button className="small" onClick={() => renameMember(nick)}>이름 변경</button>
+            <span className="muted" style={{ fontSize: '0.78rem' }}>바꾸면 공성전·파괴신 기록도 같이 따라가요</span>
+          </div>
           <div className="row" style={{ marginBottom: 10 }}>
             <label style={{ fontWeight: 600, fontSize: '0.85rem' }}>역할</label>
             <select value={member.role ?? '멤버'} onChange={(e) => {
