@@ -124,7 +124,8 @@ export function StatsPage({ kind }: { kind: Kind }) {
 
     const src = document.querySelector('.print-root')
     if (!(src instanceof HTMLElement)) return
-    // 인쇄와 같은 스타일로, 폭만 촘촘하게(600px) 렌더해 캡처 — 칸 안 빈 공간 축소
+    // 인쇄와 같은 스타일로, 폭만 촘촘하게(600px) 렌더해 캡처 — 칸 안 빈 공간 축소.
+    // 화면 밖에 배치(주의: opacity:0/visibility:hidden으로 숨기면 html2canvas가 빈 이미지를 만든다)
     const wrap = document.createElement('div')
     wrap.style.cssText = 'position:fixed;left:-10000px;top:0;width:600px;background:#fff;padding:20px;z-index:-1;'
     const clone = src.cloneNode(true) as HTMLElement
@@ -133,7 +134,21 @@ export function StatsPage({ kind }: { kind: Kind }) {
     document.body.appendChild(wrap)
     try {
       try { await document.fonts.ready } catch { /* noop */ }
-      const canvas = await html2canvas(wrap, { scale: 2, backgroundColor: '#ffffff', logging: false })
+      // 캡처 크기를 표 전체 크기로 명시 — 기본값은 '브라우저 창' 크기라
+      // 인원이 많아 표가 창보다 길면 아래가 잘림 (30명 이상에서 발생)
+      const w = Math.ceil(wrap.scrollWidth)
+      const h = Math.ceil(wrap.scrollHeight)
+      const canvas = await html2canvas(wrap, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        logging: false,
+        width: w,
+        height: h,
+        windowWidth: w,
+        windowHeight: h,
+        scrollX: 0,
+        scrollY: 0,
+      })
       const blob: Blob | null = await new Promise((r) => canvas.toBlob(r, 'image/png'))
       if (!blob) return
       const url = URL.createObjectURL(blob)
@@ -341,7 +356,11 @@ function PrintContent({
           <p>{d}요일에 입력된 점수가 없어요.</p>
         ) : (
           <div className="print-block">
-            <h3>{d}요일 <span className="print-sub">({ranked.length}명 · 합계 {fmt(total)}{typeof current.cutline === 'number' ? ` · 커트라인 ${fmt(current.cutline)} 이하 미달` : ''})</span></h3>
+            <h3>{d}요일</h3>
+            <div className="print-sub">
+              {ranked.length}명 · 합계 {fmt(total)}
+              {typeof current.cutline === 'number' && <> · 커트라인 {fmt(current.cutline)} 이하 미달</>}
+            </div>
             <table className="print-table">
               <thead><tr><th>순위</th><th>길드원</th><th>전 주</th><th>이번 주</th><th>{cfg.deltaLabel}</th></tr></thead>
               <tbody>
@@ -377,10 +396,12 @@ function PrintContent({
         <span className="print-meta">출력일 {printedAt} · 낭만주의</span>
       </div>
       <div className="print-block">
-        <h3>
-          이번 시즌: {current.label}
-          <span className="print-sub"> ({curRanked.length}명 · 합계 {fmt(curTotal)}{prevRound ? ` · 전 시즌: ${prevRound.label} 대비 상승%` : ''}{typeof current.cutline === 'number' ? ` · 커트라인 ${fmt(current.cutline)} 이하 미달` : ''})</span>
-        </h3>
+        <h3>이번 시즌: {current.label}</h3>
+        <div className="print-sub">
+          {curRanked.length}명 · 합계 {fmt(curTotal)}
+          {prevRound && <> · 전 시즌: {prevRound.label}</>}
+          {typeof current.cutline === 'number' && <> · 커트라인 {fmt(current.cutline)} 이하 미달</>}
+        </div>
         <table className="print-table">
           <thead><tr><th>순위</th><th>길드원</th><th>전 시즌</th>{hasMid && <th>중간집계</th>}<th>이번 시즌 집계</th><th>전 시즌 대비</th>{hasMid && <th>중간집계 대비</th>}</tr></thead>
           <tbody>
