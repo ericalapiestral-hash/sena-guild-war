@@ -76,6 +76,10 @@ export function StatsPage({ kind }: { kind: Kind }) {
   const curCutline = current
     ? (cfg.byDay ? current.dayCutlines?.[day] ?? current.cutline : current.cutline)
     : undefined
+  // 파괴신: 길드원 등급(영웅 초월 단계)별 커트라인 — 이름→등급, 등급 목록
+  const tierOf = new Map(data.members.filter((m) => m.tier).map((m) => [m.name, m.tier as string]))
+  const tierList = [...new Set(data.members.map((m) => m.tier).filter((t): t is string => !!t))].sort()
+  const tierCutlines = current?.tierCutlines
 
   const currentIndex = current ? rounds.findIndex((r) => r.id === current.id) : -1
   const prevRound = currentIndex > 0 ? rounds[currentIndex - 1] : undefined
@@ -167,9 +171,14 @@ export function StatsPage({ kind }: { kind: Kind }) {
   }
 
   /** [저장] — 현재 회차/요일의 기록을 통째로 교체 (편집 모드 결과 한 번에 커밋) */
-  const saveAll = (list: StatEntry[], cutline?: number) => {
+  const saveAll = (list: StatEntry[], cutline?: number, tierCuts?: Record<string, number>) => {
     if (!current) return
     patchRound(current.id, (r) => {
+      // 파괴신: 등급별 커트라인 저장 (빈 값은 제거)
+      if (!cfg.byDay && cfg.hasCutline) {
+        if (tierCuts && Object.keys(tierCuts).length) r.tierCutlines = tierCuts
+        else delete r.tierCutlines
+      }
       if (cfg.byDay) {
         // 공성전: 커트라인을 요일별로 저장
         if (cfg.hasCutline) {
@@ -279,7 +288,10 @@ export function StatsPage({ kind }: { kind: Kind }) {
             showJoined={cfg.showJoined}
             hasCutline={cfg.hasCutline}
             cutline={curCutline}
-            cutlineLabel={cfg.byDay ? `커트라인 (${day}요일 ${cfg.metric})` : `커트라인 (${cfg.metric})`}
+            cutlineLabel={cfg.byDay ? `커트라인 (${day}요일 ${cfg.metric})` : `기본 커트라인 (${cfg.metric})`}
+            tierOf={cfg.byDay ? undefined : tierOf}
+            tierList={cfg.byDay ? undefined : tierList}
+            tierCutlines={tierCutlines}
             heading={cfg.byDay ? `${day}요일 기록` : undefined}
             prevValues={prevValues}
             deltaLabel={cfg.deltaLabel}
@@ -293,7 +305,7 @@ export function StatsPage({ kind }: { kind: Kind }) {
       )}
 
       {current && createPortal(
-        <PrintContent kind={kind} cfg={cfg} current={current} prevRound={prevRound} roster={roster} day={day} />,
+        <PrintContent kind={kind} cfg={cfg} current={current} prevRound={prevRound} roster={roster} day={day} tierOf={cfg.byDay ? undefined : tierOf} />,
         document.body,
       )}
         </>
@@ -337,6 +349,7 @@ function PrintContent({
   prevRound,
   roster,
   day,
+  tierOf,
 }: {
   kind: Kind
   cfg: (typeof CFG)[Kind]
@@ -345,6 +358,8 @@ function PrintContent({
   roster: string[]
   /** 공성전: 화면에서 선택된 요일 — 그 요일만 인쇄 */
   day?: string
+  /** 파괴신: 길드원 이름 → 등급 */
+  tierOf?: Map<string, string>
 }) {
   const printedAt = todayLocal()
 
@@ -400,8 +415,18 @@ function PrintContent({
   )
   const curTotal = curRanked.reduce((s, e) => s + (effValue(e) as number), 0)
   const hasMid = curRanked.some((e) => typeof e.mid === 'number')
-  // 커트라인 이하 미달자 — 이름칸 강조
-  const isFail = (e: StatEntry) => typeof current.cutline === 'number' && typeof effValue(e) === 'number' && (effValue(e) as number) <= current.cutline
+  // 커트라인 이하 미달자 — 등급별 커트라인 우선, 없으면 시즌 기본값
+  const tierCuts = current.tierCutlines ?? {}
+  const cutFor = (name: string) => {
+    const t = tierOf?.get(name)
+    const tc = t !== undefined ? tierCuts[t] : undefined
+    return typeof tc === 'number' ? tc : current.cutline
+  }
+  const isFail = (e: StatEntry) => {
+    const c = cutFor(e.name)
+    return typeof c === 'number' && typeof effValue(e) === 'number' && (effValue(e) as number) <= c
+  }
+  const usedTiers = [...new Set(curRanked.map((e) => tierOf?.get(e.name)).filter((t): t is string => !!t && typeof tierCuts[t] === 'number'))].sort()
   return (
     <div className="print-root">
       <div className="print-head">
@@ -413,14 +438,18 @@ function PrintContent({
         <div className="print-sub">
           {curRanked.length}명 · 합계 {fmt(curTotal)}
           {prevRound && <> · 전 시즌: {prevRound.label}</>}
-          {typeof current.cutline === 'number' && <> · 커트라인 {fmt(current.cutline)} 이하 미달</>}
+          {(usedTiers.length > 0 || typeof current.cutline === 'number') && (
+            <> · 커트라인 {usedTiers.map((t) => `${t} ${fmt(tierCuts[t])}`).join(' / ')}
+              {typeof current.cutline === 'number' && `${usedTiers.length ? ' / ' : ''}${usedTiers.length ? '기본 ' : ''}${fmt(current.cutline)}`} 이하 미달</>
+          )}
         </div>
         <table className="print-table">
-          <thead><tr><th>순위</th><th>길드원</th><th>전 시즌</th>{hasMid && <th>중간집계</th>}<th>이번 시즌 집계</th><th>전 시즌 대비</th>{hasMid && <th>중간집계 대비</th>}</tr></thead>
+          <thead><tr><th>순위</th><th>길드원</th>{usedTiers.length > 0 && <th>등급</th>}<th>전 시즌</th>{hasMid && <th>중간집계</th>}<th>이번 시즌 집계</th><th>전 시즌 대비</th>{hasMid && <th>중간집계 대비</th>}</tr></thead>
           <tbody>
             {curRanked.map((e, i) => (
               <tr key={e.name}>
                 <td>{i + 1}</td><td className={isFail(e) ? 'cell-fail' : ''}>{e.name}</td>
+                {usedTiers.length > 0 && <td style={{ textAlign: 'left' }}>{tierOf?.get(e.name) ?? '-'}</td>}
                 <td className="num-tab">{fmt(prevMap.get(e.name))}</td>
                 {hasMid && <td className="num-tab">{fmt(e.mid)}</td>}
                 <td className="num-tab">{fmt(e.value)}</td>
@@ -453,6 +482,9 @@ function EntryTable({
   hasCutline,
   cutline,
   cutlineLabel,
+  tierOf,
+  tierList,
+  tierCutlines,
   heading,
   prevValues,
   deltaLabel,
@@ -470,6 +502,12 @@ function EntryTable({
   hasCutline: boolean
   cutline?: number
   cutlineLabel?: string
+  /** 길드원 이름 → 등급 (파괴신) */
+  tierOf?: Map<string, string>
+  /** 등급 목록 (파괴신) */
+  tierList?: string[]
+  /** 등급별 커트라인 (파괴신) */
+  tierCutlines?: Record<string, number>
   heading?: string
   prevValues: Map<string, number>
   deltaLabel: string
@@ -477,13 +515,16 @@ function EntryTable({
   prevLabel: string
   finalLabel: string
   prevRoundLabel?: string
-  onSaveAll: (list: StatEntry[], cutline?: number) => void
+  onSaveAll: (list: StatEntry[], cutline?: number, tierCuts?: Record<string, number>) => void
 }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState<Record<string, Partial<StatEntry>>>({})
   const [draftCutline, setDraftCutline] = useState<number | undefined>(undefined)
+  const [draftTierCuts, setDraftTierCuts] = useState<Record<string, number>>({})
   const [localExtra, setLocalExtra] = useState<string[]>([])
   const [newName, setNewName] = useState('')
+
+  const useTiers = !!tierList?.length
 
   const rosterSet = new Set(roster)
   const storedMap = new Map(stored.map((e) => [e.name, e]))
@@ -505,8 +546,19 @@ function EntryTable({
   const displayRows = editing ? rows : ranked // 편집 중엔 명단 순서 고정, 잠금 시 점수순 정렬
 
   const effCutline = editing ? draftCutline : cutline
-  const showVerdict = hasCutline && typeof effCutline === 'number'
-  const isFail = (e: StatEntry) => showVerdict && typeof effOf(e) === 'number' && (effOf(e) as number) <= (effCutline as number)
+  const effTierCuts = editing ? draftTierCuts : (tierCutlines ?? {})
+  /** 이 사람에게 적용되는 커트라인 — 등급별 값이 있으면 그것, 없으면 기본값 */
+  const cutFor = (name: string): number | undefined => {
+    const t = tierOf?.get(name)
+    const tc = t !== undefined ? effTierCuts[t] : undefined
+    return typeof tc === 'number' ? tc : effCutline
+  }
+  const showVerdict = hasCutline && (typeof effCutline === 'number' || Object.values(effTierCuts).some((v) => typeof v === 'number'))
+  const isFail = (e: StatEntry) => {
+    if (!showVerdict) return false
+    const c = cutFor(e.name)
+    return typeof c === 'number' && typeof effOf(e) === 'number' && (effOf(e) as number) <= c
+  }
   const failCount = rows.filter(isFail).length
   const cols = 5 + (showMid ? 3 : 0) + (showJoined ? 1 : 0) + (showVerdict ? 1 : 0) + (editing ? 1 : 0)
 
@@ -515,6 +567,7 @@ function EntryTable({
     for (const name of baseNames) { const e = storedMap.get(name); if (e) d[name] = { value: e.value, mid: e.mid, joined: e.joined, memo: e.memo } }
     setDraft(d)
     setDraftCutline(cutline)
+    setDraftTierCuts({ ...(tierCutlines ?? {}) })
     setLocalExtra([])
     setEditing(true)
   }
@@ -523,7 +576,7 @@ function EntryTable({
     const list = baseNames
       .map((name) => ({ name, ...(draft[name] ?? {}) } as StatEntry))
       .filter((e) => typeof e.value === 'number' || typeof e.mid === 'number' || e.joined || (e.memo ?? '').trim())
-    onSaveAll(list, hasCutline ? draftCutline : undefined)
+    onSaveAll(list, hasCutline ? draftCutline : undefined, hasCutline && useTiers ? draftTierCuts : undefined)
     setEditing(false)
     setLocalExtra([])
   }
@@ -548,16 +601,47 @@ function EntryTable({
       </div>
 
       {hasCutline && editing && (
-        <div className="row" style={{ marginBottom: 10 }}>
-          <label style={{ fontWeight: 600, fontSize: '0.85rem' }}>{cutlineLabel ?? `커트라인 (${metric})`}</label>
-          <input type="number" className="num-tab" value={draftCutline ?? ''} placeholder="예: 8000000"
-            onChange={(ev) => setDraftCutline(ev.target.value === '' ? undefined : Number(ev.target.value))}
-            style={{ width: 170, textAlign: 'right' }} />
-          <span className="muted" style={{ fontSize: '0.8rem' }}>이 값 이하는 미달로 표시돼요</span>
+        <div style={{ marginBottom: 10 }}>
+          {/* 등급별 커트라인 (파괴신) — 길드원 등급마다 기준점이 달라 개별 설정 */}
+          {useTiers && tierList!.map((t) => (
+            <div className="row" key={t} style={{ marginBottom: 6 }}>
+              <label style={{ fontWeight: 600, fontSize: '0.85rem', minWidth: 120 }}>{t}</label>
+              <input type="number" className="num-tab" value={draftTierCuts[t] ?? ''} placeholder="비우면 기본값 적용"
+                onChange={(ev) => setDraftTierCuts((prev) => {
+                  const next = { ...prev }
+                  if (ev.target.value === '') delete next[t]
+                  else next[t] = Number(ev.target.value)
+                  return next
+                })}
+                style={{ width: 170, textAlign: 'right' }} />
+              <span className="muted" style={{ fontSize: '0.8rem' }}>등급 커트라인</span>
+            </div>
+          ))}
+          <div className="row">
+            <label style={{ fontWeight: 600, fontSize: '0.85rem', minWidth: useTiers ? 120 : undefined }}>{cutlineLabel ?? `커트라인 (${metric})`}</label>
+            <input type="number" className="num-tab" value={draftCutline ?? ''} placeholder="예: 8000000"
+              onChange={(ev) => setDraftCutline(ev.target.value === '' ? undefined : Number(ev.target.value))}
+              style={{ width: 170, textAlign: 'right' }} />
+            <span className="muted" style={{ fontSize: '0.8rem' }}>
+              {useTiers ? '등급이 없거나 등급 값이 빈 사람에게 적용' : '이 값 이하는 미달로 표시돼요'}
+            </span>
+          </div>
         </div>
       )}
-      {hasCutline && !editing && typeof cutline === 'number' && (
-        <div className="muted" style={{ marginBottom: 10 }}>커트라인 <b className="num-tab" style={{ color: 'var(--text)' }}>{fmt(cutline)}</b> {metric} 이하는 <span className="badge lose">미달</span></div>
+      {hasCutline && !editing && showVerdict && (
+        <div className="muted" style={{ marginBottom: 10 }}>
+          커트라인{' '}
+          {useTiers && tierList!.filter((t) => typeof effTierCuts[t] === 'number').map((t) => (
+            <span key={t}>
+              {t} <b className="num-tab" style={{ color: 'var(--text)' }}>{fmt(effTierCuts[t])}</b>
+              {' / '}
+            </span>
+          ))}
+          {typeof cutline === 'number' && (
+            <span>{useTiers ? '기본 ' : ''}<b className="num-tab" style={{ color: 'var(--text)' }}>{fmt(cutline)}</b></span>
+          )}
+          {' '}{metric} 이하는 <span className="badge lose">미달</span>
+        </div>
       )}
 
       <div className="stat-tiles" style={{ margin: '0 0 6px' }}>
@@ -599,7 +683,11 @@ function EntryTable({
             {displayRows.map((e, i) => (
               <tr key={e.name} className={isFail(e) ? 'row-fail' : ''}>
                 <td><b>{editing ? i + 1 : typeof effOf(e) === 'number' ? i + 1 : '-'}</b></td>
-                <td className={isFail(e) ? 'cell-fail' : ''}><b>{e.name}</b>{!rosterSet.has(e.name) && <span className="muted" style={{ marginLeft: 4, fontSize: '0.75rem' }}>(외부)</span>}</td>
+                <td className={isFail(e) ? 'cell-fail' : ''}>
+                  <b>{e.name}</b>
+                  {tierOf?.get(e.name) && <span className="muted" style={{ marginLeft: 4, fontSize: '0.72rem' }}>{tierOf.get(e.name)}</span>}
+                  {!rosterSet.has(e.name) && <span className="muted" style={{ marginLeft: 4, fontSize: '0.75rem' }}>(외부)</span>}
+                </td>
                 {showMid && <td style={{ textAlign: 'right' }} className="num-tab muted">{fmt(prevValues.get(e.name))}</td>}
                 {showMid && <td style={{ textAlign: 'right' }}>{editing ? (
                   <input type="number" value={e.mid ?? ''} placeholder="0" className="num-tab"

@@ -98,6 +98,8 @@ export interface Member {
   role?: MemberRole
   /** 부계정 여부 (true일 때만 '부계정' 표시) */
   isAlt?: boolean
+  /** 파괴신 등급 (영웅 초월 단계 등, 예: '파이 3초월') — 시즌별 등급 커트라인 적용에 사용 */
+  tier?: string
   /** 계정 주인 이름 (부계정의 본주인 등, 설정 시에만 표시) */
   owner?: string
   /** 담당/메모: 주력덱, 담당 상대 등 */
@@ -132,6 +134,8 @@ export interface StatRound {
   cutline?: number
   /** 요일별 커트라인 (공성전 — 요일마다 기준점이 달라 개별 설정). 특정 요일이 비어있으면 cutline을 기본값으로 사용 */
   dayCutlines?: Record<string, number>
+  /** 등급별 커트라인 (파괴신 — 영웅 초월 단계마다 기준이 달라 개별 설정). 키: Member.tier. 없으면 cutline을 기본값으로 사용 */
+  tierCutlines?: Record<string, number>
 }
 
 

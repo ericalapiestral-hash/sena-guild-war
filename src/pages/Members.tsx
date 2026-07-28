@@ -13,12 +13,14 @@ export function MembersPage() {
   const [newName, setNewName] = useState('')
   const [q, setQ] = useState('')
   const [expanded, setExpanded] = useState<string | null>(null)
+  // 이미 쓰고 있는 등급 목록 (입력 자동완성용)
+  const tiers = [...new Set(members.map((m) => m.tier).filter((t): t is string => !!t))].sort()
 
   // 역할 순으로 정렬 (마스터 → 부마스터 → 정예 → 멤버)
   const sorted = [...members].sort((a, b) => roleRank(a.role) - roleRank(b.role))
   const query = q.trim()
   const shown = query
-    ? sorted.filter((m) => m.name.includes(query) || (m.owner ?? '').includes(query) || (m.note ?? '').includes(query))
+    ? sorted.filter((m) => m.name.includes(query) || (m.owner ?? '').includes(query) || (m.note ?? '').includes(query) || (m.tier ?? '').includes(query))
     : sorted
   const roleCount = (r: MemberRole) => members.filter((m) => (m.role ?? '멤버') === r).length
 
@@ -50,13 +52,16 @@ export function MembersPage() {
           <button className="primary" disabled={!newName.trim()} onClick={addMember}>+ 추가</button>
         </div>
         <div className="row" style={{ marginTop: 8 }}>
-          <input placeholder="🔍 이름·주인·메모 검색" value={q} onChange={(e) => setQ(e.target.value)} style={{ flex: 1, minWidth: 180 }} />
+          <input placeholder="🔍 이름·주인·메모·등급 검색" value={q} onChange={(e) => setQ(e.target.value)} style={{ flex: 1, minWidth: 180 }} />
           <span className="muted">
             {query ? `${shown.length}명 표시 / ` : ''}총 {members.length}명
             {ROLES.slice(0, 3).map((r) => roleCount(r) > 0 && <span key={r}> · {r} {roleCount(r)}</span>)}
           </span>
         </div>
       </div>
+
+      {/* 등급 입력 자동완성 (이미 쓰고 있는 등급) */}
+      <datalist id="member-tiers">{tiers.map((t) => <option key={t} value={t} />)}</datalist>
 
       {shown.map((m) => (
         <MemberCard key={m.id} member={m}
@@ -79,6 +84,7 @@ function MemberCard({ member, expanded, onToggle }: { member: Member; expanded: 
   const [memo, setMemo] = useState(member.note ?? '')
   const [owner, setOwner] = useState(member.owner ?? '')
   const [nick, setNick] = useState(member.name)
+  const [tier, setTier] = useState(member.tier ?? '')
   const [oppo, setOppo] = useState('')
   const [recMemo, setRecMemo] = useState('')
 
@@ -126,6 +132,7 @@ function MemberCard({ member, expanded, onToggle }: { member: Member; expanded: 
           <strong>{member.name}</strong>
           {member.role && member.role !== '멤버' && <span className={`badge role-${member.role}`}>{member.role}</span>}
           {member.isAlt && <span className="badge alt">부계정</span>}
+          {member.tier && <span className="badge tier">{member.tier}</span>}
           {member.owner && <span className="muted">· 주인 {member.owner}</span>}
           {member.note && <span className="muted">— {member.note}</span>}
         </div>
@@ -175,6 +182,14 @@ function MemberCard({ member, expanded, onToggle }: { member: Member; expanded: 
               onChange={(e) => setOwner(e.target.value)}
               onBlur={(e) => { const v = e.target.value.trim(); update((d) => { const t = d.members.find((x) => x.id === member.id); if (t) t.owner = v || undefined }) }}
               style={{ flex: 1 }} />
+          </div>
+          <div className="row" style={{ marginBottom: 10 }}>
+            <label style={{ fontWeight: 600, fontSize: '0.85rem' }}>등급</label>
+            <input list="member-tiers" placeholder="파괴신 등급 (예: 파이 3초월 — 비우면 기본 커트라인 적용)" value={tier}
+              onChange={(e) => setTier(e.target.value)}
+              onBlur={(e) => { const v = e.target.value.trim(); update((d) => { const t = d.members.find((x) => x.id === member.id); if (t) t.tier = v || undefined }) }}
+              style={{ flex: 1 }} />
+            <span className="muted" style={{ fontSize: '0.78rem' }}>파괴신 커트라인이 등급별로 적용돼요</span>
           </div>
           <div className="row">
             <input placeholder="담당/메모 (예: 1번 방덱 담당, 주력: 연희 카르마 린)" value={memo}
