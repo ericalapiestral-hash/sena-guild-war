@@ -27,7 +27,7 @@ const CFG: Record<
 > = {
   siege: {
     title: '공성전 통계',
-    desc: '주차를 고르고 요일(월~일)마다 [편집]을 눌러 점수를 입력하고 [저장]하면 잠겨요. 각 요일 점수를 지난주 같은 요일과 비교해 등락(%)이 표시돼요. 커트라인을 설정하면(주차 공통) 이하 점수는 미달로 표시돼요. 명단은 [길드원] 메뉴 등록자가 자동으로 들어옵니다.',
+    desc: '주차를 고르고 요일(월~일)마다 [편집]을 눌러 점수를 입력하고 [저장]하면 잠겨요. 각 요일 점수를 지난주 같은 요일과 비교해 등락(%)이 표시돼요. 커트라인은 요일마다 따로 설정할 수 있고, 이하 점수는 미달로 표시돼요. 명단은 [길드원] 메뉴 등록자가 자동으로 들어옵니다.',
     metric: '점수',
     field: 'siegeRounds',
     byDay: true,
@@ -72,6 +72,10 @@ export function StatsPage({ kind }: { kind: Kind }) {
   const current = rounds.find((r) => r.id === selId) ?? rounds[rounds.length - 1] ?? null
 
   const stored: StatEntry[] = current ? (cfg.byDay ? current.days?.[day] ?? [] : current.entries) : []
+  // 공성전은 요일마다 기준점이 달라 요일별 커트라인 사용 (없으면 주차 공통값으로 폴백)
+  const curCutline = current
+    ? (cfg.byDay ? current.dayCutlines?.[day] ?? current.cutline : current.cutline)
+    : undefined
 
   const currentIndex = current ? rounds.findIndex((r) => r.id === current.id) : -1
   const prevRound = currentIndex > 0 ? rounds[currentIndex - 1] : undefined
@@ -166,11 +170,17 @@ export function StatsPage({ kind }: { kind: Kind }) {
   const saveAll = (list: StatEntry[], cutline?: number) => {
     if (!current) return
     patchRound(current.id, (r) => {
-      if (cfg.hasCutline) r.cutline = cutline
       if (cfg.byDay) {
+        // 공성전: 커트라인을 요일별로 저장
+        if (cfg.hasCutline) {
+          if (!r.dayCutlines) r.dayCutlines = {}
+          if (typeof cutline === 'number') r.dayCutlines[day] = cutline
+          else delete r.dayCutlines[day]
+        }
         if (!r.days) r.days = {}
         r.days[day] = list
       } else {
+        if (cfg.hasCutline) r.cutline = cutline
         r.entries = list
       }
     })
@@ -268,7 +278,8 @@ export function StatsPage({ kind }: { kind: Kind }) {
             admin={admin}
             showJoined={cfg.showJoined}
             hasCutline={cfg.hasCutline}
-            cutline={current.cutline}
+            cutline={curCutline}
+            cutlineLabel={cfg.byDay ? `커트라인 (${day}요일 ${cfg.metric})` : `커트라인 (${cfg.metric})`}
             heading={cfg.byDay ? `${day}요일 기록` : undefined}
             prevValues={prevValues}
             deltaLabel={cfg.deltaLabel}
@@ -345,7 +356,9 @@ function PrintContent({
       (prevRound?.days?.[d] ?? []).filter((e) => typeof e.value === 'number').map((e) => [e.name, e.value as number]),
     )
     const total = ranked.reduce((s, e) => s + (e.value as number), 0)
-    const isFail = (e: StatEntry) => typeof current.cutline === 'number' && typeof e.value === 'number' && e.value <= current.cutline
+    // 요일별 커트라인 (없으면 주차 공통값)
+    const dayCut = current.dayCutlines?.[d] ?? current.cutline
+    const isFail = (e: StatEntry) => typeof dayCut === 'number' && typeof e.value === 'number' && e.value <= dayCut
     return (
       <div className="print-root">
         <div className="print-head">
@@ -359,7 +372,7 @@ function PrintContent({
             <h3>{d}요일</h3>
             <div className="print-sub">
               {ranked.length}명 · 합계 {fmt(total)}
-              {typeof current.cutline === 'number' && <> · 커트라인 {fmt(current.cutline)} 이하 미달</>}
+              {typeof dayCut === 'number' && <> · 커트라인 {fmt(dayCut)} 이하 미달</>}
             </div>
             <table className="print-table">
               <thead><tr><th>순위</th><th>길드원</th><th>전 주</th><th>이번 주</th><th>{cfg.deltaLabel}</th></tr></thead>
@@ -439,6 +452,7 @@ function EntryTable({
   showJoined,
   hasCutline,
   cutline,
+  cutlineLabel,
   heading,
   prevValues,
   deltaLabel,
@@ -455,6 +469,7 @@ function EntryTable({
   showJoined: boolean
   hasCutline: boolean
   cutline?: number
+  cutlineLabel?: string
   heading?: string
   prevValues: Map<string, number>
   deltaLabel: string
@@ -534,7 +549,7 @@ function EntryTable({
 
       {hasCutline && editing && (
         <div className="row" style={{ marginBottom: 10 }}>
-          <label style={{ fontWeight: 600, fontSize: '0.85rem' }}>커트라인 ({metric})</label>
+          <label style={{ fontWeight: 600, fontSize: '0.85rem' }}>{cutlineLabel ?? `커트라인 (${metric})`}</label>
           <input type="number" className="num-tab" value={draftCutline ?? ''} placeholder="예: 8000000"
             onChange={(ev) => setDraftCutline(ev.target.value === '' ? undefined : Number(ev.target.value))}
             style={{ width: 170, textAlign: 'right' }} />

@@ -128,8 +128,10 @@ export interface StatRound {
   entries: StatEntry[]
   /** 요일별 기록 (공성전) — 키: '월'|'화'|'수'|'목'|'금'|'토'|'일' */
   days?: Record<string, StatEntry[]>
-  /** 커트라인 — 이 값 이하는 '미달' (파괴신) */
+  /** 커트라인 — 이 값 이하는 '미달'. 회차 전체 기본값(파괴신은 이 값만 사용) */
   cutline?: number
+  /** 요일별 커트라인 (공성전 — 요일마다 기준점이 달라 개별 설정). 특정 요일이 비어있으면 cutline을 기본값으로 사용 */
+  dayCutlines?: Record<string, number>
 }
 
 
