@@ -52,6 +52,63 @@ const Brand = () => (
 type SideMode = 'full' | 'rail'
 const SIDE_KEY = 'sena-guild-war:side'
 
+/** 테마 — 자단(밝음) / 야청(어두움) */
+type Theme = 'jadan' | 'yacheong'
+const THEME_KEY = 'sena-guild-war:theme'
+const THEME_LABEL: Record<Theme, string> = { jadan: '자단', yacheong: '야청' }
+
+/**
+ * 고른 적이 없으면 기기 설정(다크 모드)을 따르고, 한 번 고르면 그 선택을 계속 따른다.
+ * CSS는 :root[data-theme]와 prefers-color-scheme 양쪽에 같은 토큰을 정의해 두었으므로,
+ * 여기서는 속성만 붙이거나 떼면 된다.
+ */
+function useTheme(): [Theme, () => void] {
+  const [pref, setPref] = useState<Theme | null>(() => {
+    try {
+      const v = localStorage.getItem(THEME_KEY)
+      return v === 'jadan' || v === 'yacheong' ? v : null
+    } catch {
+      return null
+    }
+  })
+  const [sys, setSys] = useState<Theme>(() =>
+    typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'yacheong' : 'jadan',
+  )
+
+  useEffect(() => {
+    if (pref) return
+    const mql = window.matchMedia('(prefers-color-scheme: dark)')
+    const onChange = (): void => setSys(mql.matches ? 'yacheong' : 'jadan')
+    onChange()
+    mql.addEventListener('change', onChange)
+    return () => mql.removeEventListener('change', onChange)
+  }, [pref])
+
+  const theme = pref ?? sys
+
+  useEffect(() => {
+    const root = document.documentElement
+    // 고른 적이 없으면 속성을 붙이지 않아 prefers-color-scheme이 그대로 작동하게 둔다
+    if (pref) root.dataset.theme = pref
+    else delete root.dataset.theme
+    // 모바일 브라우저 상단 바 색까지 맞춘다
+    const meta = document.querySelector('meta[name="theme-color"]')
+    if (meta) meta.setAttribute('content', theme === 'yacheong' ? '#15171a' : '#f8f5f4')
+  }, [pref, theme])
+
+  const toggle = (): void => {
+    const next: Theme = theme === 'jadan' ? 'yacheong' : 'jadan'
+    setPref(next)
+    try {
+      localStorage.setItem(THEME_KEY, next)
+    } catch {
+      /* 시크릿 모드 등 — 이번 세션에만 적용 */
+    }
+  }
+
+  return [theme, toggle]
+}
+
 /**
  * 사이드바 펼침/접힘. 사용자가 한 번이라도 고르면 그 선택을 계속 따르고,
  * 고른 적이 없으면 화면 폭으로 정한다(넓으면 펼침, 좁으면 아이콘 레일).
@@ -128,6 +185,8 @@ function Sidebar({
   active,
   admin,
   mode,
+  theme,
+  onToggleTheme,
   onToggle,
   onLogout,
 }: {
@@ -135,6 +194,8 @@ function Sidebar({
   active: string
   admin: boolean
   mode: SideMode
+  theme: Theme
+  onToggleTheme: () => void
   onToggle: () => void
   onLogout: () => void
 }) {
@@ -192,6 +253,14 @@ function Sidebar({
 
       <div className="side-foot">
         <button
+          className="side-item side-theme"
+          onClick={onToggleTheme}
+          title={`${THEME_LABEL[theme]} — 눌러서 ${THEME_LABEL[theme === 'jadan' ? 'yacheong' : 'jadan']}으로`}
+        >
+          <Icon name="theme" className="ic" />
+          <span className="side-label">{THEME_LABEL[theme]}</span>
+        </button>
+        <button
           className="side-item side-toggle"
           onClick={onToggle}
           title={mode === 'full' ? '메뉴 접기' : '메뉴 펼치기'}
@@ -226,6 +295,7 @@ export default function App() {
   const [sheet, setSheet] = useState(false)
   const [admin, setAdmin] = useState(isAdmin())
   const [sideMode, toggleSide] = useSidebarMode()
+  const [theme, toggleTheme] = useTheme()
 
   const visible = MENU.filter((m) => !m.admin || admin)
   const adminActive = ADMIN_ITEMS.some((m) => m.route === base) || base === 'admin'
@@ -252,6 +322,8 @@ export default function App() {
         active={base}
         admin={admin}
         mode={sideMode}
+        theme={theme}
+        onToggleTheme={toggleTheme}
         onToggle={toggleSide}
         onLogout={doLogout}
       />
@@ -333,6 +405,12 @@ export default function App() {
                   </button>
                 )
               })}
+              <div className="sheet-sep" />
+              <button className="sheet-item" onClick={toggleTheme}>
+                <Icon name="theme" className="ic" />
+                화면 · <b>{THEME_LABEL[theme]}</b>
+                <em className="sheet-hint">눌러서 {THEME_LABEL[theme === 'jadan' ? 'yacheong' : 'jadan']}으로</em>
+              </button>
               <div className="sheet-sep" />
               {admin ? (
                 <>

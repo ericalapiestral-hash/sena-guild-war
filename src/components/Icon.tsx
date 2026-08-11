@@ -17,6 +17,8 @@ const PATHS: Record<string, string> = {
   arena: 'M4 4h3l10.5 10.5M20 4h-3L6.5 14.5M14.5 15 18 18.5l-2 2-3.5-3.5M9.5 15 6 18.5l2 2 3.5-3.5',
   // 사이드바 접기 — 세로선 + 왼쪽 화살표
   collapse: 'M4.5 5v14M20 12H9.5M13 8l-3.5 4 3.5 4',
+  // 테마 — 반쪽만 찬 원
+  theme: 'M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17ZM12 3.5v17M12 6.6a5.4 5.4 0 0 1 0 10.8',
 }
 
 export function Icon({ name, className }: { name: string; className?: string }) {

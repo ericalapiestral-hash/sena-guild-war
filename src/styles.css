@@ -1,71 +1,22 @@
 :root {
-  /* ---- 프리미엄 화이트 팔레트 ----
-     차가운 청회색 대신 아주 옅은 웜 뉴트럴을 써서 금색 액센트와 결이 맞게 했다.
-     면은 순백(surface), 바탕은 한 톤 낮춘 웜 화이트(bg), 경계는 헤어라인. */
-  --bg: #f7f7f5;
-  --surface: #ffffff;
-  --surface-2: #f4f4f2;
-  --surface-3: #efefec;
-  --border: #ebebe7;
-  --border-2: #dededa;
-  --text: #16181c;
-  --text-2: #585c64;
-  /* 작은 회색 글자도 흰 배경 대비 4.5:1(WCAG AA)을 넘기도록 */
-  --text-3: #6b7280;
-  --ink: #16181c;
+  /* ==========================================================
+     색은 전부 여기서만 정한다. 아래 컴포넌트들은 토큰만 참조한다.
+     테마가 둘(자단=밝음 / 야청=어두움)이라, 한 곳이라도 색을 직접
+     박아두면 반대 테마에서 반드시 깨진다.
+     ========================================================== */
 
-  --accent: #a67c2e;
-  --accent-strong: #86601f;
-  --accent-soft: #f7f1e3;
-  /* 단색 금색은 납작해 보인다. 밝은 면과 그늘을 함께 넣어 금속처럼 보이게 한 그라디언트 —
-     로고·활성 표시자·구분선처럼 '한 곳'에만 쓴다. 남발하면 싸구려가 된다. */
-  --gold-grad: linear-gradient(135deg, #cbab6a 0%, #a67c2e 38%, #e0cb9a 62%, #8a6420 100%);
-  --gold-line: linear-gradient(90deg, rgba(166, 124, 46, 0) 0%, rgba(166, 124, 46, 0.42) 50%, rgba(166, 124, 46, 0) 100%);
-
-  /* 상태색은 각자의 soft 배경 위에서도 4.5:1을 넘도록 어둡게 잡음 */
-  --danger: #b3302a;
-  --danger-soft: #fbecea;
-  --ok: #0f6b3f;
-  --ok-soft: #e7f5ec;
-  --info: #2564c0;
-  --info-soft: #e9f0fb;
-
-  /* 포지션(유형) 색 — 흰 배경 대비 확보 */
-  --pos-atk: #cf3f36;
-  --pos-mag: #7c4dcf;
-  --pos-def: #2f6fd0;
-  --pos-sup: #1f9d57;
-  --pos-all: #c0901f;
-
-  /* 컴포넌트 인라인에서 참조하는 레거시 이름 유지 */
-  --bg-2: #ffffff;
-  --bg-3: #f4f4f2;
-  --accent-dim: #d6bd8a;
-  --text-dim: #585c64;
-
+  /* ---- 형태·간격 (테마 공용) ---- */
   --radius: 15px;
   --radius-sm: 11px;
   --radius-lg: 20px;
-
-  /* 종이 한 장이 떠 있는 느낌 — 그림자는 회색이 아니라 아주 옅은 갈색 기가 돌게 해서
-     웜 화이트 바탕과 색이 어긋나지 않게 했다. 위쪽 1px 흰 선(inset)이 두께감을 만든다. */
-  --edge: inset 0 1px 0 rgba(255, 255, 255, 0.9);
-  --shadow-sm: 0 1px 2px rgba(60, 48, 28, 0.05), var(--edge);
-  --shadow-lift: 0 12px 28px -14px rgba(60, 48, 28, 0.22), 0 3px 8px -3px rgba(60, 48, 28, 0.08), var(--edge);
-  --shadow-md: 0 28px 68px -24px rgba(45, 36, 22, 0.3), 0 8px 20px -10px rgba(45, 36, 22, 0.12), var(--edge);
-
-  /* 면 — 위가 아주 살짝 밝은 흰색. 단색 #fff보다 종이처럼 보인다 */
-  --paper: linear-gradient(180deg, #ffffff 0%, #fdfdfb 100%);
-
   --maxw: 1180px;
   --side-w: 244px;
   --side-w-rail: 74px;
 
-  /* ---- 움직임 ----
-     시작이 급하지 않고 끝에서 길게 잦아드는 곡선을 쓴다.
+  /* ---- 움직임 (테마 공용) ----
      ease      : 기본. 색·배경처럼 눈에 안 띄어야 하는 변화
      ease-out  : 등장(페이지·목록). 처음부터 부드럽게 풀린다
-     ease-slide: 미끄러지는 표시자. 끝에서 아주 살짝 넘겼다 돌아와 관성이 느껴진다 */
+     ease-slide: 미끄러지는 표시자. 끝에서 살짝 넘겼다 돌아와 관성이 느껴진다 */
   --ease: cubic-bezier(0.33, 0.68, 0.28, 1);
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-slide: cubic-bezier(0.34, 1.12, 0.5, 1);
@@ -74,6 +25,233 @@
   --dur-3: 0.62s;
 
   font-size: 15px;
+}
+
+/* ====== 자단 紫檀 — 붉은 기가 도는 종이 + 채도를 뺀 자줏빛 (밝은 테마) ====== */
+:root, :root[data-theme='jadan'] {
+  color-scheme: light;
+
+  --bg: #f8f5f4;
+  --surface: #ffffff;
+  --surface-2: #f4efee;
+  --surface-3: #ece5e3;
+  --border: #ece5e3;
+  --border-2: #ddd2cf;
+  --text: #1f1817;
+  --text-2: #675b58;
+  --text-3: #7d6d69;
+  --ink: #1f1817;
+
+  --accent: #6d2739;
+  --accent-strong: #58202e;
+  --accent-soft: #f5e8eb;
+  --accent-dim: #dcc0c8;
+  --accent-grad: linear-gradient(135deg, #8f3a4e 0%, #6d2739 45%, #a4586a 72%, #571d2c 100%);
+  --accent-line: linear-gradient(90deg, rgba(109, 39, 57, 0) 0%, rgba(109, 39, 57, 0.34) 50%, rgba(109, 39, 57, 0) 100%);
+  --accent-wash: linear-gradient(90deg, rgba(245, 232, 235, 0.95) 0%, rgba(249, 242, 244, 0.7) 100%);
+
+  --danger: #b3302a;
+  --danger-soft: #fbecea;
+  --danger-line: var(--danger-line);
+  --ok: #0f6b3f;
+  --ok-soft: #e7f5ec;
+  --ok-line: var(--ok-line);
+  --info: #2564c0;
+  --info-soft: #e9f0fb;
+  --info-line: var(--info-line);
+  --purple: var(--purple);
+  --purple-soft: var(--purple-soft);
+  --purple-line: var(--purple-line);
+
+  --pos-atk: #cf3f36;
+  --pos-mag: var(--purple);
+  --pos-def: #2f6fd0;
+  --pos-sup: #1f9d57;
+  --pos-all: #b8862a;
+  --pos-none: #b6b0ae;
+
+  --paper: linear-gradient(180deg, #ffffff 0%, #fdfbfa 100%);
+  --edge: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  --shadow-sm: 0 1px 2px rgba(58, 38, 34, 0.05), var(--edge);
+  --shadow-lift: 0 12px 28px -14px rgba(58, 38, 34, 0.22), 0 3px 8px -3px rgba(58, 38, 34, 0.08), var(--edge);
+  --shadow-md: 0 28px 68px -24px rgba(44, 28, 25, 0.3), 0 8px 20px -10px rgba(44, 28, 25, 0.12), var(--edge);
+  --bg-glow: radial-gradient(1200px 560px at 60% -260px, #ffffff 0%, rgba(255, 255, 255, 0) 72%);
+
+  --glass: linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(253, 251, 250, 0.9) 100%);
+  --glass-flat: rgba(255, 255, 255, 0.92);
+  --scrim: rgba(38, 24, 22, 0.34);
+  --scrim-strong: rgba(38, 24, 22, 0.42);
+
+  --highlight: #fdf7f8;
+  --fail-cell: #f4bfba;
+
+  --btn-bg: linear-gradient(180deg, #33282a 0%, #1f1817 100%);
+  --btn-bg-hover: linear-gradient(180deg, #403335 0%, #2a2122 100%);
+  --btn-border: #150f0f;
+  --btn-fg: #ffffff;
+  --btn-shadow: 0 1px 2px rgba(31, 24, 23, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  --btn-shadow-hover: 0 6px 16px -8px rgba(31, 24, 23, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+
+  --display-grad: linear-gradient(135deg, #2b1f21 0%, #4a3a36 45%, #1c1516 100%);
+
+  --scroll-thumb: #ded2cf;
+  --scroll-thumb-hover: #c8b8b4;
+
+  --bg-2: var(--surface);
+  --bg-3: var(--surface-2);
+  --text-dim: var(--text-2);
+}
+
+/* ====== 야청 夜靑 — 흑연빛 화면 + 옅은 얼음빛 (어두운 테마) ====== */
+:root[data-theme='yacheong'] {
+  color-scheme: dark;
+
+  --bg: #15171a;
+  --surface: #1c1f23;
+  --surface-2: #23272c;
+  --surface-3: #2b3036;
+  --border: #2b2f35;
+  --border-2: #3a3f47;
+  --text: #e9ecef;
+  --text-2: #a8afb8;
+  --text-3: #8b939d;
+  --ink: #e9ecef;
+
+  --accent: #8fbccd;
+  --accent-strong: #b0d5e3;
+  --accent-soft: #23303a;
+  --accent-dim: #3d5a68;
+  --accent-grad: linear-gradient(135deg, #b6dcea 0%, #8fbccd 45%, #d3ecf5 72%, #5f8b9c 100%);
+  --accent-line: linear-gradient(90deg, rgba(143, 188, 205, 0) 0%, rgba(143, 188, 205, 0.4) 50%, rgba(143, 188, 205, 0) 100%);
+  --accent-wash: linear-gradient(90deg, rgba(35, 48, 58, 0.95) 0%, rgba(30, 40, 48, 0.7) 100%);
+
+  --danger: #f09a92;
+  --danger-soft: #3a2422;
+  --danger-line: #59332f;
+  --ok: #7ed3a4;
+  --ok-soft: #1b3328;
+  --ok-line: #2b4d3a;
+  --info: #93bcf3;
+  --info-soft: #1e2c40;
+  --info-line: #2e4360;
+  --purple: #c4a7ec;
+  --purple-soft: #2c2540;
+  --purple-line: #423868;
+
+  --pos-atk: #f0837a;
+  --pos-mag: #b997f0;
+  --pos-def: #77aef2;
+  --pos-sup: #6fd3a0;
+  --pos-all: #e0bd6a;
+  --pos-none: #6b727b;
+
+  --paper: linear-gradient(180deg, #1f2328 0%, #1b1e22 100%);
+  --edge: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4), var(--edge);
+  --shadow-lift: 0 12px 28px -14px rgba(0, 0, 0, 0.7), 0 3px 8px -3px rgba(0, 0, 0, 0.5), var(--edge);
+  --shadow-md: 0 28px 68px -24px rgba(0, 0, 0, 0.85), 0 8px 20px -10px rgba(0, 0, 0, 0.6), var(--edge);
+  --bg-glow: radial-gradient(1200px 560px at 60% -260px, rgba(143, 188, 205, 0.07) 0%, rgba(143, 188, 205, 0) 72%);
+
+  --glass: linear-gradient(180deg, rgba(28, 31, 35, 0.94) 0%, rgba(24, 27, 30, 0.9) 100%);
+  --glass-flat: rgba(24, 27, 30, 0.93);
+  --scrim: rgba(0, 0, 0, 0.58);
+  --scrim-strong: rgba(0, 0, 0, 0.66);
+
+  --highlight: #1f272c;
+  --fail-cell: #55302c;
+
+  --btn-bg: linear-gradient(180deg, #eef1f4 0%, #dfe4e9 100%);
+  --btn-bg-hover: linear-gradient(180deg, #ffffff 0%, #e8edf1 100%);
+  --btn-border: #cbd2d9;
+  --btn-fg: #15171a;
+  --btn-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  --btn-shadow-hover: 0 6px 16px -8px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+
+  --display-grad: linear-gradient(135deg, #ffffff 0%, #c8d4da 45%, #eef3f6 100%);
+
+  --scroll-thumb: #3a3f47;
+  --scroll-thumb-hover: #4c525b;
+
+  --bg-2: var(--surface);
+  --bg-3: var(--surface-2);
+  --text-dim: var(--text-2);
+}
+
+/* 시스템이 어두운 모드면 야청을 기본으로 — 사용자가 직접 고른 테마가 있으면 그게 이긴다 */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='jadan']) {
+    color-scheme: dark;
+  
+    --bg: #15171a;
+    --surface: #1c1f23;
+    --surface-2: #23272c;
+    --surface-3: #2b3036;
+    --border: #2b2f35;
+    --border-2: #3a3f47;
+    --text: #e9ecef;
+    --text-2: #a8afb8;
+    --text-3: #8b939d;
+    --ink: #e9ecef;
+  
+    --accent: #8fbccd;
+    --accent-strong: #b0d5e3;
+    --accent-soft: #23303a;
+    --accent-dim: #3d5a68;
+    --accent-grad: linear-gradient(135deg, #b6dcea 0%, #8fbccd 45%, #d3ecf5 72%, #5f8b9c 100%);
+    --accent-line: linear-gradient(90deg, rgba(143, 188, 205, 0) 0%, rgba(143, 188, 205, 0.4) 50%, rgba(143, 188, 205, 0) 100%);
+    --accent-wash: linear-gradient(90deg, rgba(35, 48, 58, 0.95) 0%, rgba(30, 40, 48, 0.7) 100%);
+  
+    --danger: #f09a92;
+    --danger-soft: #3a2422;
+    --danger-line: #59332f;
+    --ok: #7ed3a4;
+    --ok-soft: #1b3328;
+    --ok-line: #2b4d3a;
+    --info: #93bcf3;
+    --info-soft: #1e2c40;
+    --info-line: #2e4360;
+    --purple: #c4a7ec;
+    --purple-soft: #2c2540;
+    --purple-line: #423868;
+  
+    --pos-atk: #f0837a;
+    --pos-mag: #b997f0;
+    --pos-def: #77aef2;
+    --pos-sup: #6fd3a0;
+    --pos-all: #e0bd6a;
+    --pos-none: #6b727b;
+  
+    --paper: linear-gradient(180deg, #1f2328 0%, #1b1e22 100%);
+    --edge: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4), var(--edge);
+    --shadow-lift: 0 12px 28px -14px rgba(0, 0, 0, 0.7), 0 3px 8px -3px rgba(0, 0, 0, 0.5), var(--edge);
+    --shadow-md: 0 28px 68px -24px rgba(0, 0, 0, 0.85), 0 8px 20px -10px rgba(0, 0, 0, 0.6), var(--edge);
+    --bg-glow: radial-gradient(1200px 560px at 60% -260px, rgba(143, 188, 205, 0.07) 0%, rgba(143, 188, 205, 0) 72%);
+  
+    --glass: linear-gradient(180deg, rgba(28, 31, 35, 0.94) 0%, rgba(24, 27, 30, 0.9) 100%);
+    --glass-flat: rgba(24, 27, 30, 0.93);
+    --scrim: rgba(0, 0, 0, 0.58);
+    --scrim-strong: rgba(0, 0, 0, 0.66);
+  
+    --highlight: #1f272c;
+    --fail-cell: #55302c;
+  
+    --btn-bg: linear-gradient(180deg, #eef1f4 0%, #dfe4e9 100%);
+    --btn-bg-hover: linear-gradient(180deg, #ffffff 0%, #e8edf1 100%);
+    --btn-border: #cbd2d9;
+    --btn-fg: #15171a;
+    --btn-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    --btn-shadow-hover: 0 6px 16px -8px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  
+    --display-grad: linear-gradient(135deg, #ffffff 0%, #c8d4da 45%, #eef3f6 100%);
+  
+    --scroll-thumb: #3a3f47;
+    --scroll-thumb-hover: #4c525b;
+  
+    --bg-2: var(--surface);
+    --bg-3: var(--surface-2);
+    --text-dim: var(--text-2);
+    }
 }
 
 * { box-sizing: border-box; }
@@ -95,7 +273,7 @@ html, body {
 body {
   background:
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.032'/%3E%3C/svg%3E"),
-    radial-gradient(1200px 560px at 60% -260px, #ffffff 0%, rgba(255, 255, 255, 0) 72%),
+    var(--bg-glow),
     var(--bg);
   background-attachment: fixed;
   min-height: 100vh;
@@ -109,16 +287,16 @@ body {
 input, textarea { caret-color: var(--accent); }
 
 /* 스크롤바도 화면의 일부 — 기본 회색 막대를 가늘고 옅게 */
-* { scrollbar-width: thin; scrollbar-color: #d8d6cf transparent; }
+* { scrollbar-width: thin; scrollbar-color: var(--scroll-thumb) transparent; }
 *::-webkit-scrollbar { width: 10px; height: 10px; }
 *::-webkit-scrollbar-track { background: transparent; }
 *::-webkit-scrollbar-thumb {
-  background: #dcdad3;
+  background: var(--scroll-thumb);
   border-radius: 999px;
   border: 3px solid transparent;
   background-clip: content-box;
 }
-*::-webkit-scrollbar-thumb:hover { background: #c4c1b8; background-clip: content-box; }
+*::-webkit-scrollbar-thumb:hover { background: var(--scroll-thumb-hover); background-clip: content-box; }
 
 #root { min-height: 100vh; display: flex; flex-direction: column; }
 
@@ -180,17 +358,17 @@ button:hover { background: var(--surface-2); border-color: var(--border-2); }
 /* 눌림은 즉각 반응해야 하므로 되돌아올 때만 부드럽게 */
 button:active { transform: translateY(1px); transition-duration: 0s; }
 button.primary {
-  background: linear-gradient(180deg, #2a2e36 0%, var(--ink) 100%);
-  border-color: #0e1013;
-  color: #fff;
+  background: var(--btn-bg);
+  border-color: var(--btn-border);
+  color: var(--btn-fg);
   font-weight: 600;
-  box-shadow: 0 1px 2px rgba(22, 24, 28, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  box-shadow: var(--btn-shadow);
 }
 button.primary:hover {
-  background: linear-gradient(180deg, #363b45 0%, #24272e 100%);
-  box-shadow: 0 6px 16px -8px rgba(22, 24, 28, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  background: var(--btn-bg-hover);
+  box-shadow: var(--btn-shadow-hover);
 }
-button.danger { color: var(--danger); border-color: #ecccc9; background: #fff; }
+button.danger { color: var(--danger); border-color: var(--danger-line); background: var(--surface); }
 button.danger:hover { background: var(--danger-soft); }
 button.small { padding: 4px 11px; font-size: 0.85rem; border-radius: 8px; }
 button:disabled { opacity: 0.4; cursor: default; transform: none; }
@@ -221,7 +399,7 @@ textarea { resize: vertical; min-height: 70px; }
   width: var(--side-w);
   z-index: 50;
   flex-direction: column;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(252, 252, 250, 0.9) 100%);
+  background: var(--glass);
   backdrop-filter: saturate(1.5) blur(18px);
   border-right: 1px solid var(--border);
   padding: 14px 12px 12px;
@@ -261,7 +439,7 @@ textarea { resize: vertical; min-height: 70px; }
   position: absolute;
   left: 12px; right: 12px; bottom: 6px;
   height: 1px;
-  background: var(--gold-line);
+  background: var(--accent-line);
 }
 html[data-side='rail'] .side-brand::after { left: 14px; right: 14px; }
 .side-brand:hover { background: none; }
@@ -291,9 +469,9 @@ html[data-side='rail'] .side-brand::after { left: 14px; right: 14px; }
   position: absolute;
   left: 0; right: 0; top: 0;
   border-radius: 11px;
-  background: linear-gradient(90deg, rgba(247, 241, 227, 0.95) 0%, rgba(250, 246, 237, 0.75) 100%);
-  border: 1px solid rgba(214, 189, 138, 0.7);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  background: var(--accent-wash);
+  border: 1px solid var(--accent-dim);
+  box-shadow: var(--edge);
   overflow: hidden;
   /* 높이는 실측값을 그대로 쓰고 transform만 애니메이션한다.
      height를 전환 대상에 넣으면 매 프레임 레이아웃이 다시 계산되고,
@@ -308,7 +486,7 @@ html[data-side='rail'] .side-brand::after { left: 14px; right: 14px; }
   position: absolute;
   left: 0; top: 0; bottom: 0;
   width: 3px;
-  background: var(--gold-grad);
+  background: var(--accent-grad);
 }
 
 .side-group {
@@ -356,6 +534,9 @@ html[data-side='rail'] .side-brand::after { left: 14px; right: 14px; }
 /* 접기/펼치기 — 화살표가 방향에 맞춰 돈다 */
 .side-toggle .ic { transition: transform var(--dur-2) var(--ease-slide), color var(--dur-1) var(--ease); }
 html[data-side='rail'] .side-toggle .ic { transform: rotate(180deg); }
+/* 테마 — 반쪽 원이 뒤집히며 밝음/어두움을 나타낸다 */
+.side-theme .ic { transition: transform var(--dur-3) var(--ease-slide), color var(--dur-1) var(--ease); }
+html[data-theme='yacheong'] .side-theme .ic { transform: rotate(180deg); }
 
 /* ==== 모바일 상단 앱바 ==== */
 .mobile-appbar {
@@ -364,7 +545,7 @@ html[data-side='rail'] .side-toggle .ic { transform: rotate(180deg); }
   justify-content: center;
   padding: 13px 16px calc(13px + env(safe-area-inset-top));
   padding-top: max(13px, env(safe-area-inset-top));
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--glass-flat);
   backdrop-filter: saturate(1.4) blur(14px);
   border-bottom: 1px solid var(--border);
   position: sticky;
@@ -384,7 +565,7 @@ html[data-side='rail'] .side-toggle .ic { transform: rotate(180deg); }
   display: none;
   position: fixed;
   left: 0; right: 0; bottom: 0;
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--glass-flat);
   backdrop-filter: saturate(1.4) blur(16px);
   border-top: 1px solid var(--border);
   padding: 7px 4px calc(7px + env(safe-area-inset-bottom));
@@ -431,7 +612,7 @@ html[data-side='rail'] .side-toggle .ic { transform: rotate(180deg); }
 .sheet-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(22, 24, 28, 0.34);
+  background: var(--scrim);
   backdrop-filter: blur(3px);
   z-index: 70;
   animation: fade var(--dur-2) var(--ease);
@@ -447,6 +628,8 @@ html[data-side='rail'] .side-toggle .ic { transform: rotate(180deg); }
   animation: slideup var(--dur-3) var(--ease);
 }
 .sheet-sep { border-top: 1px solid var(--border); margin: 8px 0; }
+.sheet-item b { font-weight: 700; margin-left: 2px; }
+.sheet-hint { margin-left: auto; font-style: normal; color: var(--text-3); font-size: 0.8rem; font-weight: 500; }
 .sheet-handle {
   width: 40px; height: 4px; border-radius: 3px;
   background: var(--border-2);
@@ -531,7 +714,7 @@ h2 { font-size: 1.18rem; letter-spacing: -0.028em; margin: 28px 0 10px; font-wei
 .pos-방어형 { background: var(--pos-def); }
 .pos-지원형 { background: var(--pos-sup); }
 .pos-만능형 { background: var(--pos-all); }
-.pos-none { background: #b6bbc4; }
+.pos-none { background: var(--pos-none); }
 
 /* ---- 배지 ---- */
 .badge {
@@ -542,19 +725,20 @@ h2 { font-size: 1.18rem; letter-spacing: -0.028em; margin: 28px 0 10px; font-wei
   font-weight: 700;
   border: 1px solid transparent;
 }
-.badge.검증됨 { color: var(--ok); background: var(--ok-soft); border-color: #c8e8d5; }
-.badge.커뮤니티 { color: var(--info); background: var(--info-soft); border-color: #cfe0f7; }
+.badge.검증됨 { color: var(--ok); background: var(--ok-soft); border-color: var(--ok-line); }
+.badge.커뮤니티 { color: var(--info); background: var(--info-soft); border-color: var(--info-line); }
 .badge.추측 { color: var(--text-2); background: var(--surface-2); border-color: var(--border-2); }
-.badge.win { color: var(--ok); background: var(--ok-soft); border-color: #c8e8d5; }
-.badge.lose { color: var(--danger); background: var(--danger-soft); border-color: #f0cfcc; }
-.badge.role-길드마스터 { color: var(--accent-strong); background: var(--accent-soft); border-color: #e6d6a8; }
-.badge.role-부길드마스터 { color: #7c4dcf; background: #f1ebfb; border-color: #ddd0f5; }
-.badge.role-정예멤버 { color: var(--info); background: var(--info-soft); border-color: #cfe0f7; }
-.badge.alt { color: var(--muted); background: var(--surface-2, #f0f0f3); border-color: var(--border); }
-.badge.tier { color: var(--accent-strong); background: var(--accent-soft); border-color: #e6d6a8; }
+.badge.win { color: var(--ok); background: var(--ok-soft); border-color: var(--ok-line); }
+.badge.lose { color: var(--danger); background: var(--danger-soft); border-color: var(--danger-line); }
+.badge.role-길드마스터 { color: var(--accent-strong); background: var(--accent-soft); border-color: var(--accent-dim); }
+.badge.role-부길드마스터 { color: var(--purple); background: var(--purple-soft); border-color: var(--purple-line); }
+.badge.role-정예멤버 { color: var(--info); background: var(--info-soft); border-color: var(--info-line); }
+.badge.alt { color: var(--muted); background: var(--surface-2); border-color: var(--border); }
+.badge.tier { color: var(--accent-strong); background: var(--accent-soft); border-color: var(--accent-dim); }
 
 /* 인쇄·이미지 저장 공용 표 스타일 — .print-root는 화면에선 숨김(인쇄 시·캡처 복제본에서만 보임) */
-.print-root { display: none; color: #000; }
+/* 인쇄·이미지 저장은 테마와 무관하게 항상 흰 바탕·검은 글자 */
+.print-root { display: none; color: #000; background: #fff; }
 .print-root .print-head { display: flex; flex-wrap: wrap; gap: 2px 10px; justify-content: space-between; align-items: baseline; border-bottom: 2px solid #000; padding-bottom: 6px; margin-bottom: 12px; }
 /* 제목·요약은 글자가 잘리지 않게 줄바꿈 허용(한글은 단어 단위로) */
 .print-root .print-head h2 { margin: 0; font-size: 18px; color: #000; flex: 1 1 auto; min-width: 0; line-height: 1.35; word-break: keep-all; overflow-wrap: break-word; }
@@ -670,7 +854,7 @@ dialog {
   width: calc(100vw - 40px);
   box-shadow: var(--shadow-md);
 }
-dialog::backdrop { background: rgba(20, 22, 30, 0.4); }
+dialog::backdrop { background: var(--scrim-strong); }
 @media (max-width: 767px) {
   dialog { width: calc(100vw - 24px); padding: 18px; }
 }
@@ -681,7 +865,7 @@ dialog::backdrop { background: rgba(20, 22, 30, 0.4); }
 /* ---- 통계: 커트라인 미달 행 강조 ---- */
 tbody tr.row-fail td { background: var(--danger-soft); }
 /* 미달자 이름칸 — 행 배경보다 한 단계 진한 적당한 빨강 */
-tbody tr.row-fail td.cell-fail, tbody td.cell-fail { background: #f4bfba; }
+tbody tr.row-fail td.cell-fail, tbody td.cell-fail { background: var(--fail-cell); }
 
 /* ---- 통계 전주 대비 등락 ---- */
 .delta { font-size: 0.8rem; font-weight: 700; white-space: nowrap; color: var(--text-2); }
@@ -764,14 +948,14 @@ tbody tr.row-fail td.cell-fail, tbody td.cell-fail { background: #f4bfba; }
   font-style: normal;
   white-space: nowrap;
 }
-.tag-ctr { color: var(--accent-strong); background: var(--accent-soft); border-color: #e6d6a8; }
-.tag-rate { color: var(--accent-strong); background: #fff; border-color: #e6d6a8; }
-.tag-atk { color: var(--danger); background: var(--danger-soft); border-color: #f0cfcc; }
-.tag-def { color: var(--info); background: var(--info-soft); border-color: #cfe0f7; }
-.tag.conf-검증됨 { color: var(--ok); background: var(--ok-soft); border-color: #c8e8d5; }
-.tag.conf-커뮤니티 { color: var(--info); background: var(--info-soft); border-color: #cfe0f7; }
+.tag-ctr { color: var(--accent-strong); background: var(--accent-soft); border-color: var(--accent-dim); }
+.tag-rate { color: var(--accent-strong); background: var(--surface); border-color: var(--accent-dim); }
+.tag-atk { color: var(--danger); background: var(--danger-soft); border-color: var(--danger-line); }
+.tag-def { color: var(--info); background: var(--info-soft); border-color: var(--info-line); }
+.tag.conf-검증됨 { color: var(--ok); background: var(--ok-soft); border-color: var(--ok-line); }
+.tag.conf-커뮤니티 { color: var(--info); background: var(--info-soft); border-color: var(--info-line); }
 .tag.conf-추측 { color: var(--text-2); }
-.tag.grade-전설 { color: var(--accent-strong); background: var(--accent-soft); border-color: #e6d6a8; }
+.tag.grade-전설 { color: var(--accent-strong); background: var(--accent-soft); border-color: var(--accent-dim); }
 
 .empty {
   border: 1px dashed var(--border-2);
@@ -895,7 +1079,7 @@ button.ghost:hover { background: var(--surface-2); color: var(--text); }
 .cd-row.active {
   border-color: var(--accent-dim);
   box-shadow: inset 3px 0 0 var(--accent);
-  background: #fffdf7;
+  background: var(--highlight);
   transform: none;
 }
 .cd-row.active:hover { transform: translateX(2px); }
@@ -932,7 +1116,7 @@ button.ghost:hover { background: var(--surface-2); color: var(--text); }
   position: absolute;
   left: 0; right: 0; bottom: 0;
   height: 1px;
-  background: var(--gold-line);
+  background: var(--accent-line);
 }
 .cd-title { font-size: 1.42rem; font-weight: 800; letter-spacing: -0.035em; margin: 4px 0 8px; }
 .cd-sub { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -947,7 +1131,7 @@ button.ghost:hover { background: var(--surface-2); color: var(--text); }
   padding: 16px 17px;
 }
 .ccard + .ccard { margin-top: 12px; }
-.ccard.matched { border-color: var(--accent); background: #fffdf8; }
+.ccard.matched { border-color: var(--accent); background: var(--highlight); }
 .ccard-head {
   display: flex;
   justify-content: space-between;
@@ -1138,10 +1322,10 @@ button.ghost:hover { background: var(--surface-2); color: var(--text); }
 
 .ar-row-name { font-weight: 700; }
 
-.tag.kind-공덱 { color: var(--danger); background: var(--danger-soft); border-color: #f0cfcc; }
-.tag.kind-방덱 { color: var(--info); background: var(--info-soft); border-color: #cfe0f7; }
-.tag.kind-마덱 { color: #6b3fa0; background: #f3edfb; border-color: #ddcdf0; }
-.tag.kind-운영 { color: var(--ok); background: var(--ok-soft); border-color: #c8e8d5; }
+.tag.kind-공덱 { color: var(--danger); background: var(--danger-soft); border-color: var(--danger-line); }
+.tag.kind-방덱 { color: var(--info); background: var(--info-soft); border-color: var(--info-line); }
+.tag.kind-마덱 { color: var(--purple); background: var(--purple-soft); border-color: var(--purple-line); }
+.tag.kind-운영 { color: var(--ok); background: var(--ok-soft); border-color: var(--ok-line); }
 
 .ar-heroes { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 9px; margin-top: 14px; }
 .ar-speed {
@@ -1190,7 +1374,7 @@ button.ghost:hover { background: var(--surface-2); color: var(--text); }
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(20, 22, 30, 0.42);
+  background: var(--scrim-strong);
   backdrop-filter: blur(2px);
   z-index: 100;
   display: flex;
@@ -1414,7 +1598,7 @@ button.ghost:hover { background: var(--surface-2); color: var(--text); }
    background-clip이 안 되는 환경에서 제목이 통째로 사라지지 않도록 지원될 때만 적용한다. */
 @supports (-webkit-background-clip: text) or (background-clip: text) {
   .hero-head h1 {
-    background: linear-gradient(135deg, #23262c 0%, #3d3a33 45%, #1a1c20 100%);
+    background: var(--display-grad);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
@@ -1427,7 +1611,7 @@ button.ghost:hover { background: var(--surface-2); color: var(--text); }
   width: 100%;
   height: 1px;
   margin-top: 24px;
-  background: var(--gold-line);
+  background: var(--accent-line);
 }
 @media (max-width: 620px) { .hero-head h1 { font-size: 2.1rem; } }
 
