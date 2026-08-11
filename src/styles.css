@@ -812,6 +812,65 @@ button.ghost:hover { background: var(--surface-2); color: var(--text); }
 }
 .seg-toggle.on { background: var(--accent-soft); border-color: var(--accent-dim); color: var(--accent-strong); }
 
+/* ---- 결투장 ---- */
+
+/* 하위 메뉴 (일반 / 상급 / 실시간) — 페이지 머리에 오는 만큼 기본 seg보다 크게 */
+.seg-lg {
+  display: flex;
+  width: 100%;
+  margin: 0 0 16px;
+  border-radius: 12px;
+}
+.seg-lg button {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 11px 10px;
+  font-size: 0.92rem;
+  white-space: nowrap;
+}
+@media (max-width: 520px) {
+  .seg-lg button { padding: 10px 6px; font-size: 0.84rem; }
+  .seg-lg button .seg-count { display: none; }
+}
+.seg-count {
+  font-style: normal;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-3);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 1px 6px;
+}
+.seg-lg button.on .seg-count { color: var(--accent-strong); background: var(--accent-soft); border-color: var(--accent-dim); }
+
+.ar-row-name { font-weight: 700; }
+
+.tag.kind-공덱 { color: var(--danger); background: var(--danger-soft); border-color: #f0cfcc; }
+.tag.kind-방덱 { color: var(--info); background: var(--info-soft); border-color: #cfe0f7; }
+.tag.kind-마덱 { color: #6b3fa0; background: #f3edfb; border-color: #ddcdf0; }
+.tag.kind-운영 { color: var(--ok); background: var(--ok-soft); border-color: #c8e8d5; }
+
+.ar-heroes { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 9px; margin-top: 14px; }
+.ar-speed {
+  font-style: normal;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--accent-strong);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-dim);
+  border-radius: 999px;
+  padding: 1px 6px;
+}
+.ar-tips { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+.ar-tips ul { margin: 8px 0 0; padding-left: 18px; display: grid; gap: 6px; }
+.ar-tips li { font-size: 0.88rem; color: var(--text-2); line-height: 1.6; }
+.ar-source { margin: 14px 0 0; font-size: 0.8rem; color: var(--text-3); }
+.ar-source a { color: var(--text-2); }
+
 .pick-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));

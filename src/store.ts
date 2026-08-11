@@ -3,9 +3,10 @@
 // 로컬 모드: 워커 미연결 시 각자 브라우저(localStorage)에만 저장(기존 동작).
 
 import { useSyncExternalStore } from 'react'
-import type { CounterDeck, CounterEntry, CounterHeroSlot, Hero, UserData } from './types'
+import type { ArenaEntry, CounterDeck, CounterEntry, CounterHeroSlot, Hero, UserData } from './types'
 import initialHeroes from './data/heroes.json'
 import initialCounters from './data/counters.json'
+import initialArena from './data/arena.json'
 import { WORKER_URL } from './data/config'
 
 const LS_KEY = 'sena-guild-war:v1'
@@ -19,6 +20,8 @@ const EMPTY: UserData = {
   savedDecks: [],
   members: [],
   customGuides: [],
+  arenaEntries: [],
+  hiddenArenaIds: [],
   siegeRounds: [],
   destroyerRounds: [],
 }
@@ -248,6 +251,17 @@ export function getAllCounters(): CounterEntry[] {
 /** 초기 데이터에 포함된 엔트리인지 (사용자 수정본 제외) */
 export function isBuiltinCounter(id: string): boolean {
   return (initialCounters as CounterEntry[]).some((c) => c.id === id)
+}
+
+export function getAllArena(): ArenaEntry[] {
+  const userIds = new Set(state.arenaEntries.map((a) => a.id))
+  const hidden = new Set(state.hiddenArenaIds)
+  const base = (initialArena as ArenaEntry[]).filter((a) => !userIds.has(a.id) && !hidden.has(a.id))
+  return [...state.arenaEntries, ...base]
+}
+
+export function isBuiltinArena(id: string): boolean {
+  return (initialArena as ArenaEntry[]).some((a) => a.id === id)
 }
 
 // ---- 내보내기 / 가져오기 ----

@@ -1,10 +1,11 @@
 import { useMemo } from 'react'
-import { counterHeroNames, getAllCounters, getAllHeroes, useUserData } from '../store'
+import { counterHeroNames, getAllArena, getAllCounters, getAllHeroes, useUserData } from '../store'
 import { navigate } from '../router'
 import { DeckNames } from '../components/HeroSelect'
 
 const LINKS: Array<{ route: string; label: string; desc: string }> = [
   { route: 'counters', label: '카운터덱', desc: '상대 방덱을 뚫는 조합 찾기' },
+  { route: 'arena', label: '결투장', desc: '일반 · 상급 · 실시간 5인 덱' },
   { route: 'heroes', label: '영웅 · 덱', desc: '3인 덱 짜고 저장하기' },
   { route: 'siege', label: '공성전', desc: '요일별 점수·순위' },
   { route: 'destroyer', label: '파괴신', desc: '시즌 딜량·커트라인' },
@@ -20,6 +21,7 @@ export function HomePage() {
 
   const stats: Array<{ n: number; label: string; route: string }> = [
     { n: counters.length, label: '방어덱 공략', route: 'counters' },
+    { n: getAllArena().length, label: '결투장 덱', route: 'arena' },
     { n: heroes.length, label: '영웅', route: 'heroes' },
     { n: userData.siegeRounds.length, label: '공성전 주차', route: 'siege' },
     { n: userData.destroyerRounds.length, label: '파괴신 시즌', route: 'destroyer' },

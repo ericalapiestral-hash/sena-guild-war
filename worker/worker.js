@@ -27,7 +27,8 @@ function rawJson(raw) {
 // UserData의 배열 필드 — 배열이 아닌 값이 들어오면 전 길드원 화면이 깨지므로 거부
 const ARRAY_FIELDS = [
   'customHeroes', 'counters', 'hiddenCounterIds', 'savedDecks',
-  'members', 'customGuides', 'siegeRounds', 'destroyerRounds',
+  'members', 'customGuides', 'arenaEntries', 'hiddenArenaIds',
+  'siegeRounds', 'destroyerRounds',
 ]
 
 // 백업 시각 (isolate 메모리 — 재시작 시 초기화돼도 무해, 몇 번 더 백업될 뿐)

@@ -128,11 +128,29 @@ function docToText(raw) {
 
 const fmtDate = (d = '') => (d.length >= 8 ? `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}` : d)
 
+/** limit 상한이 있어 30건씩 나눠 받는다. */
+async function fetchFeeds(boardId, want) {
+  const out = []
+  let offset = 0
+  let total = null
+  while (out.length < want) {
+    const take = Math.min(30, want - out.length)
+    const q = new URLSearchParams({ offset: String(offset), limit: String(take), order: 'NEW', boardId: String(boardId), buffFilteringYN: 'N' })
+    const j = await api(`/feed?${q}`)
+    total ??= j?.content?.totalCount ?? null
+    const page = j?.content?.feeds ?? []
+    if (!page.length) break
+    out.push(...page)
+    // 서버가 다음 offset을 돌려주면 그걸 쓰고, 아니면 받은 개수만큼 넘긴다
+    const next = j?.content?.offset
+    offset = typeof next === 'number' && next > offset ? next : offset + page.length
+  }
+  return { feeds: out, total }
+}
+
 async function list(boardId, limit = 30) {
-  const q = new URLSearchParams({ offset: '0', limit: String(limit), order: 'NEW', boardId: String(boardId), buffFilteringYN: 'N' })
-  const j = await api(`/feed?${q}`)
-  const feeds = j?.content?.feeds ?? []
-  console.log(`게시판 ${boardId} — 전체 ${j?.content?.totalCount ?? '?'}건 중 최근 ${feeds.length}건\n`)
+  const { feeds, total } = await fetchFeeds(boardId, limit)
+  console.log(`게시판 ${boardId} — 전체 ${total ?? '?'}건 중 최근 ${feeds.length}건\n`)
   for (const item of feeds) {
     const f = item.feed ?? {}
     const { text, images } = contentsToText(f.contents)

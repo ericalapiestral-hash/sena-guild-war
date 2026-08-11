@@ -13,6 +13,8 @@ const PATHS: Record<string, string> = {
   siege: 'M6 21V3M6 4h11l-2.5 4L17 12H6',
   destroyer: 'M12 21a5 5 0 0 0 5-5c0-4-3-5.5-3-9-2 1-3 3-3 5-1-1-1.5-2-1.5-3.2C6.5 11 7 13 7 16a5 5 0 0 0 5 5Z',
   lock: 'M7 10V7.5a5 5 0 0 1 10 0V10M5.5 10h13a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1h-13a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1ZM12 14.5v2.5',
+  // 결투장 — 교차한 검 두 자루
+  arena: 'M4 4h3l10.5 10.5M20 4h-3L6.5 14.5M14.5 15 18 18.5l-2 2-3.5-3.5M9.5 15 6 18.5l2 2 3.5-3.5',
 }
 
 export function Icon({ name, className }: { name: string; className?: string }) {

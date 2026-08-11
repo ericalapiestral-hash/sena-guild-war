@@ -5,6 +5,7 @@ import { ErrorBoundary } from './components/ErrorBoundary'
 import { HomePage } from './pages/Home'
 import { CountersPage } from './pages/Counters'
 import { HeroesPage } from './pages/Heroes'
+import { ARENA_MODES, ArenaPage } from './pages/Arena'
 import { GuidePage } from './pages/Guide'
 import { StatsPage } from './pages/Stats'
 import { MembersPage } from './pages/Members'
@@ -22,6 +23,7 @@ interface MenuItem {
 const MENU: MenuItem[] = [
   { route: 'home', label: '홈', icon: 'home' },
   { route: 'counters', label: '카운터덱', icon: 'target' },
+  { route: 'arena', label: '결투장', icon: 'arena' },
   { route: 'heroes', label: '영웅 · 덱', icon: 'shield' },
   { route: 'guide', label: '가이드', icon: 'book' },
   { route: 'siege', label: '공성전', icon: 'siege' },
@@ -30,11 +32,13 @@ const MENU: MenuItem[] = [
   { route: 'settings', label: '데이터', icon: 'data', admin: true },
 ]
 
-const PRIMARY = ['home', 'counters', 'heroes', 'guide']
-const SECONDARY = ['siege', 'destroyer'] // 모바일 '더보기' 시트에 노출 (전원 열람)
+// 모바일 하단 탭은 5칸(4 + 더보기) — 자주 쓰는 대전 콘텐츠를 앞에 두고 가이드는 '더보기'로
+const PRIMARY = ['home', 'counters', 'arena', 'heroes']
+const SECONDARY = ['guide', 'siege', 'destroyer'] // 모바일 '더보기' 시트에 노출 (전원 열람)
 const ADMIN_ITEMS = MENU.filter((m) => m.admin)
 const fullLabel = (label: string) =>
   ({ 데이터: '데이터 관리', 길드원: '길드원 관리', 공성전: '공성전 통계', 파괴신: '파괴신 통계' } as Record<string, string>)[label] ?? label
+const ROUTES = [...MENU.map((m) => m.route), 'admin']
 
 const Brand = () => (
   <span className="logo"><span className="em">⚔️</span>낭만주의</span>
@@ -115,6 +119,7 @@ export default function App() {
             <>
               {base === 'home' && <HomePage />}
               {base === 'counters' && <CountersPage />}
+              {base === 'arena' && <ArenaPage sub={route.split('/')[1] || 'normal'} />}
               {base === 'heroes' && <HeroesPage />}
               {base === 'guide' && <GuidePage />}
               {base === 'siege' && <StatsPage kind="siege" />}
@@ -122,14 +127,14 @@ export default function App() {
               {base === 'members' && <MembersPage />}
               {base === 'settings' && <SettingsPage />}
               {base === 'admin' && admin && <AdminHome onLogout={doLogout} />}
-              {!['home', 'counters', 'heroes', 'guide', 'siege', 'destroyer', 'members', 'settings', 'admin'].includes(base) && <HomePage />}
+              {!ROUTES.includes(base) && <HomePage />}
             </>
           )}
         </ErrorBoundary>
       </main>
 
       <div className="footer-note">
-        낭만주의 · 세븐나이츠 리버스 길드 사이트 — 길드전 · 공성전 · 파괴신을 한곳에서.
+        낭만주의 · 세븐나이츠 리버스 길드 사이트 — 길드전 · 결투장 · 공성전 · 파괴신을 한곳에서.
       </div>
 
       {/* 모바일 하단 탭바 */}
