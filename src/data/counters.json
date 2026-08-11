@@ -87,6 +87,61 @@
         ],
         "notes": "2인 공격 예시 — 주력 영웅을 아끼면서 처리 가능할 때.",
         "confidence": "커뮤니티"
+      },
+      {
+        "heroes": [
+          "라드그리드",
+          "손오공",
+          "에이스"
+        ],
+        "skillOrder": "에1 오2 오1",
+        "notes": "+유 펫 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "각성 실베스타",
+          "프레이야",
+          "오목"
+        ],
+        "skillOrder": "오1 오2 실2",
+        "notes": "선공. 실베 66, 프레이야 권능 반지 금지 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "각성 실베스타",
+          "각성 스쿨드",
+          "바네사"
+        ],
+        "skillOrder": "바1 스2 실2",
+        "notes": "선공 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "여포",
+          "란드그리드",
+          "칼헤론"
+        ],
+        "skillOrder": "여1 칼1 여2",
+        "notes": "시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "손오공",
+          "겔리두스",
+          "엘리시아"
+        ],
+        "skillOrder": "오2 겔2 오1",
+        "notes": "시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
       }
     ],
     "updatedAt": "2026-07-14"
@@ -381,6 +436,94 @@
         ],
         "notes": "즉사(죽음)덱. 특히 에이스 변형에 강함. 로지로 생존 확보 후 즉사로 마무리.",
         "confidence": "커뮤니티"
+      },
+      {
+        "heroes": [
+          "여포",
+          "란드그리드",
+          "아멜리아"
+        ],
+        "skillOrder": "아2 여1 란2",
+        "notes": "선공 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "여포",
+          "파이",
+          "란드그리드"
+        ],
+        "skillOrder": "파2 여1 여2",
+        "notes": "선공. 파이 4초월 이상, 란드그리드 효과저항 X 극딜 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "여포",
+          "브란즈&브란셀",
+          "아멜리아"
+        ],
+        "skillOrder": "아2 브2 여1",
+        "notes": "선공 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "초선",
+          "오목",
+          "레긴레이프"
+        ],
+        "skillOrder": "초2 오2 오1",
+        "notes": "시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "미스트",
+          "아킬라",
+          "로지"
+        ],
+        "skillOrder": "미2 미1 아2",
+        "notes": "시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "플라튼",
+          "엘리스",
+          "리나"
+        ],
+        "skillOrder": "리1 플2 리2",
+        "notes": "속공 빼기 — 선공이 되면 리나 1스를 못 써서 쿨이 안 돌아감 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "파이",
+          "라이언",
+          "초선"
+        ],
+        "skillOrder": "초2 파2 라2",
+        "notes": "라이언 불사 필수, 파이 4초월 이상 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "팔라누스",
+          "룩",
+          "초선"
+        ],
+        "skillOrder": "초2 팔1 룩1",
+        "notes": "시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
       }
     ],
     "updatedAt": "2026-07-14"
@@ -569,5 +712,1808 @@
       }
     ],
     "updatedAt": "2026-08-05"
+  },
+  {
+    "id": "lounge-프레오",
+    "defense": [
+      "프레이야",
+      "레긴레이프",
+      "오목"
+    ],
+    "defenseNotes": "시즌7 길드전에서 실제로 만난 방어덱 — 공식 라운지 '공략&TIP' 성공 사례 정리글 기준",
+    "counters": [
+      {
+        "heroes": [
+          "팔라누스",
+          "각성 루디",
+          "엘리스"
+        ],
+        "skillOrder": "루2 엘1 엘2",
+        "notes": "루디 막기 100% 필수, 나머지도 100에 가깝게. 파쇄 있어도 6부 3개면 확킬 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "카일",
+          "란드그리드",
+          "칼헤론"
+        ],
+        "skillOrder": "칼1 카1 카2",
+        "notes": "시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "카일",
+          "브란즈&브란셀",
+          "칼헤론"
+        ],
+        "skillOrder": "칼1 카2 브1",
+        "notes": "카일이 방어력 1순위가 아니어야 함. 속공 칼헤론 > 브브 필수, 브브 6불사 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "라드그리드",
+          "플라튼",
+          "팔라누스"
+        ],
+        "skillOrder": "라1 플2 팔2",
+        "notes": "막기 최대한 + 루 장착. 확승 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "여포",
+          "브란즈&브란셀",
+          "란드그리드"
+        ],
+        "skillOrder": "여1 여2 브2",
+        "notes": "란드그리드 방어력 > 브브·여포. 추천 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "여포",
+          "브란즈&브란셀",
+          "카구라"
+        ],
+        "skillOrder": "여1 브1 여2",
+        "notes": "시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "여포",
+          "브란즈&브란셀",
+          "아멜리아"
+        ],
+        "skillOrder": "여1 브1 여2",
+        "notes": "시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "여포",
+          "란드그리드",
+          "파이"
+        ],
+        "skillOrder": "여1 파2 여2",
+        "notes": "시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "라드그리드",
+          "손오공",
+          "엘리시아"
+        ],
+        "skillOrder": "오2 엘1 엘2",
+        "notes": "확킬 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      }
+    ],
+    "source": "https://game.naver.com/lounge/sena_rebirth/board/13/detail/7756901",
+    "updatedAt": "2026-06-10"
+  },
+  {
+    "id": "lounge-프린오",
+    "defense": [
+      "프레이야",
+      "린",
+      "오목"
+    ],
+    "defenseNotes": "시즌7 길드전에서 실제로 만난 방어덱 — 공식 라운지 '공략&TIP' 성공 사례 정리글 기준",
+    "counters": [
+      {
+        "heroes": [
+          "라드그리드",
+          "플라튼",
+          "팔라누스"
+        ],
+        "skillOrder": "라1 플2 팔2",
+        "notes": "막기 최대한, +루. 확킬 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      }
+    ],
+    "source": "https://game.naver.com/lounge/sena_rebirth/board/13/detail/7756901",
+    "updatedAt": "2026-06-10"
+  },
+  {
+    "id": "lounge-프바오",
+    "defense": [
+      "프레이야",
+      "바네사",
+      "오목"
+    ],
+    "defenseNotes": "시즌7 길드전에서 실제로 만난 방어덱 — 공식 라운지 '공략&TIP' 성공 사례 정리글 기준",
+    "counters": [
+      {
+        "heroes": [
+          "라드그리드",
+          "플라튼",
+          "팔라누스"
+        ],
+        "skillOrder": "라1 플2 팔2",
+        "notes": "막기 최대한, +루. 확킬 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "손오공",
+          "겔리두스",
+          "엘리시아"
+        ],
+        "skillOrder": "오2 겔2 오1",
+        "notes": "확킬 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "트루드",
+          "겔리두스",
+          "엘리시아"
+        ],
+        "skillOrder": "겔2 트2",
+        "notes": "시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      }
+    ],
+    "source": "https://game.naver.com/lounge/sena_rebirth/board/13/detail/7756901",
+    "updatedAt": "2026-06-10"
+  },
+  {
+    "id": "lounge-실린오",
+    "defense": [
+      "각성 실베스타",
+      "린",
+      "오목"
+    ],
+    "defenseNotes": "시즌7 길드전에서 실제로 만난 방어덱 — 공식 라운지 '공략&TIP' 성공 사례 정리글 기준",
+    "counters": [
+      {
+        "heroes": [
+          "라드그리드",
+          "플라튼",
+          "팔라누스"
+        ],
+        "skillOrder": "라1 플2 팔2",
+        "notes": "막기 최대한, +루 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "여포",
+          "브란즈&브란셀",
+          "칼헤론"
+        ],
+        "skillOrder": "여1 브1 여2",
+        "notes": "선공 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      }
+    ],
+    "source": "https://game.naver.com/lounge/sena_rebirth/board/13/detail/7756901",
+    "updatedAt": "2026-06-10"
+  },
+  {
+    "id": "lounge-실레린",
+    "defense": [
+      "각성 실베스타",
+      "레긴레이프",
+      "린"
+    ],
+    "defenseNotes": "시즌7 길드전에서 실제로 만난 방어덱 — 공식 라운지 '공략&TIP' 성공 사례 정리글 기준",
+    "counters": [
+      {
+        "heroes": [
+          "손오공",
+          "각성 루디",
+          "엘리스"
+        ],
+        "skillOrder": "루2 오2 오1",
+        "notes": "시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      }
+    ],
+    "source": "https://game.naver.com/lounge/sena_rebirth/board/13/detail/7756901",
+    "updatedAt": "2026-06-10"
+  },
+  {
+    "id": "lounge-실레키",
+    "defense": [
+      "각성 실베스타",
+      "레긴레이프",
+      "키리엘"
+    ],
+    "defenseNotes": "시즌7 길드전에서 실제로 만난 방어덱 — 공식 라운지 '공략&TIP' 성공 사례 정리글 기준",
+    "counters": [
+      {
+        "heroes": [
+          "밀리아",
+          "프레이야",
+          "각성 스쿨드"
+        ],
+        "skillOrder": "스2 프2 프1",
+        "notes": "선공 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      }
+    ],
+    "source": "https://game.naver.com/lounge/sena_rebirth/board/13/detail/7756901",
+    "updatedAt": "2026-06-10"
+  },
+  {
+    "id": "lounge-실프레",
+    "defense": [
+      "각성 실베스타",
+      "프레이야",
+      "레긴레이프"
+    ],
+    "defenseNotes": "시즌7 길드전에서 실제로 만난 방어덱 — 공식 라운지 '공략&TIP' 성공 사례 정리글 기준",
+    "counters": [
+      {
+        "heroes": [
+          "라드그리드",
+          "플라튼",
+          "팔라누스"
+        ],
+        "skillOrder": "라1 플2 팔2",
+        "notes": "시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "밀리아",
+          "프레이야",
+          "각성 스쿨드"
+        ],
+        "skillOrder": "스2 프2 프1",
+        "notes": "선공 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      }
+    ],
+    "source": "https://game.naver.com/lounge/sena_rebirth/board/13/detail/7756901",
+    "updatedAt": "2026-06-10"
+  },
+  {
+    "id": "lounge-실프오",
+    "defense": [
+      "각성 실베스타",
+      "프레이야",
+      "오목"
+    ],
+    "defenseNotes": "시즌7 길드전에서 실제로 만난 방어덱 — 공식 라운지 '공략&TIP' 성공 사례 정리글 기준",
+    "counters": [
+      {
+        "heroes": [
+          "라드그리드",
+          "플라튼",
+          "팔라누스"
+        ],
+        "skillOrder": "라1 플2 팔2",
+        "notes": "시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      }
+    ],
+    "source": "https://game.naver.com/lounge/sena_rebirth/board/13/detail/7756901",
+    "updatedAt": "2026-06-10"
+  },
+  {
+    "id": "lounge-실레오",
+    "defense": [
+      "각성 실베스타",
+      "레긴레이프",
+      "오목"
+    ],
+    "defenseNotes": "시즌7 길드전에서 실제로 만난 방어덱 — 공식 라운지 '공략&TIP' 성공 사례 정리글 기준",
+    "counters": [
+      {
+        "heroes": [
+          "라드그리드",
+          "플라튼",
+          "팔라누스"
+        ],
+        "skillOrder": "라1 플2 팔2",
+        "notes": "시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      }
+    ],
+    "source": "https://game.naver.com/lounge/sena_rebirth/board/13/detail/7756901",
+    "updatedAt": "2026-06-10"
+  },
+  {
+    "id": "lounge-초린프",
+    "defense": [
+      "초선",
+      "린",
+      "프레이야"
+    ],
+    "defenseNotes": "시즌7 길드전에서 실제로 만난 방어덱 — 공식 라운지 '공략&TIP' 성공 사례 정리글 기준",
+    "counters": [
+      {
+        "heroes": [
+          "여포",
+          "브란즈&브란셀",
+          "란드그리드"
+        ],
+        "skillOrder": "여1 브1 여2",
+        "notes": "선공 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "카일",
+          "란드그리드",
+          "칼헤론"
+        ],
+        "skillOrder": "칼1 카1 카2",
+        "notes": "선공 + 리첼 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "밀리아",
+          "린",
+          "각성 스쿨드"
+        ],
+        "skillOrder": "린2 스2 밀2",
+        "notes": "선공, 린 권능 반지 금지 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "밀리아",
+          "각성 실베스타",
+          "린"
+        ],
+        "skillOrder": "린2 실2 실1",
+        "notes": "선공 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "각성 실베스타",
+          "프레이야",
+          "레긴레이프"
+        ],
+        "skillOrder": "프2 실2 실1",
+        "notes": "선공 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "라드그리드",
+          "플라튼",
+          "팔라누스"
+        ],
+        "skillOrder": "플2 팔2 팔1",
+        "notes": "시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "라드그리드",
+          "손오공",
+          "엘리시아"
+        ],
+        "skillOrder": "오2 엘1 오1",
+        "notes": "시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      }
+    ],
+    "source": "https://game.naver.com/lounge/sena_rebirth/board/13/detail/7756901",
+    "updatedAt": "2026-06-10"
+  },
+  {
+    "id": "lounge-초린오",
+    "defense": [
+      "초선",
+      "린",
+      "오목"
+    ],
+    "defenseNotes": "시즌7 길드전에서 실제로 만난 방어덱 — 공식 라운지 '공략&TIP' 성공 사례 정리글 기준",
+    "counters": [
+      {
+        "heroes": [
+          "카일",
+          "란드그리드",
+          "칼헤론"
+        ],
+        "skillOrder": "칼1 카1 카2",
+        "notes": "선공 + 리첼 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "밀리아",
+          "린",
+          "각성 스쿨드"
+        ],
+        "skillOrder": "린2 스2 밀2",
+        "notes": "선공 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "라드그리드",
+          "플라튼",
+          "팔라누스"
+        ],
+        "skillOrder": "플2 팔2 팔1",
+        "notes": "시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "라드그리드",
+          "손오공",
+          "엘리시아"
+        ],
+        "skillOrder": "엘1 라2 오2",
+        "notes": "혼란 풀고 라드 2스로 상대 면역 해제 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "프레이야",
+          "바네사",
+          "린"
+        ],
+        "skillOrder": "린2 프2 프1",
+        "notes": "선공. 펫 요랑 추천 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      }
+    ],
+    "source": "https://game.naver.com/lounge/sena_rebirth/board/13/detail/7756901",
+    "updatedAt": "2026-06-10"
+  },
+  {
+    "id": "lounge-초린레",
+    "defense": [
+      "초선",
+      "린",
+      "레긴레이프"
+    ],
+    "defenseNotes": "시즌7 길드전에서 실제로 만난 방어덱 — 공식 라운지 '공략&TIP' 성공 사례 정리글 기준",
+    "counters": [
+      {
+        "heroes": [
+          "프레이야",
+          "바네사",
+          "성진우"
+        ],
+        "skillOrder": "바1 프2 성1",
+        "notes": "선공 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "카일",
+          "란드그리드",
+          "칼헤론"
+        ],
+        "skillOrder": "칼1 카1 카2",
+        "notes": "시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "여포",
+          "브란즈&브란셀",
+          "란드그리드"
+        ],
+        "skillOrder": "여1 여2 브2",
+        "notes": "선공 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "밀리아",
+          "린",
+          "각성 스쿨드"
+        ],
+        "skillOrder": "린2 스2 밀2",
+        "notes": "선공 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "밀리아",
+          "린",
+          "레긴레이프"
+        ],
+        "skillOrder": "린2 레2 레1",
+        "notes": "선공, 펫 요랑 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "밀리아",
+          "각성 실베스타",
+          "각성 스쿨드"
+        ],
+        "skillOrder": "스2 실2 실1",
+        "notes": "노전반 확킬 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "라드그리드",
+          "플라튼",
+          "팔라누스"
+        ],
+        "skillOrder": "플2 팔2 팔1",
+        "notes": "시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      }
+    ],
+    "source": "https://game.naver.com/lounge/sena_rebirth/board/13/detail/7756901",
+    "updatedAt": "2026-06-10"
+  },
+  {
+    "id": "lounge-초프손",
+    "defense": [
+      "초선",
+      "프레이야",
+      "손오공"
+    ],
+    "defenseNotes": "시즌7 길드전에서 실제로 만난 방어덱 — 공식 라운지 '공략&TIP' 성공 사례 정리글 기준",
+    "counters": [
+      {
+        "heroes": [
+          "여포",
+          "브란즈&브란셀",
+          "란드그리드"
+        ],
+        "skillOrder": "여1 여2 브2",
+        "notes": "선공 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      }
+    ],
+    "source": "https://game.naver.com/lounge/sena_rebirth/board/13/detail/7756901",
+    "updatedAt": "2026-06-10"
+  },
+  {
+    "id": "lounge-손실레",
+    "defense": [
+      "손오공",
+      "각성 실베스타",
+      "레긴레이프"
+    ],
+    "defenseNotes": "시즌7 길드전에서 실제로 만난 방어덱 — 공식 라운지 '공략&TIP' 성공 사례 정리글 기준",
+    "counters": [
+      {
+        "heroes": [
+          "여포",
+          "브란즈&브란셀",
+          "칼헤론"
+        ],
+        "skillOrder": "여1 브1 여2",
+        "notes": "선공 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "각성 실베스타",
+          "레긴레이프",
+          "오목"
+        ],
+        "skillOrder": "오1 레2 실2",
+        "notes": "선공 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      }
+    ],
+    "source": "https://game.naver.com/lounge/sena_rebirth/board/13/detail/7756901",
+    "updatedAt": "2026-06-10"
+  },
+  {
+    "id": "lounge-손실미",
+    "defense": [
+      "손오공",
+      "각성 실베스타",
+      "미스트"
+    ],
+    "defenseNotes": "시즌7 길드전에서 실제로 만난 방어덱 — 공식 라운지 '공략&TIP' 성공 사례 정리글 기준",
+    "counters": [
+      {
+        "heroes": [
+          "여포",
+          "란드그리드",
+          "칼헤론"
+        ],
+        "skillOrder": "칼1 여1 여2",
+        "notes": "선공 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      }
+    ],
+    "source": "https://game.naver.com/lounge/sena_rebirth/board/13/detail/7756901",
+    "updatedAt": "2026-06-10"
+  },
+  {
+    "id": "lounge-손실프",
+    "defense": [
+      "손오공",
+      "각성 실베스타",
+      "프레이야"
+    ],
+    "defenseNotes": "시즌7 길드전에서 실제로 만난 방어덱 — 공식 라운지 '공략&TIP' 성공 사례 정리글 기준",
+    "counters": [
+      {
+        "heroes": [
+          "라드그리드",
+          "손오공",
+          "에이스"
+        ],
+        "skillOrder": "에1 오2 오1",
+        "notes": "시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "라드그리드",
+          "손오공",
+          "엘리시아"
+        ],
+        "skillOrder": "라1 오2 엘1",
+        "notes": "시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "라드그리드",
+          "트루드",
+          "에이스"
+        ],
+        "skillOrder": "라1 트2 에1",
+        "notes": "시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      }
+    ],
+    "source": "https://game.naver.com/lounge/sena_rebirth/board/13/detail/7756901",
+    "updatedAt": "2026-06-10"
+  },
+  {
+    "id": "lounge-손실겔",
+    "defense": [
+      "손오공",
+      "각성 실베스타",
+      "겔리두스"
+    ],
+    "defenseNotes": "시즌7 길드전에서 실제로 만난 방어덱 — 공식 라운지 '공략&TIP' 성공 사례 정리글 기준",
+    "counters": [
+      {
+        "heroes": [
+          "각성 실베스타",
+          "레긴레이프",
+          "오목"
+        ],
+        "skillOrder": "오1 레2 실1",
+        "notes": "시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "여포",
+          "란드그리드",
+          "칼헤론"
+        ],
+        "skillOrder": "여1 칼1 여2",
+        "notes": "시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "여포",
+          "브란즈&브란셀",
+          "란드그리드"
+        ],
+        "skillOrder": "여1 브1 브2",
+        "notes": "시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "각성 실베스타",
+          "프레이야",
+          "오목"
+        ],
+        "skillOrder": "오1 프2 실1",
+        "notes": "시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      }
+    ],
+    "source": "https://game.naver.com/lounge/sena_rebirth/board/13/detail/7756901",
+    "updatedAt": "2026-06-10"
+  },
+  {
+    "id": "lounge-손레오",
+    "defense": [
+      "손오공",
+      "레긴레이프",
+      "오목"
+    ],
+    "defenseNotes": "시즌7 길드전에서 실제로 만난 방어덱 — 공식 라운지 '공략&TIP' 성공 사례 정리글 기준",
+    "counters": [
+      {
+        "heroes": [
+          "키리엘",
+          "바네사",
+          "오목"
+        ],
+        "skillOrder": "오1 바1 키2",
+        "notes": "선공 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "카일",
+          "란드그리드",
+          "칼헤론"
+        ],
+        "skillOrder": "칼1 카2 카1",
+        "notes": "선공 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "라드그리드",
+          "손오공",
+          "미스트"
+        ],
+        "skillOrder": "라2 오2 미2",
+        "notes": "후공 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      }
+    ],
+    "source": "https://game.naver.com/lounge/sena_rebirth/board/13/detail/7756901",
+    "updatedAt": "2026-06-10"
+  },
+  {
+    "id": "lounge-손겔미",
+    "defense": [
+      "손오공",
+      "겔리두스",
+      "미스트"
+    ],
+    "defenseNotes": "시즌7 길드전에서 실제로 만난 방어덱 — 공식 라운지 '공략&TIP' 성공 사례 정리글 기준",
+    "counters": [
+      {
+        "heroes": [
+          "밀리아",
+          "키리엘",
+          "오목"
+        ],
+        "skillOrder": "오1 키2 키1",
+        "notes": "극내실 세팅 — 키리엘은 속공 비례 모공뎀 증가. 강력 추천 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "미스트",
+          "아킬라",
+          "로지"
+        ],
+        "skillOrder": "미2 미1 아2",
+        "notes": "선공 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "각성 실베스타",
+          "레긴레이프",
+          "오목"
+        ],
+        "skillOrder": "오1 실2 실1",
+        "notes": "시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "여포",
+          "란드그리드",
+          "파이"
+        ],
+        "skillOrder": "여1 파2 여2",
+        "notes": "공식 저격덱 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "초선",
+          "란드그리드",
+          "오목"
+        ],
+        "skillOrder": "초2 오1 오2",
+        "notes": "시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "프레이야",
+          "초선",
+          "오목"
+        ],
+        "skillOrder": "초2 프2 오1",
+        "notes": "선공 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      }
+    ],
+    "source": "https://game.naver.com/lounge/sena_rebirth/board/13/detail/7756901",
+    "updatedAt": "2026-06-10"
+  },
+  {
+    "id": "lounge-손프오",
+    "defense": [
+      "손오공",
+      "프레이야",
+      "오목"
+    ],
+    "defenseNotes": "시즌7 길드전에서 실제로 만난 방어덱 — 공식 라운지 '공략&TIP' 성공 사례 정리글 기준",
+    "counters": [
+      {
+        "heroes": [
+          "각성 실베스타",
+          "프레이야",
+          "오목"
+        ],
+        "skillOrder": "프2 오1 실2",
+        "notes": "시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "크리스",
+          "아킬라",
+          "로지"
+        ],
+        "skillOrder": "크1 크2 아2",
+        "notes": "시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "각성 실베스타",
+          "오목",
+          "엘리시아"
+        ],
+        "skillOrder": "오1 오2 실1",
+        "notes": "시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      }
+    ],
+    "source": "https://game.naver.com/lounge/sena_rebirth/board/13/detail/7756901",
+    "updatedAt": "2026-06-10"
+  },
+  {
+    "id": "lounge-라손겔",
+    "defense": [
+      "라드그리드",
+      "손오공",
+      "겔리두스"
+    ],
+    "defenseNotes": "시즌7 길드전에서 실제로 만난 방어덱 — 공식 라운지 '공략&TIP' 성공 사례 정리글 기준",
+    "counters": [
+      {
+        "heroes": [
+          "미스트",
+          "아킬라",
+          "로지"
+        ],
+        "skillOrder": "미2 미1 아2",
+        "notes": "선공 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "초선",
+          "손오공",
+          "레긴레이프"
+        ],
+        "skillOrder": "초2 오1 오2",
+        "notes": "시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "카일",
+          "란드그리드",
+          "파이"
+        ],
+        "skillOrder": "파2 라2 카2",
+        "notes": "시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      }
+    ],
+    "source": "https://game.naver.com/lounge/sena_rebirth/board/13/detail/7756901",
+    "updatedAt": "2026-06-10"
+  },
+  {
+    "id": "lounge-여란칼",
+    "defense": [
+      "여포",
+      "란드그리드",
+      "칼헤론"
+    ],
+    "defenseNotes": "시즌7 길드전에서 실제로 만난 방어덱 — 공식 라운지 '공략&TIP' 성공 사례 정리글 기준",
+    "counters": [
+      {
+        "heroes": [
+          "각성 실베스타",
+          "프레이야",
+          "쥬리"
+        ],
+        "skillOrder": "프2 실2 실1",
+        "notes": "선공. 실베 6부활, 프레 64권불 이상, 실베 66이면 확승. 쥬리는 란2를 맞아줄 불사 + 협공 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "여포",
+          "브란즈&브란셀",
+          "란드그리드"
+        ],
+        "skillOrder": "브1 브2 여2",
+        "notes": "선공. 상대가 내실덱일 때만 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "여포",
+          "브란즈&브란셀",
+          "태오"
+        ],
+        "skillOrder": "여1 브2 브1",
+        "notes": "여포·브브 조율자 약공 100 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "프레이야",
+          "바네사",
+          "오목"
+        ],
+        "skillOrder": "바1 오1 프2",
+        "notes": "선공. 여포덱 저격용이라 웬만해선 확킬 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "카일",
+          "발리스타",
+          "란드그리드"
+        ],
+        "skillOrder": "카2 발2 카1",
+        "notes": "선공 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "밀리아",
+          "각성 실베스타",
+          "각성 스쿨드"
+        ],
+        "skillOrder": "스2 실2 실1",
+        "notes": "선공 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      }
+    ],
+    "source": "https://game.naver.com/lounge/sena_rebirth/board/13/detail/7756901",
+    "updatedAt": "2026-06-10"
+  },
+  {
+    "id": "lounge-여브칼",
+    "defense": [
+      "여포",
+      "브란즈&브란셀",
+      "칼헤론"
+    ],
+    "defenseNotes": "시즌7 길드전에서 실제로 만난 방어덱 — 공식 라운지 '공략&TIP' 성공 사례 정리글 기준",
+    "counters": [
+      {
+        "heroes": [
+          "여포",
+          "브란즈&브란셀",
+          "란드그리드"
+        ],
+        "skillOrder": "브1 브2 여1",
+        "notes": "선공 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "여포",
+          "브란즈&브란셀",
+          "태오"
+        ],
+        "skillOrder": "여1 브2 브1",
+        "notes": "시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "라드그리드",
+          "손오공",
+          "엘리시아"
+        ],
+        "skillOrder": "라1 오2 엘1",
+        "notes": "시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "라드그리드",
+          "손오공",
+          "챈슬러"
+        ],
+        "skillOrder": "챈2 오2 오1",
+        "notes": "시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "각성 실베스타",
+          "프레이야",
+          "쥬리"
+        ],
+        "skillOrder": "프2 실2 실1",
+        "notes": "선공 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "손오공",
+          "겔리두스",
+          "각성 루디"
+        ],
+        "skillOrder": "루2 오2 겔2",
+        "notes": "루디만 뒷줄 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "라드그리드",
+          "트루드",
+          "챈슬러"
+        ],
+        "skillOrder": "라1 챈2 트1",
+        "notes": "기절 대비 챈슬러 조율자 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      }
+    ],
+    "source": "https://game.naver.com/lounge/sena_rebirth/board/13/detail/7756901",
+    "updatedAt": "2026-06-10"
+  },
+  {
+    "id": "lounge-여브태",
+    "defense": [
+      "여포",
+      "브란즈&브란셀",
+      "태오"
+    ],
+    "defenseNotes": "시즌7 길드전에서 실제로 만난 방어덱 — 공식 라운지 '공략&TIP' 성공 사례 정리글 기준",
+    "counters": [
+      {
+        "heroes": [
+          "밀리아",
+          "각성 실베스타",
+          "레긴레이프"
+        ],
+        "skillOrder": "레2 실2 실1",
+        "notes": "시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "라드그리드",
+          "팔라누스",
+          "챈슬러"
+        ],
+        "skillOrder": "라1 챈2 팔2",
+        "notes": "기절 대비 챈슬러 조율자. 줄 거면 챈2 먼저 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      }
+    ],
+    "source": "https://game.naver.com/lounge/sena_rebirth/board/13/detail/7756901",
+    "updatedAt": "2026-06-10"
+  },
+  {
+    "id": "lounge-여란아",
+    "defense": [
+      "여포",
+      "란드그리드",
+      "아멜리아"
+    ],
+    "defenseNotes": "시즌7 길드전에서 실제로 만난 방어덱 — 공식 라운지 '공략&TIP' 성공 사례 정리글 기준",
+    "counters": [
+      {
+        "heroes": [
+          "라드그리드",
+          "트루드",
+          "엘리시아"
+        ],
+        "skillOrder": "엘1 라1 트2",
+        "notes": "시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "라드그리드",
+          "손오공",
+          "엘리시아"
+        ],
+        "skillOrder": "엘1 오2 라1",
+        "notes": "시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "라드그리드",
+          "손오공",
+          "챈슬러"
+        ],
+        "skillOrder": "챈2 오2 오1",
+        "notes": "시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "프레이야",
+          "바네사",
+          "오목"
+        ],
+        "skillOrder": "바1 오1 프2",
+        "notes": "선공 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "카일",
+          "태오",
+          "브란즈&브란셀"
+        ],
+        "skillOrder": "태2 카2 브1",
+        "notes": "선공 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      }
+    ],
+    "source": "https://game.naver.com/lounge/sena_rebirth/board/13/detail/7756901",
+    "updatedAt": "2026-06-10"
+  },
+  {
+    "id": "lounge-여브란",
+    "defense": [
+      "여포",
+      "브란즈&브란셀",
+      "란드그리드"
+    ],
+    "defenseNotes": "시즌7 길드전에서 실제로 만난 방어덱 — 공식 라운지 '공략&TIP' 성공 사례 정리글 기준",
+    "counters": [
+      {
+        "heroes": [
+          "카일",
+          "태오",
+          "브란즈&브란셀"
+        ],
+        "skillOrder": "카2 태2 브1",
+        "notes": "선공 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      }
+    ],
+    "source": "https://game.naver.com/lounge/sena_rebirth/board/13/detail/7756901",
+    "updatedAt": "2026-06-10"
+  },
+  {
+    "id": "lounge-여란파",
+    "defense": [
+      "여포",
+      "란드그리드",
+      "파이"
+    ],
+    "defenseNotes": "시즌7 길드전에서 실제로 만난 방어덱 — 공식 라운지 '공략&TIP' 성공 사례 정리글 기준",
+    "counters": [
+      {
+        "heroes": [
+          "카일",
+          "태오",
+          "브란즈&브란셀"
+        ],
+        "skillOrder": "태2 카2 브1",
+        "notes": "선공 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      }
+    ],
+    "source": "https://game.naver.com/lounge/sena_rebirth/board/13/detail/7756901",
+    "updatedAt": "2026-06-10"
+  },
+  {
+    "id": "lounge-여아브",
+    "defense": [
+      "여포",
+      "아멜리아",
+      "브란즈&브란셀"
+    ],
+    "defenseNotes": "시즌7 길드전에서 실제로 만난 방어덱 — 공식 라운지 '공략&TIP' 성공 사례 정리글 기준",
+    "counters": [
+      {
+        "heroes": [
+          "여포",
+          "브란즈&브란셀",
+          "태오"
+        ],
+        "skillOrder": "태2 여2 브1",
+        "notes": "여포 자리 카일 대체 가능. 여포덱 중 제일 파훼 쉬움 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "라드그리드",
+          "손오공",
+          "엘리시아"
+        ],
+        "skillOrder": "엘1 오2 라1",
+        "notes": "시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "라드그리드",
+          "트루드",
+          "엘리시아"
+        ],
+        "skillOrder": "엘1 트2 라1",
+        "notes": "시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "손오공",
+          "겔리두스",
+          "스파이크"
+        ],
+        "skillOrder": "겔2 오2 스2",
+        "notes": "시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      }
+    ],
+    "source": "https://game.naver.com/lounge/sena_rebirth/board/13/detail/7756901",
+    "updatedAt": "2026-06-10"
+  },
+  {
+    "id": "lounge-밀스오",
+    "defense": [
+      "밀리아",
+      "각성 스쿨드",
+      "오목"
+    ],
+    "defenseNotes": "시즌7 길드전에서 실제로 만난 방어덱 — 공식 라운지 '공략&TIP' 성공 사례 정리글 기준",
+    "counters": [
+      {
+        "heroes": [
+          "밀리아",
+          "각성 스쿨드",
+          "오목"
+        ],
+        "skillOrder": "오1 오2 스2",
+        "notes": "미러전, 후공 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "손오공",
+          "겔리두스",
+          "엘리시아"
+        ],
+        "skillOrder": "오2 겔2 엘1",
+        "notes": "시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "밀리아",
+          "각성 실베스타",
+          "각성 스쿨드"
+        ],
+        "skillOrder": "스2 실2 실1",
+        "notes": "선공 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "여포",
+          "브란즈&브란셀",
+          "태오"
+        ],
+        "skillOrder": "여1 여2 태2",
+        "notes": "여포 66 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      }
+    ],
+    "source": "https://game.naver.com/lounge/sena_rebirth/board/13/detail/7756901",
+    "updatedAt": "2026-06-10"
+  },
+  {
+    "id": "lounge-밀스멜",
+    "defense": [
+      "밀리아",
+      "각성 스쿨드",
+      "멜키르"
+    ],
+    "defenseNotes": "시즌7 길드전에서 실제로 만난 방어덱 — 공식 라운지 '공략&TIP' 성공 사례 정리글 기준",
+    "counters": [
+      {
+        "heroes": [
+          "손오공",
+          "겔리두스",
+          "엘리시아"
+        ],
+        "skillOrder": "오2 겔2 오1",
+        "notes": "시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      }
+    ],
+    "source": "https://game.naver.com/lounge/sena_rebirth/board/13/detail/7756901",
+    "updatedAt": "2026-06-10"
+  },
+  {
+    "id": "lounge-밀스린",
+    "defense": [
+      "밀리아",
+      "각성 스쿨드",
+      "린"
+    ],
+    "defenseNotes": "시즌7 길드전에서 실제로 만난 방어덱 — 공식 라운지 '공략&TIP' 성공 사례 정리글 기준",
+    "counters": [
+      {
+        "heroes": [
+          "라드그리드",
+          "손오공",
+          "엘리시아"
+        ],
+        "skillOrder": "오2 엘1 오1",
+        "notes": "시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "손오공",
+          "각성 루디",
+          "스파이크"
+        ],
+        "skillOrder": "루2 오2 오1",
+        "notes": "펫 파이크 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "라드그리드",
+          "손오공",
+          "리나"
+        ],
+        "skillOrder": "오2 라1 오1",
+        "notes": "시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "밀리아",
+          "각성 실베스타",
+          "각성 스쿨드"
+        ],
+        "skillOrder": "스2 실2 밀2",
+        "notes": "선공 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      }
+    ],
+    "source": "https://game.naver.com/lounge/sena_rebirth/board/13/detail/7756901",
+    "updatedAt": "2026-06-10"
+  },
+  {
+    "id": "lounge-밀린레",
+    "defense": [
+      "밀리아",
+      "린",
+      "레긴레이프"
+    ],
+    "defenseNotes": "시즌7 길드전에서 실제로 만난 방어덱 — 공식 라운지 '공략&TIP' 성공 사례 정리글 기준",
+    "counters": [
+      {
+        "heroes": [
+          "밀리아",
+          "각성 스쿨드",
+          "오목"
+        ],
+        "skillOrder": "오1 오2 스2",
+        "notes": "시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      }
+    ],
+    "source": "https://game.naver.com/lounge/sena_rebirth/board/13/detail/7756901",
+    "updatedAt": "2026-06-10"
+  },
+  {
+    "id": "lounge-밀프오",
+    "defense": [
+      "밀리아",
+      "프레이야",
+      "오목"
+    ],
+    "defenseNotes": "시즌7 길드전에서 실제로 만난 방어덱 — 공식 라운지 '공략&TIP' 성공 사례 정리글 기준",
+    "counters": [
+      {
+        "heroes": [
+          "여포",
+          "브란즈&브란셀",
+          "칼헤론"
+        ],
+        "skillOrder": "칼1 여1 브2",
+        "notes": "확킬. 선후공 무관. 칼헤론 방어력 1순위면 압도 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "라드그리드",
+          "손오공",
+          "엘리시아"
+        ],
+        "skillOrder": "오2 라2 오1",
+        "notes": "확킬 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      }
+    ],
+    "source": "https://game.naver.com/lounge/sena_rebirth/board/13/detail/7756901",
+    "updatedAt": "2026-06-10"
+  },
+  {
+    "id": "lounge-밀프레",
+    "defense": [
+      "밀리아",
+      "프레이야",
+      "레긴레이프"
+    ],
+    "defenseNotes": "시즌7 길드전에서 실제로 만난 방어덱 — 공식 라운지 '공략&TIP' 성공 사례 정리글 기준",
+    "counters": [
+      {
+        "heroes": [
+          "여포",
+          "브란즈&브란셀",
+          "카구라"
+        ],
+        "skillOrder": "여1 브1 여2",
+        "notes": "레긴 2스를 가끔 못 푸는 경우 있음 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      }
+    ],
+    "source": "https://game.naver.com/lounge/sena_rebirth/board/13/detail/7756901",
+    "updatedAt": "2026-06-10"
+  },
+  {
+    "id": "lounge-오프오",
+    "defense": [
+      "오를리",
+      "프레이야",
+      "오목"
+    ],
+    "defenseNotes": "시즌7 길드전에서 실제로 만난 방어덱 — 공식 라운지 '공략&TIP' 성공 사례 정리글 기준",
+    "counters": [
+      {
+        "heroes": [
+          "팔라누스",
+          "각성 루디",
+          "엘리스"
+        ],
+        "skillOrder": "루2 엘1 엘2",
+        "notes": "시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      }
+    ],
+    "source": "https://game.naver.com/lounge/sena_rebirth/board/13/detail/7756901",
+    "updatedAt": "2026-06-10"
+  },
+  {
+    "id": "lounge-트겔에",
+    "defense": [
+      "트루드",
+      "겔리두스",
+      "에이스"
+    ],
+    "defenseNotes": "시즌7 길드전에서 실제로 만난 방어덱 — 공식 라운지 '공략&TIP' 성공 사례 정리글 기준",
+    "counters": [
+      {
+        "heroes": [
+          "프레이야",
+          "초선",
+          "키리엘"
+        ],
+        "skillOrder": "초2 프2 프1",
+        "notes": "선공 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "여포",
+          "카일",
+          "풍연"
+        ],
+        "skillOrder": "여1 카2 여2",
+        "notes": "선공 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "밀리아",
+          "오목",
+          "레긴레이프"
+        ],
+        "skillOrder": "오1 레2 오2",
+        "notes": "시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "밀리아",
+          "프레이야",
+          "키리엘"
+        ],
+        "skillOrder": "프2 프1 키2",
+        "notes": "선공 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "밀리아",
+          "프레이야",
+          "레긴레이프"
+        ],
+        "skillOrder": "밀2 프2 레2",
+        "notes": "내실 밀마덱(방어팀) · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "밀리아",
+          "레긴레이프",
+          "성진우"
+        ],
+        "skillOrder": "밀2 레2 레1",
+        "notes": "시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "플라튼",
+          "엘리스",
+          "리나"
+        ],
+        "skillOrder": "리1 플2 리2",
+        "notes": "속공 장비 빼기, 효과저항 최대한 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      }
+    ],
+    "source": "https://game.naver.com/lounge/sena_rebirth/board/13/detail/7756901",
+    "updatedAt": "2026-06-10"
+  },
+  {
+    "id": "lounge-트겔미",
+    "defense": [
+      "트루드",
+      "겔리두스",
+      "미스트"
+    ],
+    "defenseNotes": "시즌7 길드전에서 실제로 만난 방어덱 — 공식 라운지 '공략&TIP' 성공 사례 정리글 기준",
+    "counters": [
+      {
+        "heroes": [
+          "여포",
+          "브란즈&브란셀",
+          "란드그리드"
+        ],
+        "skillOrder": "란2 여1 여2",
+        "notes": "선공 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "밀리아",
+          "린",
+          "오목"
+        ],
+        "skillOrder": "린2 오1 밀2",
+        "notes": "선공. 린 불사만 있으면 후공도 무방, 오목 캐리 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "프레이야",
+          "레긴레이프",
+          "오목"
+        ],
+        "skillOrder": "오1 프2 레2",
+        "notes": "속공은 당연히 따이니 내실로. 확킬 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "밀리아",
+          "오목",
+          "레긴레이프"
+        ],
+        "skillOrder": "오1 레2 오2",
+        "notes": "시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      }
+    ],
+    "source": "https://game.naver.com/lounge/sena_rebirth/board/13/detail/7756901",
+    "updatedAt": "2026-06-10"
+  },
+  {
+    "id": "lounge-카파카",
+    "defense": [
+      "카일",
+      "파이",
+      "카구라"
+    ],
+    "defenseNotes": "시즌7 길드전에서 실제로 만난 방어덱 — 공식 라운지 '공략&TIP' 성공 사례 정리글 기준",
+    "counters": [
+      {
+        "heroes": [
+          "트루드",
+          "겔리두스",
+          "엘리시아"
+        ],
+        "skillOrder": "겔2 트2 엘1",
+        "notes": "석화 대비. 엘리시아 조율자 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      },
+      {
+        "heroes": [
+          "트루드",
+          "카구라",
+          "제이브"
+        ],
+        "skillOrder": "카2 제1 트2",
+        "notes": "카구라 강자주시, 불사 있으면 좋음 · 시즌7 성공 사례 (공식 라운지, 2026-06-10)",
+        "confidence": "공식 라운지",
+        "updatedAt": "2026-06-10"
+      }
+    ],
+    "source": "https://game.naver.com/lounge/sena_rebirth/board/13/detail/7756901",
+    "updatedAt": "2026-06-10"
   }
 ]
