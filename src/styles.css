@@ -17,6 +17,10 @@
   --accent: #a67c2e;
   --accent-strong: #86601f;
   --accent-soft: #f7f1e3;
+  /* 단색 금색은 납작해 보인다. 밝은 면과 그늘을 함께 넣어 금속처럼 보이게 한 그라디언트 —
+     로고·활성 표시자·구분선처럼 '한 곳'에만 쓴다. 남발하면 싸구려가 된다. */
+  --gold-grad: linear-gradient(135deg, #cbab6a 0%, #a67c2e 38%, #e0cb9a 62%, #8a6420 100%);
+  --gold-line: linear-gradient(90deg, rgba(166, 124, 46, 0) 0%, rgba(166, 124, 46, 0.42) 50%, rgba(166, 124, 46, 0) 100%);
 
   /* 상태색은 각자의 soft 배경 위에서도 4.5:1을 넘도록 어둡게 잡음 */
   --danger: #b3302a;
@@ -39,13 +43,19 @@
   --accent-dim: #d6bd8a;
   --text-dim: #585c64;
 
-  --radius: 14px;
-  --radius-sm: 10px;
-  --radius-lg: 18px;
-  /* 얕고 넓게 퍼지는 그림자 — 떠 있는 느낌만 주고 경계는 헤어라인이 담당 */
-  --shadow-sm: 0 1px 2px rgba(22, 24, 28, 0.04);
-  --shadow-lift: 0 10px 26px -12px rgba(22, 24, 28, 0.18), 0 2px 6px -2px rgba(22, 24, 28, 0.06);
-  --shadow-md: 0 24px 60px -20px rgba(22, 24, 28, 0.24), 0 6px 16px -8px rgba(22, 24, 28, 0.1);
+  --radius: 15px;
+  --radius-sm: 11px;
+  --radius-lg: 20px;
+
+  /* 종이 한 장이 떠 있는 느낌 — 그림자는 회색이 아니라 아주 옅은 갈색 기가 돌게 해서
+     웜 화이트 바탕과 색이 어긋나지 않게 했다. 위쪽 1px 흰 선(inset)이 두께감을 만든다. */
+  --edge: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  --shadow-sm: 0 1px 2px rgba(60, 48, 28, 0.05), var(--edge);
+  --shadow-lift: 0 12px 28px -14px rgba(60, 48, 28, 0.22), 0 3px 8px -3px rgba(60, 48, 28, 0.08), var(--edge);
+  --shadow-md: 0 28px 68px -24px rgba(45, 36, 22, 0.3), 0 8px 20px -10px rgba(45, 36, 22, 0.12), var(--edge);
+
+  /* 면 — 위가 아주 살짝 밝은 흰색. 단색 #fff보다 종이처럼 보인다 */
+  --paper: linear-gradient(180deg, #ffffff 0%, #fdfdfb 100%);
 
   --maxw: 1180px;
   --side-w: 244px;
@@ -79,16 +89,36 @@ html, body {
   text-rendering: optimizeLegibility;
 }
 
-/* 위쪽이 은은하게 밝은 바탕 — 단색보다 깊이가 생긴다 */
+/* 바탕 = 미세한 결 + 위쪽이 은은하게 밝은 빛 + 웜 화이트.
+   결(노이즈)은 3% 남짓이라 눈에 띄진 않지만, 큰 여백이 '빈 화면'이 아니라
+   '종이'처럼 느껴지게 한다. 카드는 불투명이라 본문 가독성엔 영향이 없다. */
 body {
   background:
-    radial-gradient(1100px 520px at 62% -240px, #ffffff 0%, rgba(255, 255, 255, 0) 70%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.032'/%3E%3C/svg%3E"),
+    radial-gradient(1200px 560px at 60% -260px, #ffffff 0%, rgba(255, 255, 255, 0) 72%),
     var(--bg);
   background-attachment: fixed;
   min-height: 100vh;
 }
+/* iOS 사파리는 background-attachment:fixed에서 스크롤이 끊긴다 — 모바일은 함께 흐르게 */
+@media (max-width: 767px) {
+  body { background-attachment: scroll; }
+}
 
-::selection { background: var(--accent-soft); }
+::selection { background: var(--accent-soft); color: var(--ink); }
+input, textarea { caret-color: var(--accent); }
+
+/* 스크롤바도 화면의 일부 — 기본 회색 막대를 가늘고 옅게 */
+* { scrollbar-width: thin; scrollbar-color: #d8d6cf transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: #dcdad3;
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover { background: #c4c1b8; background-clip: content-box; }
 
 #root { min-height: 100vh; display: flex; flex-direction: column; }
 
@@ -150,12 +180,16 @@ button:hover { background: var(--surface-2); border-color: var(--border-2); }
 /* 눌림은 즉각 반응해야 하므로 되돌아올 때만 부드럽게 */
 button:active { transform: translateY(1px); transition-duration: 0s; }
 button.primary {
-  background: var(--ink);
-  border-color: var(--ink);
+  background: linear-gradient(180deg, #2a2e36 0%, var(--ink) 100%);
+  border-color: #0e1013;
   color: #fff;
   font-weight: 600;
+  box-shadow: 0 1px 2px rgba(22, 24, 28, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.14);
 }
-button.primary:hover { background: #2c313b; }
+button.primary:hover {
+  background: linear-gradient(180deg, #363b45 0%, #24272e 100%);
+  box-shadow: 0 6px 16px -8px rgba(22, 24, 28, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
 button.danger { color: var(--danger); border-color: #ecccc9; background: #fff; }
 button.danger:hover { background: var(--danger-soft); }
 button.small { padding: 4px 11px; font-size: 0.85rem; border-radius: 8px; }
@@ -187,7 +221,7 @@ textarea { resize: vertical; min-height: 70px; }
   width: var(--side-w);
   z-index: 50;
   flex-direction: column;
-  background: rgba(255, 255, 255, 0.86);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(252, 252, 250, 0.9) 100%);
   backdrop-filter: saturate(1.5) blur(18px);
   border-right: 1px solid var(--border);
   padding: 14px 12px 12px;
@@ -211,15 +245,25 @@ textarea { resize: vertical; min-height: 70px; }
 }
 
 .side-brand {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 9px;
   width: 100%;
   border: none;
   background: none;
-  padding: 10px 12px 16px;
+  padding: 12px 12px 18px;
   border-radius: 12px;
 }
+/* 로고 아래 금색 실선 — 양끝이 사라져 선이 아니라 빛처럼 보인다 */
+.side-brand::after {
+  content: '';
+  position: absolute;
+  left: 12px; right: 12px; bottom: 6px;
+  height: 1px;
+  background: var(--gold-line);
+}
+html[data-side='rail'] .side-brand::after { left: 14px; right: 14px; }
 .side-brand:hover { background: none; }
 .side-brand:active { transform: none; }
 .sidebar .logo {
@@ -247,14 +291,24 @@ textarea { resize: vertical; min-height: 70px; }
   position: absolute;
   left: 0; right: 0; top: 0;
   border-radius: 11px;
-  background: var(--accent-soft);
-  border: 1px solid var(--accent-dim);
+  background: linear-gradient(90deg, rgba(247, 241, 227, 0.95) 0%, rgba(250, 246, 237, 0.75) 100%);
+  border: 1px solid rgba(214, 189, 138, 0.7);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  overflow: hidden;
   /* 높이는 실측값을 그대로 쓰고 transform만 애니메이션한다.
      height를 전환 대상에 넣으면 매 프레임 레이아웃이 다시 계산되고,
      전환이 시작 값에서 멈추면 표시자가 사라진 것처럼 보인다. */
   transition: transform var(--dur-2) var(--ease-slide);
   will-change: transform;
   pointer-events: none;
+}
+/* 왼쪽 끝의 금속 막대 — 활성 표시의 무게중심 */
+.side-ind::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--gold-grad);
 }
 
 .side-group {
@@ -385,7 +439,7 @@ html[data-side='rail'] .side-toggle .ic { transform: rotate(180deg); }
 .sheet {
   position: fixed;
   left: 0; right: 0; bottom: 0;
-  background: var(--surface);
+  background: var(--paper);
   border-radius: 20px 20px 0 0;
   padding: 10px 12px calc(18px + env(safe-area-inset-bottom));
   z-index: 71;
@@ -434,18 +488,23 @@ main {
   width: 100%;
   max-width: var(--maxw);
   margin: 0 auto;
-  padding: 34px 30px 72px;
+  /* 여백이 넉넉할수록 화면이 비싸 보인다 */
+  padding: 44px 40px 88px;
 }
+@media (max-width: 1099px) { main { padding: 34px 26px 72px; } }
 @media (max-width: 767px) { main { padding: 18px 16px 24px; } }
 
+/* 큰 글자는 더 크고 더 좁게, 작은 글자는 더 작고 더 넓게.
+   이 대비가 벌어질수록 화면이 정돈돼 보인다. */
 h1 {
-  font-size: 1.72rem;
-  letter-spacing: -0.035em;
-  margin: 0 0 4px;
+  font-size: 1.95rem;
+  letter-spacing: -0.045em;
+  margin: 0 0 5px;
   font-weight: 800;
+  line-height: 1.25;
 }
-h2 { font-size: 1.15rem; letter-spacing: -0.02em; margin: 26px 0 10px; font-weight: 700; }
-.page-desc { color: var(--text-2); margin: 0 0 24px; }
+h2 { font-size: 1.18rem; letter-spacing: -0.028em; margin: 28px 0 10px; font-weight: 700; }
+.page-desc { color: var(--text-2); margin: 0 0 26px; font-size: 0.95rem; }
 
 .card {
   background: var(--surface);
@@ -582,7 +641,7 @@ input.num-tab { font-variant-numeric: tabular-nums; }
   padding: 18px 18px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  background: var(--surface);
+  background: var(--paper);
   box-shadow: var(--shadow-sm);
   font-size: 1rem;
   font-weight: 600;
@@ -634,12 +693,28 @@ tbody tr.row-fail td.cell-fail, tbody td.cell-fail { background: #f4bfba; }
    ========================================================= */
 
 /* ---- 공통 ---- */
+/* 라벨은 작고 넓게 — 앞에 짧은 금색 눈금을 달아 시선의 출발점을 만든다 */
 .sec-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   color: var(--text-3);
-  font-size: 0.74rem;
+  font-size: 0.71rem;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.1em;
 }
+.sec-label::before {
+  content: '';
+  width: 10px;
+  height: 1px;
+  flex: none;
+  background: var(--accent);
+  opacity: 0.55;
+}
+/* 눈금이 어울리지 않는 자리(표 안·칩 안)에서는 뺀다 */
+.hslot .sec-label::before,
+.recent-line .sec-label::before,
+.print-root .sec-label::before { display: none; }
 .w-full { width: 100%; }
 
 .page-head {
@@ -654,15 +729,16 @@ tbody tr.row-fail td.cell-fail, tbody td.cell-fail { background: #f4bfba; }
 .page-head h1 { margin: 0; }
 
 .panel {
-  background: var(--surface);
+  background: var(--paper);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  padding: 18px 20px;
-  margin-bottom: 16px;
+  padding: 22px 24px;
+  margin-bottom: 18px;
   box-shadow: var(--shadow-sm);
   transition: box-shadow var(--dur-2) var(--ease);
 }
 .panel:hover { box-shadow: var(--shadow-lift); }
+.panel-head + * { margin-top: 0; }
 @media (max-width: 767px) { .panel { padding: 15px 15px; border-radius: var(--radius); } }
 .panel-head {
   display: flex;
@@ -807,7 +883,7 @@ button.ghost:hover { background: var(--surface-2); color: var(--text); }
   align-items: flex-start;
   gap: 5px;
   text-align: left;
-  background: var(--surface);
+  background: var(--paper);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 13px 15px;
@@ -833,23 +909,32 @@ button.ghost:hover { background: var(--surface-2); color: var(--text); }
 
 .cd-detail-col { min-width: 0; }
 .cd-detail {
-  background: var(--surface);
+  background: var(--paper);
+  box-shadow: var(--shadow-sm);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   padding: 20px 22px;
 }
 @media (max-width: 767px) { .cd-detail { padding: 16px 15px; border-radius: var(--radius); } }
 .cd-detail-head {
+  position: relative;
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   gap: 12px;
   flex-wrap: wrap;
-  padding-bottom: 14px;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 16px;
+  padding-bottom: 16px;
+  margin-bottom: 18px;
 }
-.cd-title { font-size: 1.3rem; font-weight: 800; letter-spacing: -0.02em; margin: 3px 0 7px; }
+/* 실선 대신 양끝이 사라지는 금색 선 */
+.cd-detail-head::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 1px;
+  background: var(--gold-line);
+}
+.cd-title { font-size: 1.42rem; font-weight: 800; letter-spacing: -0.035em; margin: 4px 0 8px; }
 .cd-sub { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .cd-notes { margin: 9px 0 0; color: var(--text-2); font-size: 0.92rem; }
 
@@ -857,7 +942,8 @@ button.ghost:hover { background: var(--surface-2); color: var(--text); }
 .ccard {
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  background: var(--surface);
+  background: var(--paper);
+  box-shadow: var(--shadow-sm);
   padding: 16px 17px;
 }
 .ccard + .ccard { margin-top: 12px; }
@@ -1115,7 +1201,7 @@ button.ghost:hover { background: var(--surface-2); color: var(--text); }
   animation: fade var(--dur-2) var(--ease);
 }
 .modal {
-  background: var(--surface);
+  background: var(--paper);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-md);
@@ -1256,7 +1342,7 @@ button.ghost:hover { background: var(--surface-2); color: var(--text); }
   position: relative;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  background: var(--surface);
+  background: var(--paper);
   padding: 11px 12px;
   transition: border-color var(--dur-1) var(--ease), box-shadow var(--dur-2) var(--ease),
     transform var(--dur-2) var(--ease);
@@ -1316,9 +1402,34 @@ button.ghost:hover { background: var(--surface-2); color: var(--text); }
 .doc-sec-head h2 { margin: 0 0 4px; font-size: 1.12rem; }
 
 /* ---- 홈 ---- */
-.hero-head { padding: 6px 0 24px; }
-.hero-head h1 { font-size: 2.3rem; margin: 4px 0 8px; letter-spacing: -0.045em; }
-.hero-head p { margin: 0; color: var(--text-2); }
+.hero-head { padding: 10px 0 30px; position: relative; }
+.hero-head h1 {
+  font-size: 2.7rem;
+  margin: 8px 0 10px;
+  letter-spacing: -0.055em;
+  line-height: 1.1;
+  color: var(--ink);
+}
+/* 길드 이름만 금속 질감으로 — 화면에서 가장 먼저 눈이 가는 한 곳.
+   background-clip이 안 되는 환경에서 제목이 통째로 사라지지 않도록 지원될 때만 적용한다. */
+@supports (-webkit-background-clip: text) or (background-clip: text) {
+  .hero-head h1 {
+    background: linear-gradient(135deg, #23262c 0%, #3d3a33 45%, #1a1c20 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+}
+.hero-head p { margin: 0; color: var(--text-2); font-size: 1rem; max-width: 46ch; }
+.hero-head::after {
+  content: '';
+  display: block;
+  width: 100%;
+  height: 1px;
+  margin-top: 24px;
+  background: var(--gold-line);
+}
+@media (max-width: 620px) { .hero-head h1 { font-size: 2.1rem; } }
 
 .kpi-row {
   display: grid;
@@ -1333,7 +1444,7 @@ button.ghost:hover { background: var(--surface-2); color: var(--text); }
   flex-direction: column;
   align-items: flex-start;
   gap: 2px;
-  background: var(--surface);
+  background: var(--paper);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 15px 16px;
@@ -1343,8 +1454,14 @@ button.ghost:hover { background: var(--surface-2); color: var(--text); }
 }
 .kpi:hover { border-color: var(--accent-dim); box-shadow: var(--shadow-lift); transform: translateY(-3px); }
 .kpi:active { transform: translateY(-1px); }
-.kpi-n { font-size: 1.7rem; font-weight: 800; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
-.kpi-l { color: var(--text-2); font-size: 0.84rem; font-weight: 600; }
+.kpi-n {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.045em;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+.kpi-l { color: var(--text-2); font-size: 0.82rem; font-weight: 600; letter-spacing: 0.01em; }
 
 .recent-list { display: flex; flex-direction: column; gap: 6px; }
 .recent {
