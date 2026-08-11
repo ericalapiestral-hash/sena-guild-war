@@ -42,12 +42,64 @@ const fullLabel = (label: string) =>
   ({ 데이터: '데이터 관리', 길드원: '길드원 관리', 공성전: '공성전 통계', 파괴신: '파괴신 통계' } as Record<string, string>)[label] ?? label
 const ROUTES = [...MENU.map((m) => m.route), 'admin']
 
-const Brand = ({ compact }: { compact?: boolean }) => (
+const Brand = () => (
   <span className="logo">
     <span className="em" aria-hidden>⚔️</span>
-    {!compact && <span className="logo-t">낭만주의</span>}
+    <span className="logo-t">낭만주의</span>
   </span>
 )
+
+type SideMode = 'full' | 'rail'
+const SIDE_KEY = 'sena-guild-war:side'
+
+/**
+ * 사이드바 펼침/접힘. 사용자가 한 번이라도 고르면 그 선택을 계속 따르고,
+ * 고른 적이 없으면 화면 폭으로 정한다(넓으면 펼침, 좁으면 아이콘 레일).
+ */
+function useSidebarMode(): [SideMode, () => void] {
+  const [pref, setPref] = useState<SideMode | null>(() => {
+    try {
+      const v = localStorage.getItem(SIDE_KEY)
+      return v === 'full' || v === 'rail' ? v : null
+    } catch {
+      return null
+    }
+  })
+  const [auto, setAuto] = useState<SideMode>(() =>
+    typeof window !== 'undefined' && window.innerWidth >= 1100 ? 'full' : 'rail',
+  )
+
+  useEffect(() => {
+    if (pref) return
+    const mql = window.matchMedia('(min-width: 1100px)')
+    const onChange = (): void => setAuto(mql.matches ? 'full' : 'rail')
+    onChange()
+    mql.addEventListener('change', onChange)
+    // 기기 에뮬레이션 등 change가 오지 않는 환경 대비
+    window.addEventListener('resize', onChange)
+    return () => {
+      mql.removeEventListener('change', onChange)
+      window.removeEventListener('resize', onChange)
+    }
+  }, [pref])
+
+  const mode = pref ?? auto
+  useEffect(() => {
+    document.documentElement.dataset.side = mode
+  }, [mode])
+
+  const toggle = (): void => {
+    const next: SideMode = mode === 'full' ? 'rail' : 'full'
+    setPref(next)
+    try {
+      localStorage.setItem(SIDE_KEY, next)
+    } catch {
+      /* 시크릿 모드 등 — 이번 세션에만 적용 */
+    }
+  }
+
+  return [mode, toggle]
+}
 
 function AdminHome({ onLogout }: { onLogout: () => void }) {
   return (
@@ -75,11 +127,15 @@ function Sidebar({
   items,
   active,
   admin,
+  mode,
+  onToggle,
   onLogout,
 }: {
   items: MenuItem[]
   active: string
   admin: boolean
+  mode: SideMode
+  onToggle: () => void
   onLogout: () => void
 }) {
   const navRef = useRef<HTMLElement | null>(null)
@@ -97,11 +153,18 @@ function Sidebar({
       )
     }
     measure()
-    // 스타일·폰트가 늦게 적용되거나 창 크기가 바뀌어도 위치가 따라오게 관찰한다
+    // 스타일·폰트가 늦게 적용되거나 접기/펼치기로 폭이 바뀔 때
     const ro = new ResizeObserver(measure)
     ro.observe(nav)
-    return () => ro.disconnect()
-  }, [active, items.length])
+    // ★ 사이드바가 display:none(모바일 폭)에서 다시 보이게 될 때는 ResizeObserver가
+    //   울리지 않는다. 창을 좁게 열었다 넓히면 표시자가 안 뜨므로 resize도 함께 듣는다.
+    window.addEventListener('resize', measure)
+    return () => {
+      ro.disconnect()
+      window.removeEventListener('resize', measure)
+    }
+    // 접기/펼치기로 항목 높이가 달라질 수 있어 mode도 의존성에 넣는다
+  }, [active, items.length, mode])
 
   return (
     <aside className="sidebar">
@@ -128,6 +191,15 @@ function Sidebar({
       </nav>
 
       <div className="side-foot">
+        <button
+          className="side-item side-toggle"
+          onClick={onToggle}
+          title={mode === 'full' ? '메뉴 접기' : '메뉴 펼치기'}
+          aria-expanded={mode === 'full'}
+        >
+          <Icon name="collapse" className="ic" />
+          <span className="side-label">메뉴 접기</span>
+        </button>
         {admin ? (
           <button className="side-item side-lock" onClick={onLogout} title="관리자 로그아웃">
             <Icon name="lock" className="ic" />
@@ -153,6 +225,7 @@ export default function App() {
   const base = route.split('/')[0]
   const [sheet, setSheet] = useState(false)
   const [admin, setAdmin] = useState(isAdmin())
+  const [sideMode, toggleSide] = useSidebarMode()
 
   const visible = MENU.filter((m) => !m.admin || admin)
   const adminActive = ADMIN_ITEMS.some((m) => m.route === base) || base === 'admin'
@@ -174,7 +247,14 @@ export default function App() {
 
   return (
     <>
-      <Sidebar items={visible} active={base} admin={admin} onLogout={doLogout} />
+      <Sidebar
+        items={visible}
+        active={base}
+        admin={admin}
+        mode={sideMode}
+        onToggle={toggleSide}
+        onLogout={doLogout}
+      />
 
       {/* 모바일 상단 앱바 */}
       <header className="mobile-appbar">

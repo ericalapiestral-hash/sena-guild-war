@@ -51,11 +51,17 @@
   --side-w: 244px;
   --side-w-rail: 74px;
 
-  /* 움직임 — 부드럽게 감속하는 곡선 하나로 통일 */
-  --ease: cubic-bezier(0.32, 0.72, 0, 1);
-  --dur-1: 0.16s;
-  --dur-2: 0.28s;
-  --dur-3: 0.42s;
+  /* ---- 움직임 ----
+     시작이 급하지 않고 끝에서 길게 잦아드는 곡선을 쓴다.
+     ease      : 기본. 색·배경처럼 눈에 안 띄어야 하는 변화
+     ease-out  : 등장(페이지·목록). 처음부터 부드럽게 풀린다
+     ease-slide: 미끄러지는 표시자. 끝에서 아주 살짝 넘겼다 돌아와 관성이 느껴진다 */
+  --ease: cubic-bezier(0.33, 0.68, 0.28, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-slide: cubic-bezier(0.34, 1.12, 0.5, 1);
+  --dur-1: 0.22s;
+  --dur-2: 0.4s;
+  --dur-3: 0.62s;
 
   font-size: 15px;
 }
@@ -89,29 +95,29 @@ body {
 /* ==== 움직임 ====
    페이지 전환·목록 등장 등 공통 애니메이션. 하나라도 과하면 산만해지므로
    거리(8~14px)와 시간(0.28~0.42s)을 좁게 유지한다. */
-@keyframes page-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
-@keyframes rise-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
-@keyframes slide-in-left { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: none; } }
-@keyframes pop-in { from { opacity: 0; transform: scale(0.97) translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes page-in { from { opacity: 0; transform: translate3d(0, 12px, 0); } to { opacity: 1; transform: none; } }
+@keyframes rise-in { from { opacity: 0; transform: translate3d(0, 14px, 0); } to { opacity: 1; transform: none; } }
+@keyframes slide-in-left { from { opacity: 0; transform: translate3d(-12px, 0, 0); } to { opacity: 1; transform: none; } }
+@keyframes pop-in { from { opacity: 0; transform: scale(0.975) translate3d(0, 10px, 0); } to { opacity: 1; transform: none; } }
 
 /* fill-mode는 backwards만 쓴다(both 아님).
    끝 상태가 곧 평소 상태라 forwards가 필요 없고, 혹시 애니메이션이 실행되지 않는
    환경에서도 요소가 opacity:0으로 남아 사라지는 일이 없다. */
-.page { animation: page-in var(--dur-3) var(--ease) backwards; }
+.page { animation: page-in var(--dur-3) var(--ease-out) backwards; }
 
 /* 자식들이 시간차를 두고 올라온다 — 목록·타일 그리드에 붙인다.
    너무 긴 목록에서 끝까지 기다리게 되지 않도록 앞 10개까지만 지연을 준다. */
-.stagger > * { animation: rise-in var(--dur-2) var(--ease) backwards; }
-.stagger > *:nth-child(1) { animation-delay: 0.02s; }
-.stagger > *:nth-child(2) { animation-delay: 0.05s; }
-.stagger > *:nth-child(3) { animation-delay: 0.08s; }
-.stagger > *:nth-child(4) { animation-delay: 0.11s; }
-.stagger > *:nth-child(5) { animation-delay: 0.14s; }
-.stagger > *:nth-child(6) { animation-delay: 0.17s; }
-.stagger > *:nth-child(7) { animation-delay: 0.2s; }
-.stagger > *:nth-child(8) { animation-delay: 0.23s; }
-.stagger > *:nth-child(9) { animation-delay: 0.26s; }
-.stagger > *:nth-child(n + 10) { animation-delay: 0.29s; }
+.stagger > * { animation: rise-in var(--dur-3) var(--ease-out) backwards; }
+.stagger > *:nth-child(1) { animation-delay: 0.03s; }
+.stagger > *:nth-child(2) { animation-delay: 0.07s; }
+.stagger > *:nth-child(3) { animation-delay: 0.11s; }
+.stagger > *:nth-child(4) { animation-delay: 0.15s; }
+.stagger > *:nth-child(5) { animation-delay: 0.19s; }
+.stagger > *:nth-child(6) { animation-delay: 0.23s; }
+.stagger > *:nth-child(7) { animation-delay: 0.27s; }
+.stagger > *:nth-child(8) { animation-delay: 0.31s; }
+.stagger > *:nth-child(9) { animation-delay: 0.35s; }
+.stagger > *:nth-child(n + 10) { animation-delay: 0.39s; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
@@ -137,10 +143,12 @@ button {
   padding: 8px 15px;
   cursor: pointer;
   font-weight: 500;
-  transition: background 0.14s, border-color 0.14s, box-shadow 0.14s, transform 0.05s;
+  transition: background var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease),
+    box-shadow var(--dur-1) var(--ease), transform var(--dur-1) var(--ease);
 }
 button:hover { background: var(--surface-2); border-color: var(--border-2); }
-button:active { transform: translateY(1px); }
+/* 눌림은 즉각 반응해야 하므로 되돌아올 때만 부드럽게 */
+button:active { transform: translateY(1px); transition-duration: 0s; }
 button.primary {
   background: var(--ink);
   border-color: var(--ink);
@@ -161,7 +169,7 @@ input, textarea, select {
   border: 1px solid var(--border-2);
   border-radius: var(--radius-sm);
   padding: 9px 12px;
-  transition: border-color 0.14s, box-shadow 0.14s;
+  transition: border-color var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease);
 }
 input::placeholder, textarea::placeholder { color: var(--text-3); }
 input:focus, textarea:focus, select:focus {
@@ -185,17 +193,21 @@ textarea { resize: vertical; min-height: 70px; }
   padding: 14px 12px 12px;
   animation: slide-in-left var(--dur-3) var(--ease) backwards;
 }
+/* 접힘 여부는 html[data-side]가 정한다 (사용자가 고른 값 > 화면 폭 기본값).
+   전환 대상이 width/padding이라 레이아웃이 다시 잡히지만, 사용자가 직접 누른
+   한 번의 동작이라 비용이 문제되지 않는다. */
 @media (min-width: 768px) {
-  .sidebar { display: flex; }
-  #root { padding-left: var(--side-w); }
-}
-/* 좁은 데스크톱·태블릿은 아이콘만 남긴 레일로 */
-@media (min-width: 768px) and (max-width: 1099px) {
-  .sidebar { width: var(--side-w-rail); padding: 14px 10px 12px; align-items: center; }
-  #root { padding-left: var(--side-w-rail); }
-  .sidebar .side-label, .sidebar .logo-t, .sidebar .side-group { display: none; }
-  .sidebar .side-item { justify-content: center; padding-left: 0; padding-right: 0; }
-  .sidebar .side-brand { justify-content: center; }
+  .sidebar { display: flex; transition: width var(--dur-2) var(--ease); }
+  #root { padding-left: var(--side-w); transition: padding-left var(--dur-2) var(--ease); }
+
+  html[data-side='rail'] .sidebar { width: var(--side-w-rail); padding-left: 10px; padding-right: 10px; align-items: center; }
+  html[data-side='rail'] #root { padding-left: var(--side-w-rail); }
+  html[data-side='rail'] .side-group { display: none; }
+  html[data-side='rail'] .side-item { justify-content: center; padding-left: 0; padding-right: 0; }
+  html[data-side='rail'] .side-brand { justify-content: center; padding-left: 0; padding-right: 0; }
+  /* 글자는 지우지 않고 폭만 0으로 줄여 접히듯 사라지게 한다 */
+  html[data-side='rail'] .side-label,
+  html[data-side='rail'] .logo-t { opacity: 0; width: 0; margin: 0; }
 }
 
 .side-brand {
@@ -240,7 +252,8 @@ textarea { resize: vertical; min-height: 70px; }
   /* 높이는 실측값을 그대로 쓰고 transform만 애니메이션한다.
      height를 전환 대상에 넣으면 매 프레임 레이아웃이 다시 계산되고,
      전환이 시작 값에서 멈추면 표시자가 사라진 것처럼 보인다. */
-  transition: transform var(--dur-2) var(--ease);
+  transition: transform var(--dur-2) var(--ease-slide);
+  will-change: transform;
   pointer-events: none;
 }
 
@@ -276,10 +289,19 @@ textarea { resize: vertical; min-height: 70px; }
 .side-item .ic { width: 20px; height: 20px; flex: none; color: var(--text-3); transition: color var(--dur-1) var(--ease), transform var(--dur-2) var(--ease); }
 .side-item:hover .ic { color: var(--text-2); transform: translateX(1px); }
 .side-item.active .ic { color: var(--accent); }
-.side-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.side-label, .logo-t {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: opacity var(--dur-1) var(--ease), width var(--dur-2) var(--ease);
+}
 
-.side-foot { padding-top: 10px; margin-top: 6px; border-top: 1px solid var(--border); }
+.side-foot { padding-top: 8px; margin-top: 6px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 2px; }
 .side-lock { font-weight: 600; }
+/* 접기/펼치기 — 화살표가 방향에 맞춰 돈다 */
+.side-toggle .ic { transition: transform var(--dur-2) var(--ease-slide), color var(--dur-1) var(--ease); }
+html[data-side='rail'] .side-toggle .ic { transform: rotate(180deg); }
 
 /* ==== 모바일 상단 앱바 ==== */
 .mobile-appbar {
@@ -325,7 +347,8 @@ textarea { resize: vertical; min-height: 70px; }
   border-radius: 12px;
   background: var(--accent-soft);
   transform: translateX(calc(var(--i, 0) * 100%));
-  transition: transform var(--dur-2) var(--ease);
+  transition: transform var(--dur-2) var(--ease-slide);
+  will-change: transform;
   pointer-events: none;
 }
 .bottom-nav button {
@@ -992,7 +1015,8 @@ button.ghost:hover { background: var(--surface-2); color: var(--text); }
   border-radius: 9px;
   box-shadow: var(--shadow-sm);
   transform: translateX(calc(var(--i, 0) * 100%));
-  transition: transform var(--dur-2) var(--ease);
+  transition: transform var(--dur-2) var(--ease-slide);
+  will-change: transform;
 }
 .seg-lg button {
   position: relative;
