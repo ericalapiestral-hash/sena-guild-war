@@ -1,4 +1,4 @@
-import { useMemo, useState, type MouseEvent } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import type { CounterDeck, CounterEntry, CounterHeroSlot, Formation, Hero } from '../types'
 import {
   canEdit,
@@ -13,8 +13,9 @@ import {
   update,
   useUserData,
 } from '../store'
-import { DeckLine } from '../components/HeroChip'
-import { HeroPicker } from '../components/HeroPicker'
+import { DeckNames, HeroName, HeroPickerModal, HeroSearchBar, SlotRow } from '../components/HeroSelect'
+import { Modal } from '../components/Modal'
+import { useMediaQuery } from '../lib/useMediaQuery'
 
 const CONFIDENCES: CounterDeck['confidence'][] = ['검증됨', '커뮤니티', '추측']
 const FORMATIONS: Formation[] = ['공격진형', '밸런스진형', '보호진형', '기본진형']
@@ -24,34 +25,33 @@ export function CountersPage() {
   const heroes = getAllHeroes()
   const heroMap = useMemo(() => new Map(heroes.map((h) => [h.id, h])), [heroes])
   const counters = getAllCounters()
+  const isDesktop = useMediaQuery('(min-width: 980px)')
 
-  const [searchSel, setSearchSel] = useState<string[]>([])
+  const [sel, setSel] = useState<string[]>([])
+  const [openId, setOpenId] = useState<string | null>(null)
   const [editing, setEditing] = useState<CounterEntry | null>(null)
-  const [showForm, setShowForm] = useState(false)
+  const [editingIsNew, setEditingIsNew] = useState(false)
 
   const filtered = useMemo(() => {
-    if (searchSel.length === 0) return counters
-    // 선택한 영웅이 방어덱 또는 카운터(공격)덱 중 하나에 모두 포함된 엔트리
-    return counters.filter(
-      (c) =>
-        searchSel.every((id) => c.defense.includes(id)) ||
-        c.counters.some((ct) => searchSel.every((id) => counterHeroNames(ct).includes(id))),
-    )
-  }, [counters, searchSel])
+    const list =
+      sel.length === 0
+        ? counters
+        : counters.filter(
+            (c) =>
+              sel.every((id) => c.defense.includes(id)) ||
+              c.counters.some((ct) => sel.every((id) => counterHeroNames(ct).includes(id))),
+          )
+    return [...list].sort((a, b) => (b.updatedAt ?? '').localeCompare(a.updatedAt ?? ''))
+  }, [counters, sel])
+
+  // 데스크톱은 오른쪽 상세가 비지 않게 항상 하나를 연다
+  const currentId =
+    openId && filtered.some((e) => e.id === openId) ? openId : isDesktop ? filtered[0]?.id ?? null : null
+  const current = filtered.find((e) => e.id === currentId) ?? null
 
   function startNew() {
-    setEditing({
-      id: newId('counter'),
-      defense: searchSel.slice(0, 3),
-      counters: [],
-      updatedAt: todayLocal(),
-    })
-    setShowForm(true)
-  }
-
-  function startEdit(entry: CounterEntry) {
-    setEditing(structuredClone(entry))
-    setShowForm(true)
+    setEditingIsNew(true)
+    setEditing({ id: newId('counter'), defense: sel.slice(0, 3), counters: [], updatedAt: todayLocal() })
   }
 
   function remove(entry: CounterEntry) {
@@ -62,88 +62,97 @@ export function CountersPage() {
         d.hiddenCounterIds.push(entry.id)
       }
     })
+    setOpenId(null)
   }
+
+  const detailFor = (entry: CounterEntry) => (
+    <EntryDetail
+      entry={entry}
+      heroMap={heroMap}
+      sel={sel}
+      onEdit={() => { setEditingIsNew(false); setEditing(structuredClone(entry)) }}
+      onRemove={() => remove(entry)}
+    />
+  )
 
   return (
     <div>
-      <h1>카운터덱 사전</h1>
-      <p className="page-desc">
-        영웅을 선택하면 그 영웅이 든 <b>방어덱·카운터(공격)덱을 모두</b> 찾아줍니다. 카운터로 매칭되면 강조 표시돼요.
-      </p>
-
-      <div className="card">
-        <strong>영웅으로 덱 검색 <span className="muted" style={{ fontWeight: 400 }}>(방덱·카운터 모두)</span></strong>
-        <div style={{ marginTop: 8 }}>
-          <HeroPicker heroes={heroes} selected={searchSel} max={3}
-            onToggle={(id) => setSearchSel((s) => s.includes(id) ? s.filter((x) => x !== id) : [...s, id])} />
+      <header className="page-head">
+        <div>
+          <h1>카운터덱</h1>
+          <p className="page-desc">상대 방어덱을 고르면 어떤 조합으로 뚫는지 바로 보여줍니다.</p>
         </div>
-        <div className="row" style={{ marginTop: 10 }}>
-          <span className="muted">
-            {searchSel.length === 0
-              ? `전체 ${counters.length}개 방덱 표시 중`
-              : `${filtered.length}개 덱이 선택한 영웅을 포함 (방덱·카운터)`}
-          </span>
-          {searchSel.length > 0 && (
-            <button className="small" onClick={() => setSearchSel([])}>선택 초기화</button>
-          )}
-          <span className="spacer" />
-          {canEdit() ? (
-            <button className="primary" onClick={startNew}>+ 새 방어덱/카운터 등록</button>
-          ) : (
-            <span className="muted">🔒 등록·수정은 운영진만</span>
-          )}
+        {canEdit() ? (
+          <button className="primary" onClick={startNew}>+ 방어덱 등록</button>
+        ) : (
+          <span className="muted">🔒 등록·수정은 운영진만</span>
+        )}
+      </header>
+
+      <div className="panel">
+        <HeroSearchBar heroes={heroes} selected={sel} onChange={setSel} max={3} />
+        <div className="hint-row">
+          {sel.length === 0
+            ? `전체 ${counters.length}개 방어덱`
+            : `${filtered.length}개 덱이 선택한 영웅을 포함 — 방덱·카운터 양쪽에서 찾습니다`}
         </div>
       </div>
 
-      {filtered.map((entry) => {
-        const active = searchSel.length > 0
-        const defMatch = active && searchSel.every((id) => entry.defense.includes(id))
-        const isMatched = (c: CounterDeck) => active && searchSel.every((id) => counterHeroNames(c).includes(id))
-        const onlyCounter = active && !defMatch && entry.counters.some(isMatched)
-        return (
-          <div className="card" key={entry.id}>
-            <div className="row between">
-              <div>
-                <div className="muted" style={{ marginBottom: 4 }}>
-                  상대 방어덱{entry.defenseFormation ? ` · ${entry.defenseFormation}` : ''}
+      {filtered.length === 0 ? (
+        <div className="empty">
+          <p>일치하는 덱이 없어요.</p>
+          {canEdit() && <button className="primary" onClick={startNew}>지금 조합으로 등록하기</button>}
+        </div>
+      ) : (
+        <div className={`cd-split ${isDesktop ? 'is-desktop' : ''}`}>
+          <div className="cd-list" role="list">
+            {filtered.map((entry) => {
+              const defMatch = sel.length > 0 && sel.every((id) => entry.defense.includes(id))
+              const ctrMatch =
+                sel.length > 0 && !defMatch && entry.counters.some((c) => sel.every((id) => counterHeroNames(c).includes(id)))
+              const best = entry.counters.reduce<number | undefined>(
+                (m, c) => (typeof c.rating === 'number' ? Math.max(m ?? 0, c.rating) : m),
+                undefined,
+              )
+              const active = current?.id === entry.id
+              return (
+                <div key={entry.id} role="listitem">
+                  <button
+                    className={`cd-row ${active ? 'active' : ''}`}
+                    // 모바일은 아래로 펼치는 방식, 데스크톱은 오른쪽 상세를 바꾸는 선택 항목
+                    aria-expanded={isDesktop ? undefined : active}
+                    aria-current={isDesktop ? (active ? 'true' : undefined) : undefined}
+                    onClick={() => setOpenId(active && !isDesktop ? null : entry.id)}
+                  >
+                    <span className="cd-row-top">
+                      <DeckNames names={entry.defense} heroMap={heroMap} />
+                      {ctrMatch && <em className="tag tag-ctr">카운터 일치</em>}
+                    </span>
+                    <span className="cd-row-sub">
+                      <em>카운터 {entry.counters.length}개</em>
+                      {typeof best === 'number' && <em className="tag tag-rate">추천도 {best}</em>}
+                      {entry.defenseFormation && <em>{entry.defenseFormation}</em>}
+                    </span>
+                  </button>
+                  {/* 모바일: 선택한 항목 바로 아래에 펼침 */}
+                  {!isDesktop && active && <div className="cd-inline">{detailFor(entry)}</div>}
                 </div>
-                <DeckLine heroIds={entry.defense} heroMap={heroMap} />
-                {onlyCounter && (
-                  <div className="badge 커뮤니티" style={{ marginTop: 6 }}>🔎 선택한 영웅 = 이 방덱의 카운터/공격덱</div>
-                )}
-                {entry.defenseNotes && <div className="muted" style={{ marginTop: 6 }}>{entry.defenseNotes}</div>}
-              </div>
-              {canEdit() && (
-                <div className="row">
-                  <button className="small" onClick={() => startEdit(entry)}>수정</button>
-                  <button className="small danger" onClick={() => remove(entry)}>삭제</button>
-                </div>
-              )}
-            </div>
-            <div style={{ marginTop: 12 }}>
-              {entry.counters.length === 0 && (
-                <span className="muted">등록된 카운터 없음{canEdit() ? ' — [수정]으로 추가하세요' : ''}</span>
-              )}
-              {entry.counters.map((c, i) => (
-                <CounterCard key={i} index={i} c={c} heroMap={heroMap} matched={isMatched(c)} />
-              ))}
-            </div>
-            <div className="muted" style={{ marginTop: 10, fontSize: '0.78rem' }}>업데이트: {entry.updatedAt}</div>
+              )
+            })}
           </div>
-        )
-      })}
-      {filtered.length === 0 && (
-        <div className="card muted">
-          일치하는 덱이 없습니다.{canEdit() ? ' [+ 새 방어덱/카운터 등록]으로 지금 검색한 조합을 바로 등록할 수 있어요.' : ''}
+
+          {/* 데스크톱: 오른쪽 상세 패널 */}
+          {isDesktop && <div className="cd-detail-col">{current && detailFor(current)}</div>}
         </div>
       )}
 
-      {showForm && editing && (
+      {editing && (
         <CounterForm
           entry={editing}
           heroes={heroes}
           heroMap={heroMap}
-          onClose={() => setShowForm(false)}
+          isNew={editingIsNew}
+          onClose={() => setEditing(null)}
           onSave={(e) => {
             update((d) => {
               const today = todayLocal()
@@ -154,7 +163,8 @@ export function CountersPage() {
               else d.counters.push(e)
               d.hiddenCounterIds = d.hiddenCounterIds.filter((id) => id !== e.id)
             })
-            setShowForm(false)
+            setOpenId(e.id)
+            setEditing(null)
           }}
         />
       )}
@@ -162,7 +172,53 @@ export function CountersPage() {
   )
 }
 
-/** 카운터덱 1개를 상세 카드로 표시 */
+/** 선택한 방어덱의 상세 — 방덱 정보 + 카운터덱 카드들 */
+function EntryDetail({
+  entry,
+  heroMap,
+  sel,
+  onEdit,
+  onRemove,
+}: {
+  entry: CounterEntry
+  heroMap: Map<string, Hero>
+  sel: string[]
+  onEdit: () => void
+  onRemove: () => void
+}) {
+  const isMatched = (c: CounterDeck) => sel.length > 0 && sel.every((id) => counterHeroNames(c).includes(id))
+  return (
+    <div className="cd-detail">
+      <div className="cd-detail-head">
+        <div>
+          <div className="sec-label">상대 방어덱</div>
+          <h2 className="cd-title"><DeckNames names={entry.defense} heroMap={heroMap} /></h2>
+          <div className="cd-sub">
+            {entry.defenseFormation && <span className="tag">{entry.defenseFormation}</span>}
+            <span className="muted">업데이트 {entry.updatedAt}</span>
+          </div>
+          {entry.defenseNotes && <p className="cd-notes">{entry.defenseNotes}</p>}
+        </div>
+        {canEdit() && (
+          <div className="row">
+            <button className="small" onClick={onEdit}>수정</button>
+            <button className="small danger" onClick={onRemove}>삭제</button>
+          </div>
+        )}
+      </div>
+
+      {entry.counters.length === 0 ? (
+        <div className="empty sm">
+          등록된 카운터가 없어요.{canEdit() ? ' [수정]에서 추가할 수 있어요.' : ''}
+        </div>
+      ) : (
+        entry.counters.map((c, i) => <CounterCard key={i} index={i} c={c} heroMap={heroMap} matched={isMatched(c)} />)
+      )}
+    </div>
+  )
+}
+
+/** 카운터덱 1개 카드 */
 function CounterCard({
   index,
   c,
@@ -175,244 +231,281 @@ function CounterCard({
   matched: boolean
 }) {
   const slots = (c.heroes || []).map(toSlot)
+  const facts: Array<[string, string | undefined]> = [
+    ['펫', c.pet],
+    ['진형', c.formation],
+    ['팀 속공', c.teamSpeed],
+    ['속공 순서', c.speedOrder],
+    ['스킬 순서', c.skillOrder],
+  ]
+  const shown = facts.filter(([, v]) => v?.trim())
+
   return (
-    <div className={`counter-card ${matched ? 'counter-match' : ''}`}>
-      <div className="cc-eyebrow">카운터덱 #{index + 1}</div>
-      <div className="cc-title">{c.name?.trim() || `카운터덱 ${index + 1}`}</div>
-      <div className="cc-meta">
-        {typeof c.rating === 'number' && <span className="cc-rating">추천도 <b>{c.rating}/10</b></span>}
-        <span className={`badge ${c.confidence}`}>{c.confidence}</span>
-        {c.updatedAt && <span className="cc-muted">최근 수정 {c.updatedAt}</span>}
+    <article className={`ccard ${matched ? 'matched' : ''}`}>
+      <header className="ccard-head">
+        <div>
+          <div className="sec-label">카운터 {index + 1}</div>
+          <h3>{c.name?.trim() || slots.map((s) => s.name).join(' · ') || '이름 없는 덱'}</h3>
+        </div>
+        <div className="ccard-badges">
+          {typeof c.rating === 'number' && <span className="rate">★ {c.rating}<em>/10</em></span>}
+          <span className={`tag conf-${c.confidence}`}>{c.confidence}</span>
+        </div>
+      </header>
+
+      <div className="ccard-heroes">
+        {slots.length === 0 && <span className="muted">영웅 미지정</span>}
+        {slots.map((s, i) => (
+          <div className="hslot" key={i}>
+            <div className="hslot-name">
+              <HeroName hero={heroMap.get(s.name)} name={s.name} />
+              {s.place && <em className="hslot-place">{s.place}</em>}
+            </div>
+            {(s.ring || s.gear || s.stat) && (
+              <dl className="hslot-facts">
+                {s.ring && <><dt>반지</dt><dd>{s.ring}</dd></>}
+                {s.gear && <><dt>장비</dt><dd>{s.gear}</dd></>}
+                {s.stat && <><dt>스탯</dt><dd>{s.stat}</dd></>}
+              </dl>
+            )}
+          </div>
+        ))}
       </div>
 
-      <div className="cc-body">
-        <div className="cc-main">
-          <div className="cc-sec">추천 카운터 영웅</div>
-          <div className="cc-heroes">
-            {slots.length === 0 && <span className="cc-muted">영웅 미지정</span>}
-            {slots.map((s, i) => (
-              <HeroSlotCard key={i} slot={s} hero={heroMap.get(s.name)} />
-            ))}
-          </div>
-
-          <div className="cc-petform">
-            <span><span className="cc-k">펫</span> <b>{c.pet?.trim() || '미입력'}</b></span>
-            <span><span className="cc-k">진형</span> <b>{c.formation?.trim() || '미입력'}</b></span>
-          </div>
-
-          <div className="cc-cols">
-            <div className="cc-col">
-              <div className="cc-col-h">추천 속공순서</div>
-              <div className="cc-col-b">{c.speedOrder?.trim() || '미입력'}</div>
+      {shown.length > 0 && (
+        <dl className="fact-grid">
+          {shown.map(([k, v]) => (
+            <div key={k}>
+              <dt>{k}</dt>
+              <dd>{v}</dd>
             </div>
-            <div className="cc-col">
-              <div className="cc-col-h">추천 카운터 팀속공</div>
-              <div className="cc-col-b">{c.teamSpeed?.trim() || '미입력'}</div>
-            </div>
-            <div className="cc-col">
-              <div className="cc-col-h">추천 카운터 스킬순서</div>
-              <div className="cc-col-b">{c.skillOrder?.trim() || '미입력'}</div>
-            </div>
-          </div>
-        </div>
+          ))}
+        </dl>
+      )}
 
-        <div className="cc-side">
-          <div className="cc-col-h">그외 참고사항</div>
-          <div className="cc-col-b">{c.notes?.trim() || '메모 없음'}</div>
-        </div>
-      </div>
-    </div>
+      {c.notes?.trim() && <p className="ccard-note">{c.notes}</p>}
+    </article>
   )
 }
 
-/** 카운터 영웅 1인 카드 (이름 + 반지/장비/스탯) */
-function HeroSlotCard({ slot, hero }: { slot: CounterHeroSlot; hero?: Hero }) {
-  const pos = hero?.position
-  return (
-    <div className="hero-slot">
-      <div className="hs-name">
-        <span className={`pos-dot ${pos ? `pos-${pos}` : 'pos-none'}`} title={pos ?? '유형 미상'} />
-        <span>{slot.name}{slot.place ? <span className="hs-place"> ({slot.place})</span> : null}</span>
-      </div>
-      {slot.ring && <div className="hs-line"><span className="hs-k">반지</span>{slot.ring}</div>}
-      {slot.gear && <div className="hs-line"><span className="hs-k">장비</span>{slot.gear}</div>}
-      {slot.stat && <div className="hs-stat">{slot.stat}</div>}
-    </div>
-  )
-}
-
+/** 방어덱 · 카운터 편집 — 슬롯을 눌러 영웅을 고르는 방식 */
 function CounterForm({
   entry,
   heroes,
   heroMap,
   onSave,
   onClose,
+  isNew,
 }: {
   entry: CounterEntry
   heroes: Hero[]
   heroMap: Map<string, Hero>
   onSave: (e: CounterEntry) => void
   onClose: () => void
+  /** 새로 등록하는 중인지 (검색 영웅이 미리 채워져 있어도 '수정'으로 보이지 않게) */
+  isNew: boolean
 }) {
-  // 편집 중에는 카운터 영웅을 항상 상세 슬롯 형태로 정규화
   const [draft, setDraft] = useState<CounterEntry>(() => {
     const d = structuredClone(entry)
     d.counters = d.counters.map((c) => ({ ...c, heroes: (c.heroes || []).map(toSlot) }))
     return d
   })
-  // 현재 영웅을 넣을 대상 (-1 = 방어덱, i = 카운터덱 i)
-  const [target, setTarget] = useState(-1)
+  // 작성 중인 내용이 있으면 배경 클릭·ESC로 닫을 때 한 번 물어본다
+  const initial = useRef('')
+  if (!initial.current) initial.current = JSON.stringify(draft)
+  const dirty = JSON.stringify(draft) !== initial.current
+  /** 어떤 슬롯을 채우는 중인지 — ci=null이면 방어덱 */
+  const [picking, setPicking] = useState<{ ci: number | null; index: number } | null>(null)
 
-  const targetNames =
-    target === -1
-      ? draft.defense
-      : ((draft.counters[target]?.heroes as CounterHeroSlot[]) ?? []).map(slotName)
+  const setDeep = (fn: (d: CounterEntry) => void): void =>
+    setDraft((prev) => { const next = structuredClone(prev); fn(next); return next })
 
-  function toggleHero(id: string) {
-    setDraft((d) => {
-      const next = structuredClone(d)
-      if (target === -1) {
-        const i = next.defense.indexOf(id)
-        if (i >= 0) next.defense.splice(i, 1)
-        else if (next.defense.length < 3) next.defense.push(id)
+  const counterSlots = (i: number) => (draft.counters[i].heroes as CounterHeroSlot[])
+
+  function pickHero(heroId: string): void {
+    if (!picking) return
+    const { ci, index } = picking
+    setDeep((d) => {
+      if (ci === null) {
+        // 다른 칸에 이미 있는 영웅이면 무시 (한 덱에 같은 영웅 중복 방지)
+        if (d.defense.some((n, i) => i !== index && n === heroId)) return
+        d.defense[index] = heroId
+        d.defense = d.defense.filter(Boolean)
       } else {
-        const slots = next.counters[target].heroes as CounterHeroSlot[]
-        const i = slots.findIndex((s) => slotName(s) === id)
-        if (i >= 0) slots.splice(i, 1)
-        else if (slots.length < 3) slots.push({ name: id })
+        const slots = d.counters[ci].heroes as CounterHeroSlot[]
+        if (slots.some((s, i) => i !== index && slotName(s) === heroId)) return
+        // 다른 영웅으로 바꾸면 이전 영웅의 반지·장비·스탯이 따라오지 않게 새 슬롯으로 교체
+        slots[index] = slots[index]?.name === heroId ? slots[index] : { name: heroId }
+        d.counters[ci].heroes = slots.filter(Boolean)
       }
-      return next
     })
+    setPicking(null)
   }
 
-  function patchCounter(i: number, patch: Partial<CounterDeck>) {
-    setDraft((d) => {
-      const next = structuredClone(d)
-      Object.assign(next.counters[i], patch)
-      return next
-    })
-  }
-
-  function patchSlot(ci: number, si: number, patch: Partial<CounterHeroSlot>) {
-    setDraft((d) => {
-      const next = structuredClone(d)
-      const slots = next.counters[ci].heroes as CounterHeroSlot[]
-      Object.assign(slots[si], patch)
-      return next
-    })
-  }
-
-  const stop = (e: MouseEvent) => e.stopPropagation()
+  /** 이 덱에 이미 들어있는 영웅 (지금 고치는 칸은 제외 — 같은 영웅 재선택은 허용) */
+  const alreadyPicked =
+    picking === null
+      ? []
+      : (picking.ci === null ? draft.defense : counterSlots(picking.ci).map(slotName)).filter(
+          (_, i) => i !== picking.index,
+        )
 
   return (
-    <dialog open style={{ position: 'fixed', top: '4vh', zIndex: 100, maxHeight: '90vh', overflowY: 'auto', left: '50%', transform: 'translateX(-50%)', margin: 0 }}>
-      <h2 style={{ marginTop: 0 }}>방어덱 / 카운터 편집</h2>
+    <>
+      <Modal
+        title={isNew ? '새 방어덱 등록' : '방어덱 · 카운터 수정'}
+        desc="슬롯을 눌러 영웅을 고르세요. 세부 설정은 접혀 있어요."
+        onClose={onClose}
+        confirmClose={dirty ? '작성 중인 내용이 있어요. 저장하지 않고 닫을까요?' : undefined}
+        wide
+        footer={
+          <>
+            <button onClick={onClose}>취소</button>
+            <button className="primary" disabled={draft.defense.length === 0} onClick={() => onSave(draft)}>
+              저장
+            </button>
+          </>
+        }
+      >
+        {/* 1. 상대 방어덱 */}
+        <section className="fsec">
+          <div className="fsec-head">
+            <div className="sec-label">1 · 상대 방어덱</div>
+            <select
+              value={draft.defenseFormation ?? ''}
+              onChange={(e) => setDeep((d) => { d.defenseFormation = (e.target.value || undefined) as Formation | undefined })}
+            >
+              <option value="">진형 미상</option>
+              {FORMATIONS.map((f) => <option key={f} value={f}>{f}</option>)}
+            </select>
+          </div>
+          <SlotRow
+            names={draft.defense}
+            heroMap={heroMap}
+            onPick={(i) => setPicking({ ci: null, index: i })}
+            onClear={(i) => setDeep((d) => { d.defense.splice(i, 1) })}
+          />
+          <input
+            className="w-full"
+            placeholder="방어덱 특징 메모 (예: 선공 위주, 연희 도발 조심)"
+            value={draft.defenseNotes ?? ''}
+            onChange={(e) => setDeep((d) => { d.defenseNotes = e.target.value })}
+          />
+        </section>
 
-      {/* 상대 방어덱 */}
-      <div className="card" onClick={() => setTarget(-1)}
-        style={{ borderColor: target === -1 ? 'var(--accent)' : undefined, cursor: 'pointer' }}>
-        <div className="row between">
-          <span><strong>상대 방어덱</strong> <span className="muted">(클릭 후 아래 목록에서 영웅 선택)</span></span>
-          <select value={draft.defenseFormation ?? ''} onClick={stop}
-            onChange={(e) => setDraft({ ...draft, defenseFormation: (e.target.value || undefined) as Formation | undefined })}>
-            <option value="">진형 미상</option>
-            {FORMATIONS.map((f) => <option key={f} value={f}>{f}</option>)}
-          </select>
-        </div>
-        <div style={{ marginTop: 6 }}>
-          <DeckLine heroIds={draft.defense} heroMap={heroMap} />
-        </div>
-        <input
-          placeholder="방어덱 특징 메모 (예: 선공 위주, 연희 도발 조심)"
-          value={draft.defenseNotes ?? ''}
-          onClick={stop}
-          onChange={(e) => setDraft({ ...draft, defenseNotes: e.target.value })}
-          style={{ width: '100%', marginTop: 8 }}
-        />
-      </div>
+        {/* 2. 카운터덱들 */}
+        <section className="fsec">
+          <div className="fsec-head">
+            <div className="sec-label">2 · 카운터덱 {draft.counters.length}개</div>
+            <button
+              className="small"
+              onClick={() => setDeep((d) => { d.counters.push({ heroes: [], notes: '', confidence: '커뮤니티' }) })}
+            >
+              + 카운터 추가
+            </button>
+          </div>
 
-      {/* 카운터덱들 */}
-      {draft.counters.map((c, i) => {
-        const slots = c.heroes as CounterHeroSlot[]
-        return (
-          <div key={i} className="card" onClick={() => setTarget(i)}
-            style={{ borderColor: target === i ? 'var(--accent)' : undefined, cursor: 'pointer' }}>
-            <div className="row between">
-              <strong>카운터덱 {i + 1}{target === i ? ' ✍️' : ''}</strong>
-              <div className="row">
-                <select value={c.confidence} onClick={stop}
-                  onChange={(e) => patchCounter(i, { confidence: e.target.value as CounterDeck['confidence'] })}>
+          {draft.counters.length === 0 && (
+            <div className="empty sm">아직 카운터가 없어요. [+ 카운터 추가]를 눌러 시작하세요.</div>
+          )}
+
+          {draft.counters.map((c, i) => (
+            <div className="fcard" key={i}>
+              <div className="fcard-head">
+                <input
+                  className="fcard-name"
+                  placeholder={`카운터 ${i + 1} 별명 (예: 프목실)`}
+                  value={c.name ?? ''}
+                  onChange={(e) => setDeep((d) => { d.counters[i].name = e.target.value })}
+                />
+                <input
+                  type="number" min={0} max={10} className="fcard-rate"
+                  placeholder="추천도"
+                  value={c.rating ?? ''}
+                  onChange={(e) =>
+                    setDeep((d) => {
+                      d.counters[i].rating =
+                        e.target.value === '' ? undefined : Math.max(0, Math.min(10, Number(e.target.value)))
+                    })
+                  }
+                />
+                <select
+                  value={c.confidence}
+                  onChange={(e) => setDeep((d) => { d.counters[i].confidence = e.target.value as CounterDeck['confidence'] })}
+                >
                   {CONFIDENCES.map((cf) => <option key={cf} value={cf}>{cf}</option>)}
                 </select>
-                <button className="small danger" onClick={(e) => {
-                  stop(e)
-                  setDraft((d) => { const n = structuredClone(d); n.counters.splice(i, 1); return n })
-                  setTarget(-1)
-                }}>삭제</button>
+                <button
+                  className="small danger"
+                  onClick={() => setDeep((d) => { d.counters.splice(i, 1) })}
+                >삭제</button>
               </div>
-            </div>
 
-            <div className="form-grid2" onClick={stop} style={{ marginTop: 10 }}>
-              <label>덱 별명<input value={c.name ?? ''} placeholder="예: 프목실" onChange={(e) => patchCounter(i, { name: e.target.value })} /></label>
-              <label>추천도 (0~10)<input type="number" min={0} max={10} value={c.rating ?? ''} placeholder="예: 8"
-                onChange={(e) => patchCounter(i, { rating: e.target.value === '' ? undefined : Math.max(0, Math.min(10, Number(e.target.value))) })} /></label>
-            </div>
+              <SlotRow
+                names={counterSlots(i).map(slotName)}
+                heroMap={heroMap}
+                onPick={(si) => setPicking({ ci: i, index: si })}
+                onClear={(si) => setDeep((d) => { (d.counters[i].heroes as CounterHeroSlot[]).splice(si, 1) })}
+              />
 
-            <div className="muted" style={{ marginTop: 12, marginBottom: 2 }}>
-              카운터 영웅 {slots.length}/3 <span className="cc-muted">— 이 카드를 선택하고 아래 목록에서 영웅을 고르면 슬롯이 생겨요</span>
-            </div>
-            {slots.length === 0 && <div className="cc-muted" style={{ margin: '4px 0' }}>아래 영웅 목록에서 선택하세요.</div>}
-            {slots.map((s, si) => (
-              <div key={si} className="slot-edit" onClick={stop}>
-                <div className="slot-edit-name">
-                  <span className={`pos-dot ${heroMap.get(s.name)?.position ? `pos-${heroMap.get(s.name)!.position}` : 'pos-none'}`} />
-                  <b>{s.name}</b>
-                  <button className="small danger" style={{ marginLeft: 'auto' }}
-                    onClick={() => patchCounter(i, { heroes: (c.heroes as CounterHeroSlot[]).filter((_, x) => x !== si) })}>빼기</button>
-                </div>
-                <div className="slot-edit-inputs">
-                  <input placeholder="배치 (전방/후방/각성…)" value={s.place ?? ''} onChange={(e) => patchSlot(i, si, { place: e.target.value })} />
-                  <input placeholder="반지 (예: 쿨권 or 권기)" value={s.ring ?? ''} onChange={(e) => patchSlot(i, si, { ring: e.target.value })} />
-                  <input placeholder="장비 (예: 추적자 치약100 모공최대)" value={s.gear ?? ''} onChange={(e) => patchSlot(i, si, { gear: e.target.value })} />
-                  <input placeholder="스탯 (예: 극속공, 막기최대)" value={s.stat ?? ''} onChange={(e) => patchSlot(i, si, { stat: e.target.value })} />
-                </div>
+              <div className="fgrid">
+                <label>펫
+                  <input value={c.pet ?? ''} placeholder="예: 멜페로"
+                    onChange={(e) => setDeep((d) => { d.counters[i].pet = e.target.value })} /></label>
+                <label>진형
+                  <input list="cc-formations" value={c.formation ?? ''} placeholder="예: 보호진형(멜키르)"
+                    onChange={(e) => setDeep((d) => { d.counters[i].formation = e.target.value })} /></label>
+                <label>팀 속공
+                  <input value={c.teamSpeed ?? ''} placeholder="예: 290 이상"
+                    onChange={(e) => setDeep((d) => { d.counters[i].teamSpeed = e.target.value })} /></label>
+                <label>스킬 순서
+                  <input value={c.skillOrder ?? ''} placeholder="예: 오목1 → 프레2"
+                    onChange={(e) => setDeep((d) => { d.counters[i].skillOrder = e.target.value })} /></label>
               </div>
-            ))}
 
-            <div className="form-grid2" onClick={stop} style={{ marginTop: 12 }}>
-              <label>펫<input value={c.pet ?? ''} placeholder="예: 멜페로" onChange={(e) => patchCounter(i, { pet: e.target.value })} /></label>
-              <label>진형<input list="cc-formations" value={c.formation ?? ''} placeholder="예: 보호진형(멜키르)" onChange={(e) => patchCounter(i, { formation: e.target.value })} /></label>
-              <label>추천 카운터 팀속공<input value={c.teamSpeed ?? ''} placeholder="예: 290이상 / 극내실" onChange={(e) => patchCounter(i, { teamSpeed: e.target.value })} /></label>
-              <label>추천 카운터 스킬순서<input value={c.skillOrder ?? ''} placeholder="예: 오목1 → 프레2 → 오목2" onChange={(e) => patchCounter(i, { skillOrder: e.target.value })} /></label>
+              <label className="fld">참고사항
+                <textarea value={c.notes} placeholder="주의점·팁"
+                  onChange={(e) => setDeep((d) => { d.counters[i].notes = e.target.value })} /></label>
+
+              <details className="fdetails">
+                <summary>영웅별 세팅 · 속공 순서 (선택)</summary>
+                <label className="fld">속공 순서 <span className="muted">줄바꿈으로 구분</span>
+                  <textarea value={c.speedOrder ?? ''} placeholder={'실베스타\n프레이야\n오목'}
+                    onChange={(e) => setDeep((d) => { d.counters[i].speedOrder = e.target.value })} /></label>
+                {counterSlots(i).length === 0 && <p className="muted">먼저 위에서 영웅을 고르면 칸이 생겨요.</p>}
+                {counterSlots(i).map((s, si) => (
+                  <div className="fslot" key={si}>
+                    <div className="fslot-name"><HeroName hero={heroMap.get(s.name)} name={s.name} /></div>
+                    <div className="fgrid">
+                      <input placeholder="배치 (전방/후방)" value={s.place ?? ''}
+                        onChange={(e) => setDeep((d) => { (d.counters[i].heroes as CounterHeroSlot[])[si].place = e.target.value })} />
+                      <input placeholder="반지" value={s.ring ?? ''}
+                        onChange={(e) => setDeep((d) => { (d.counters[i].heroes as CounterHeroSlot[])[si].ring = e.target.value })} />
+                      <input placeholder="장비" value={s.gear ?? ''}
+                        onChange={(e) => setDeep((d) => { (d.counters[i].heroes as CounterHeroSlot[])[si].gear = e.target.value })} />
+                      <input placeholder="스탯" value={s.stat ?? ''}
+                        onChange={(e) => setDeep((d) => { (d.counters[i].heroes as CounterHeroSlot[])[si].stat = e.target.value })} />
+                    </div>
+                  </div>
+                ))}
+              </details>
             </div>
-            <label className="fld" onClick={stop}>추천 속공순서 <span className="cc-muted">(줄바꿈으로 순서)</span>
-              <textarea value={c.speedOrder ?? ''} placeholder={'예:\n실베스타\n프레이야\n오목'}
-                onChange={(e) => patchCounter(i, { speedOrder: e.target.value })} style={{ minHeight: 44 }} /></label>
-            <label className="fld" onClick={stop}>그외 참고사항
-              <textarea value={c.notes} placeholder="주의점·팁 등"
-                onChange={(e) => patchCounter(i, { notes: e.target.value })} style={{ minHeight: 44 }} /></label>
-          </div>
-        )
-      })}
+          ))}
+        </section>
 
-      <button onClick={() => {
-        setDraft((d) => ({ ...d, counters: [...d.counters, { heroes: [], notes: '', confidence: '커뮤니티' }] }))
-        setTarget(draft.counters.length)
-      }}>+ 카운터덱 추가</button>
+        <datalist id="cc-formations">{FORMATIONS.map((f) => <option key={f} value={f} />)}</datalist>
+      </Modal>
 
-      <h2 style={{ fontSize: '1rem' }}>
-        영웅 선택 — {target === -1 ? '상대 방어덱' : `카운터덱 ${target + 1}`}에 넣기
-      </h2>
-      <HeroPicker heroes={heroes} selected={targetNames} onToggle={toggleHero} max={3} />
-
-      <datalist id="cc-formations">{FORMATIONS.map((f) => <option key={f} value={f} />)}</datalist>
-
-      <div className="row" style={{ marginTop: 16, justifyContent: 'flex-end' }}>
-        <button onClick={onClose}>취소</button>
-        <button className="primary" disabled={draft.defense.length === 0} onClick={() => onSave(draft)}>
-          저장
-        </button>
-      </div>
-    </dialog>
+      {picking && (
+        <HeroPickerModal
+          heroes={heroes}
+          title={picking.ci === null ? '방어덱 영웅 선택' : `카운터 ${picking.ci + 1} 영웅 선택`}
+          selected={alreadyPicked}
+          disabledIds={alreadyPicked}
+          onPick={pickHero}
+          onClose={() => setPicking(null)}
+        />
+      )}
+    </>
   )
 }
