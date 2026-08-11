@@ -649,7 +649,7 @@ function EntryTable({
         </div>
       )}
 
-      <div className="stat-tiles" style={{ margin: '0 0 6px' }}>
+      <div className="stat-tiles stagger" style={{ margin: '0 0 6px' }}>
         {showMid ? (
           <>
             <div className="stat-tile"><div className="num">{midCount}<span style={{ fontSize: '0.9rem', color: 'var(--text-3)' }}>/{rows.length}</span></div><div className="label">중간집계 입력</div></div>

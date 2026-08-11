@@ -109,7 +109,7 @@ function DeckBuilder({
           <div className="panel-head">
             <div className="sec-label">저장된 덱 {savedDecks.length}개</div>
           </div>
-          <div className="deck-list">
+          <div className="deck-list stagger">
             {savedDecks.map((d) => (
               <div className="deck-item" key={d.id}>
                 <div className="deck-item-main">
@@ -197,7 +197,7 @@ function HeroBrowser({ heroes }: { heroes: Hero[] }) {
         <button className={`seg-toggle ${pvpOnly ? 'on' : ''}`} onClick={() => setPvpOnly((v) => !v)}>⭐ PvP 주력만</button>
       </div>
 
-      <div className="hero-grid">
+      <div className="hero-grid stagger">
         {filtered.length === 0 && <span className="muted">조건에 맞는 영웅이 없어요.</span>}
         {filtered.map((h) => (
           <div className="hcard" key={h.id}>

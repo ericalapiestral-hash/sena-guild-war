@@ -86,8 +86,15 @@ export function ArenaPage({ sub }: { sub: string }) {
         {canEdit() && <button className="primary" onClick={startNew}>+ 덱 등록</button>}
       </header>
 
-      {/* 하위 메뉴 — 일반 / 상급 / 실시간 */}
-      <nav className="seg seg-lg" aria-label="결투장 종류">
+      {/* 하위 메뉴 — 일반 / 상급 / 실시간. --i는 미끄러지는 알약 위치 */}
+      <nav
+        className="seg seg-lg"
+        aria-label="결투장 종류"
+        style={{
+          ['--i' as string]: ARENA_MODES.findIndex((m) => m.mode === mode),
+          ['--n' as string]: ARENA_MODES.length,
+        }}
+      >
         {ARENA_MODES.map((m) => (
           <button
             key={m.mode}
@@ -123,7 +130,7 @@ export function ArenaPage({ sub }: { sub: string }) {
         </div>
       ) : (
         <div className={`cd-split ${isDesktop ? 'is-desktop' : ''}`}>
-          <div className="cd-list" role="list">
+          <div className="cd-list stagger" role="list">
             {filtered.map((entry) => {
               const active = current?.id === entry.id
               return (

@@ -105,7 +105,7 @@ export function CountersPage() {
         </div>
       ) : (
         <div className={`cd-split ${isDesktop ? 'is-desktop' : ''}`}>
-          <div className="cd-list" role="list">
+          <div className="cd-list stagger" role="list">
             {filtered.map((entry) => {
               const defMatch = sel.length > 0 && sel.every((id) => entry.defense.includes(id))
               const ctrMatch =

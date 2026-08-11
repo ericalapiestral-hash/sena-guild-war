@@ -35,7 +35,7 @@ export function HomePage() {
         <p>길드전 카운터덱부터 공성전·파괴신 기록까지, 길드에 필요한 걸 한곳에.</p>
       </header>
 
-      <div className="kpi-row">
+      <div className="kpi-row stagger">
         {stats.map((s) => (
           <button className="kpi" key={s.route} onClick={() => navigate(s.route)}>
             <span className="kpi-n">{s.n}</span>
@@ -50,7 +50,7 @@ export function HomePage() {
           <button className="small ghost" onClick={() => navigate('counters')}>전체 보기 →</button>
         </div>
         {recent.length === 0 && <p className="muted">아직 등록된 공략이 없어요.</p>}
-        <div className="recent-list">
+        <div className="recent-list stagger">
           {recent.map((c) => (
             <button key={c.id} className="recent" onClick={() => navigate('counters')}>
               <span className="recent-line">
@@ -73,7 +73,7 @@ export function HomePage() {
         <div className="panel-head">
           <div className="sec-label">바로 가기</div>
         </div>
-        <div className="quick-grid">
+        <div className="quick-grid stagger">
           {LINKS.map((l) => (
             <button className="quick" key={l.route} onClick={() => navigate(l.route)}>
               <strong>{l.label}</strong>
