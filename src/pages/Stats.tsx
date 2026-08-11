@@ -522,13 +522,15 @@ function EntryTable({
   const [draftCutline, setDraftCutline] = useState<number | undefined>(undefined)
   const [draftTierCuts, setDraftTierCuts] = useState<Record<string, number>>({})
   const [localExtra, setLocalExtra] = useState<string[]>([])
+  /** 편집 중 ✕로 지운 외부(비명단) 이름 — 저장 시 기록에서 제거됨 */
+  const [removedExtra, setRemovedExtra] = useState<string[]>([])
   const [newName, setNewName] = useState('')
 
   const useTiers = !!tierList?.length
 
   const rosterSet = new Set(roster)
   const storedMap = new Map(stored.map((e) => [e.name, e]))
-  const storedExtra = stored.map((e) => e.name).filter((n) => !rosterSet.has(n))
+  const storedExtra = stored.map((e) => e.name).filter((n) => !rosterSet.has(n) && !removedExtra.includes(n))
   const baseNames = [...roster, ...storedExtra, ...localExtra.filter((n) => !rosterSet.has(n) && !storedExtra.includes(n))]
 
   const valOf = (name: string): Partial<StatEntry> => (editing ? draft[name] ?? {} : storedMap.get(name) ?? {})
@@ -569,6 +571,7 @@ function EntryTable({
     setDraftCutline(cutline)
     setDraftTierCuts({ ...(tierCutlines ?? {}) })
     setLocalExtra([])
+    setRemovedExtra([])
     setEditing(true)
   }
   const setField = (name: string, patch: Partial<StatEntry>) => setDraft((prev) => ({ ...prev, [name]: { ...prev[name], ...patch } }))
@@ -579,10 +582,12 @@ function EntryTable({
     onSaveAll(list, hasCutline ? draftCutline : undefined, hasCutline && useTiers ? draftTierCuts : undefined)
     setEditing(false)
     setLocalExtra([])
+    setRemovedExtra([])
   }
   function cancel() {
     setEditing(false)
     setLocalExtra([])
+    setRemovedExtra([])
     setDraft({})
   }
   function addExternal() {
@@ -708,7 +713,12 @@ function EntryTable({
                 <td>{editing ? (
                   <input value={e.memo ?? ''} placeholder="메모" onChange={(ev) => setField(e.name, { memo: ev.target.value })} style={{ width: '100%', minWidth: 90 }} />
                 ) : (<span className="muted">{e.memo || ''}</span>)}</td>
-                {editing && <td>{!rosterSet.has(e.name) && <button className="small danger" onClick={() => setLocalExtra((prev) => prev.filter((x) => x !== e.name))}>✕</button>}</td>}
+                {editing && <td>{!rosterSet.has(e.name) && <button className="small danger" title="이 외부 인원 기록 삭제 (저장 시 반영)" onClick={() => {
+                  // 이번 편집에서 방금 추가한 이름이면 목록에서만 빼고,
+                  // 이미 저장돼 있던 외부 항목이면 삭제 표시 → [저장] 때 기록에서 제거
+                  setLocalExtra((prev) => prev.filter((x) => x !== e.name))
+                  setRemovedExtra((prev) => (prev.includes(e.name) ? prev : [...prev, e.name]))
+                }}>✕</button>}</td>}
               </tr>
             ))}
           </tbody>
