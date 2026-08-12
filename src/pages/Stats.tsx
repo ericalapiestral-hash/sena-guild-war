@@ -6,11 +6,9 @@ import { newId, todayLocal, update, useUserData } from '../store'
 import { isAdmin } from '../auth'
 import { Markdown } from '../components/Markdown'
 import { DESTROYER_GUIDES } from '../data/destroyerGuide'
+import { Delta, WEEKDAYS, fmt, todayWeekday } from '../lib/stat'
 
 type Kind = 'siege' | 'destroyer'
-
-const WEEKDAYS = ['월', '화', '수', '목', '금', '토', '일']
-const todayWeekday = () => WEEKDAYS[(new Date().getDay() + 6) % 7]
 
 const CFG: Record<
   Kind,
@@ -55,7 +53,6 @@ const CFG: Record<
   },
 }
 
-const fmt = (n?: number) => (typeof n === 'number' && !Number.isNaN(n) ? n.toLocaleString() : '-')
 
 export function StatsPage({ kind }: { kind: Kind }) {
   const data = useUserData()
@@ -466,13 +463,6 @@ function PrintContent({
 }
 
 /** 전 주차(회차) 대비 상승/하락 % */
-function Delta({ prev, cur }: { prev?: number; cur?: number }) {
-  if (typeof cur !== 'number' || typeof prev !== 'number' || prev === 0) return <span className="muted">—</span>
-  const pct = ((cur - prev) / Math.abs(prev)) * 100
-  if (Math.abs(pct) < 0.05) return <span className="delta">0%</span>
-  const up = pct > 0
-  return <span className={`delta ${up ? 'up' : 'down'}`}>{up ? '▲' : '▼'} {Math.abs(pct).toFixed(1)}%</span>
-}
 
 function EntryTable({
   roster,

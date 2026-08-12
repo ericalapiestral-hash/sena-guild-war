@@ -1743,6 +1743,33 @@ button.ghost:hover { background: var(--surface-2); color: var(--text); }
 .recent-line { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .recent-line .sec-label { min-width: 38px; font-style: normal; }
 
+/* ---- 홈: 공성전·파괴신 최근 기록 요약 ----
+   운영진만 입력하는 기록이라, 길드원은 홈에서 바로 표로 확인한다. */
+.stat-preview-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 18px; }
+@media (max-width: 900px) { .stat-preview-row { grid-template-columns: 1fr; } }
+.stat-preview { margin-bottom: 0; }
+.stat-preview .panel-head { align-items: flex-start; }
+.sp-sub { margin-top: 3px; font-size: 0.95rem; font-weight: 700; letter-spacing: -0.02em; }
+
+.sp-facts { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 10px; }
+.sp-facts span { display: inline-flex; align-items: baseline; gap: 5px; }
+.sp-facts b { font-size: 1.05rem; letter-spacing: -0.02em; }
+.sp-facts em { font-style: normal; font-size: 0.78rem; color: var(--text-3); font-weight: 600; }
+.sp-fail b { color: var(--danger); }
+
+/* 30명이 넘어도 홈이 길어지지 않게 표 안에서만 스크롤 */
+.sp-scroll { max-height: 268px; overflow-y: auto; border-top: 1px solid var(--border); }
+.sp-scroll table { font-size: 0.86rem; }
+.sp-scroll thead th {
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  z-index: 1;
+  font-size: 0.72rem;
+  padding: 7px 8px;
+}
+.sp-scroll td { padding: 6px 8px; }
+
 .quick-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; }
 .quick {
   display: flex;
