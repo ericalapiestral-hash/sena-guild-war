@@ -58,19 +58,37 @@ const THEME_KEY = 'sena-guild-war:theme'
 const THEME_LABEL: Record<Theme, string> = { jadan: '자단', yacheong: '야청' }
 
 /**
- * 기본은 야청(어두움). 기기의 다크모드 설정은 보지 않는다 — 이 사이트의 기본값이다.
- * 사용자가 자단으로 바꾸면 그 선택을 계속 따른다.
- * CSS의 :root 기본값도 야청이라, 스크립트가 붙기 전 첫 화면부터 어둡다(깜빡임 없음).
+ * 기기 설정을 따른다 — 라이트 모드면 자단, 다크 모드면 야청.
+ * 사용자가 한 번 고르면 그 선택이 기기 설정을 이긴다.
+ *
+ * CSS도 같은 규칙(:root=자단 / @media dark=야청 / [data-theme=yacheong]=야청)을
+ * 갖고 있어서 스크립트가 붙기 전 첫 페인트부터 올바른 테마로 그려진다.
+ * 여기서는 '지금 적용된 테마'를 속성으로 확정해 아이콘·상단바 색을 맞춘다.
  */
 function useTheme(): [Theme, () => void] {
-  const [theme, setTheme] = useState<Theme>(() => {
+  const [pref, setPref] = useState<Theme | null>(() => {
     try {
       const v = localStorage.getItem(THEME_KEY)
-      return v === 'jadan' || v === 'yacheong' ? v : 'yacheong'
+      return v === 'jadan' || v === 'yacheong' ? v : null
     } catch {
-      return 'yacheong'
+      return null
     }
   })
+  const [sys, setSys] = useState<Theme>(() =>
+    typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'yacheong' : 'jadan',
+  )
+
+  // 고른 적이 없을 때만 기기 설정 변화를 따라간다
+  useEffect(() => {
+    if (pref) return
+    const mql = window.matchMedia('(prefers-color-scheme: dark)')
+    const onChange = (): void => setSys(mql.matches ? 'yacheong' : 'jadan')
+    onChange()
+    mql.addEventListener('change', onChange)
+    return () => mql.removeEventListener('change', onChange)
+  }, [pref])
+
+  const theme = pref ?? sys
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme
@@ -81,7 +99,7 @@ function useTheme(): [Theme, () => void] {
 
   const toggle = (): void => {
     const next: Theme = theme === 'jadan' ? 'yacheong' : 'jadan'
-    setTheme(next)
+    setPref(next)
     try {
       localStorage.setItem(THEME_KEY, next)
     } catch {

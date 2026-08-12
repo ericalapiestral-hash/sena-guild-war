@@ -27,8 +27,14 @@
   font-size: 15px;
 }
 
-/* ====== 자단 紫檀 — 붉은 기가 도는 종이 + 채도를 뺀 자줏빛 (밝은 테마, 선택) ====== */
-:root[data-theme='jadan'] {
+
+
+
+
+
+/* ====== 자단 紫檀 — 붉은 기가 도는 종이 + 채도를 뺀 자줏빛 (밝은 테마) ======
+   :root에 직접 걸어 기본값으로 삼는다. 기기가 라이트 모드면 이대로 간다. */
+:root, :root[data-theme='jadan'] {
   color-scheme: light;
 
   --bg: #f8f5f4;
@@ -102,11 +108,87 @@
   --text-dim: var(--text-2);
 }
 
-/* ====== 야청 夜靑 — 흑연빛 화면 + 옅은 얼음빛 (어두운 테마, 기본) ======
-   ★ :root에 직접 걸어 기본값으로 삼는다. 자바스크립트가 붙기 전 첫 화면부터
-   어두운 상태여야 밝은 화면이 번쩍였다 어두워지는 일이 없다.
-   기기의 다크모드 설정은 보지 않는다 — 이 사이트는 야청이 기본. */
-:root, :root[data-theme='yacheong'] {
+/* ====== 야청 夜靑 — 흑연빛 화면 + 옅은 얼음빛 (어두운 테마) ======
+   기기가 다크 모드면 자동으로 야청. 단 사용자가 자단을 골랐으면 제외한다. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='jadan']) {
+    color-scheme: dark;
+
+    --bg: #15171a;
+    --surface: #1c1f23;
+    --surface-2: #23272c;
+    --surface-3: #2b3036;
+    --border: #2b2f35;
+    --border-2: #3a3f47;
+    --text: #e9ecef;
+    --text-2: #a8afb8;
+    --text-3: #8b939d;
+    --ink: #e9ecef;
+
+    --accent: #8fbccd;
+    --accent-strong: #b0d5e3;
+    --accent-soft: #23303a;
+    --accent-dim: #3d5a68;
+    --accent-grad: linear-gradient(135deg, #b6dcea 0%, #8fbccd 45%, #d3ecf5 72%, #5f8b9c 100%);
+    --accent-line: linear-gradient(90deg, rgba(143, 188, 205, 0) 0%, rgba(143, 188, 205, 0.4) 50%, rgba(143, 188, 205, 0) 100%);
+    --accent-wash: linear-gradient(90deg, rgba(35, 48, 58, 0.95) 0%, rgba(30, 40, 48, 0.7) 100%);
+
+    --danger: #f09a92;
+    --danger-soft: #3a2422;
+    --danger-line: #59332f;
+    --ok: #7ed3a4;
+    --ok-soft: #1b3328;
+    --ok-line: #2b4d3a;
+    --info: #93bcf3;
+    --info-soft: #1e2c40;
+    --info-line: #2e4360;
+    --purple: #c4a7ec;
+    --purple-soft: #2c2540;
+    --purple-line: #423868;
+
+    --pos-atk: #f0837a;
+    --pos-mag: #b997f0;
+    --pos-def: #77aef2;
+    --pos-sup: #6fd3a0;
+    --pos-all: #e0bd6a;
+    --pos-none: #6b727b;
+
+    --paper: linear-gradient(180deg, #1f2328 0%, #1b1e22 100%);
+    --edge: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4), var(--edge);
+    --shadow-lift: 0 12px 28px -14px rgba(0, 0, 0, 0.7), 0 3px 8px -3px rgba(0, 0, 0, 0.5), var(--edge);
+    --shadow-md: 0 28px 68px -24px rgba(0, 0, 0, 0.85), 0 8px 20px -10px rgba(0, 0, 0, 0.6), var(--edge);
+    --bg-glow: radial-gradient(1200px 560px at 60% -260px, rgba(143, 188, 205, 0.07) 0%, rgba(143, 188, 205, 0) 72%);
+
+    --glass: linear-gradient(180deg, rgba(28, 31, 35, 0.94) 0%, rgba(24, 27, 30, 0.9) 100%);
+    --glass-flat: rgba(24, 27, 30, 0.93);
+    --scrim: rgba(0, 0, 0, 0.58);
+    --scrim-strong: rgba(0, 0, 0, 0.66);
+
+    --highlight: #1f272c;
+    --fail-cell: #55302c;
+
+    --btn-bg: linear-gradient(180deg, #eef1f4 0%, #dfe4e9 100%);
+    --btn-bg-hover: linear-gradient(180deg, #ffffff 0%, #e8edf1 100%);
+    --btn-border: #cbd2d9;
+    --btn-fg: #15171a;
+    --btn-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    --btn-shadow-hover: 0 6px 16px -8px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+
+    --display-grad: linear-gradient(135deg, #ffffff 0%, #c8d4da 45%, #eef3f6 100%);
+
+    --scroll-thumb: #3a3f47;
+    --scroll-thumb-hover: #4c525b;
+
+    --bg-2: var(--surface);
+    --bg-3: var(--surface-2);
+    --text-dim: var(--text-2);
+  }
+}
+
+/* 사용자가 직접 야청을 고른 경우 — 위 미디어쿼리와 명시도가 같으므로
+   반드시 뒤에 와야 라이트 모드 기기에서도 야청이 적용된다. */
+:root[data-theme='yacheong'] {
   color-scheme: dark;
 
   --bg: #15171a;
@@ -179,7 +261,6 @@
   --bg-3: var(--surface-2);
   --text-dim: var(--text-2);
 }
-
 
 * { box-sizing: border-box; }
 
@@ -479,9 +560,12 @@ html[data-side='full'] .side-brand::after { left: 12px; right: 12px; }
 html[data-side='full'] .side-toggle .ic { transform: none; }
 /* 테마 — 반쪽 원이 뒤집히며 밝음/어두움을 나타낸다 */
 .side-theme .ic { transition: transform var(--dur-3) var(--ease-slide), color var(--dur-1) var(--ease); }
-/* 야청이 기본이라 회전된 쪽이 기본, 자단일 때 되돌아온다 */
-.side-theme .ic { transform: rotate(180deg); }
-html[data-theme='jadan'] .side-theme .ic { transform: none; }
+/* 반쪽 원이 뒤집혀 현재 테마를 나타낸다 — 테마 규칙과 같은 3단 구조 */
+.side-theme .ic { transform: none; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='jadan']) .side-theme .ic { transform: rotate(180deg); }
+}
+html[data-theme='yacheong'] .side-theme .ic { transform: rotate(180deg); }
 
 /* ==== 모바일 상단 앱바 ==== */
 .mobile-appbar {
