@@ -448,40 +448,6 @@ textarea { resize: vertical; min-height: 70px; }
   html[data-side='full'] .side-label,
   html[data-side='full'] .logo-t { opacity: 1; width: auto; margin: 0; }
 
-  /* ---- 살짝 펼쳐 보기 (마우스를 올리면) ----
-     접힌 상태에서 커서를 올리면 이름이 보이게 잠깐 넓어진다. 접기/펼치기 버튼은
-     그대로 두고, 이건 '고정'이 아니라 '들춰보기'다 — 저장되는 상태가 바뀌지 않는다.
-
-     본문(#root)의 여백은 건드리지 않는다. 커서를 스칠 때마다 페이지 전체가
-     오른쪽으로 밀리면 훨씬 거슬리기 때문에, 사이드바가 본문 위를 덮는다.
-     (position: fixed라 그대로 겹쳐진다)
-
-     터치 기기는 hover가 '눌린 채로' 남아 메뉴가 열린 상태로 굳어버리므로 제외한다. */
-  @media (hover: hover) and (pointer: fine) {
-    html:not([data-side='full']) .sidebar:hover,
-    html:not([data-side='full']) .sidebar:focus-within {
-      width: var(--side-w);
-      padding-left: 12px;
-      padding-right: 12px;
-      align-items: stretch;
-      /* 본문 위에 떠 있는 판처럼 보이게 */
-      box-shadow: var(--shadow-md);
-      /* 지나가다 스치는 것만으로 열리지 않게 살짝 뜸을 들인다 (나갈 때는 즉시) */
-      transition-delay: 0.15s;
-    }
-    html:not([data-side='full']) .sidebar:hover .side-item,
-    html:not([data-side='full']) .sidebar:focus-within .side-item { justify-content: flex-start; padding-left: 12px; padding-right: 12px; gap: 11px; }
-    html:not([data-side='full']) .sidebar:hover .side-brand,
-    html:not([data-side='full']) .sidebar:focus-within .side-brand { justify-content: flex-start; padding-left: 12px; padding-right: 12px; }
-    html:not([data-side='full']) .sidebar:hover .side-label,
-    html:not([data-side='full']) .sidebar:hover .logo-t,
-    html:not([data-side='full']) .sidebar:focus-within .side-label,
-    html:not([data-side='full']) .sidebar:focus-within .logo-t { opacity: 1; width: auto; transition-delay: 0.15s; }
-
-    /* 그룹 제목(대전/길드 기록/운영)은 들춰볼 때도 계속 숨긴다.
-       제목이 끼어들면 항목들이 아래로 밀려 활성 표시자를 매번 다시 재야 하고,
-       넓어지는 도중에 표시자가 따라다니며 흔들린다. 세로 배치를 고정해 둔다. */
-  }
 }
 
 .side-brand {
@@ -503,12 +469,8 @@ textarea { resize: vertical; min-height: 70px; }
   height: 1px;
   background: var(--accent-line);
 }
-/* 레일이 기본이라 선도 좁게 시작하고, 펼치거나 들춰보면 넓어진다 */
+/* 레일이 기본이라 선도 좁게 시작하고, 펼쳤을 때 넓어진다 */
 html[data-side='full'] .side-brand::after { left: 12px; right: 12px; }
-@media (min-width: 768px) and (hover: hover) and (pointer: fine) {
-  html:not([data-side='full']) .sidebar:hover .side-brand::after,
-  html:not([data-side='full']) .sidebar:focus-within .side-brand::after { left: 12px; right: 12px; }
-}
 .side-brand:hover { background: none; }
 .side-brand:active { transform: none; }
 .sidebar .logo {
@@ -556,21 +518,6 @@ html[data-side='full'] .side-brand::after { left: 12px; right: 12px; }
     right: auto;
     width: var(--ind-h, 42px);
     margin-left: calc(var(--ind-h, 42px) / -2);
-    /* 들춰볼 때 정사각형 ↔ 전체 폭으로 자연스럽게 늘어나도록 좌표도 함께 전환.
-       자식이 없는 작은 상자라 레이아웃 비용이 거의 없다. */
-    transition: transform var(--dur-2) var(--ease-slide), left var(--dur-2) var(--ease),
-      width var(--dur-2) var(--ease), margin-left var(--dur-2) var(--ease);
-  }
-  /* 들춰보는 동안에는 항목 전체를 감싼다.
-     폭을 auto(=left:0;right:0)로 두면 전환이 안 걸리므로 실제 값으로 계산한다. */
-  @media (hover: hover) and (pointer: fine) {
-    html:not([data-side='full']) .sidebar:hover .side-ind,
-    html:not([data-side='full']) .sidebar:focus-within .side-ind {
-      left: 0;
-      width: calc(var(--side-w) - 24px);
-      margin-left: 0;
-      transition-delay: 0.15s;
-    }
   }
 }
 
@@ -613,6 +560,37 @@ html[data-side='full'] .side-brand::after { left: 12px; right: 12px; }
   white-space: nowrap;
   transition: opacity var(--dur-1) var(--ease), width var(--dur-2) var(--ease);
 }
+
+/* ---- 접힌 메뉴의 이름표 ----
+   아이콘에 커서를 올리면 그 항목의 이름만 오른쪽으로 미끄러져 나온다.
+   .side-nav가 세로 스크롤(overflow-y)을 갖고 있어 그 안에 두면 가로로 잘린다.
+   그래서 사이드바 바깥(body)에 하나만 띄우고 위치를 계산해서 옮긴다. */
+.side-flyout {
+  position: fixed;
+  left: calc(var(--side-w-rail) + 10px);
+  top: 0;
+  z-index: 60;
+  padding: 7px 13px;
+  border-radius: 10px;
+  background: var(--paper);
+  border: 1px solid var(--border-2);
+  box-shadow: var(--shadow-lift);
+  color: var(--text);
+  font-size: 0.88rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  /* --fy = 항목의 세로 중심(px). 자기 높이의 절반만큼 올려 가운데를 맞춘다 */
+  transform: translate3d(-10px, calc(var(--fy, 0px) - 50%), 0);
+  transition: opacity var(--dur-1) var(--ease), transform var(--dur-2) var(--ease-slide);
+}
+.side-flyout.on { opacity: 1; transform: translate3d(0, calc(var(--fy, 0px) - 50%), 0); }
+/* 펼친 상태에선 이름이 이미 보이고, 터치·모바일에선 hover가 없다 */
+html[data-side='full'] .side-flyout { display: none; }
+@media (max-width: 767px) { .side-flyout { display: none; } }
+@media (hover: none), (pointer: coarse) { .side-flyout { display: none; } }
 
 .side-foot { padding-top: 8px; margin-top: 6px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 2px; }
 .side-lock { font-weight: 600; }

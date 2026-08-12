@@ -184,6 +184,25 @@ function Sidebar({
 }) {
   const navRef = useRef<HTMLElement | null>(null)
   const [ind, setInd] = useState<{ y: number; h: number } | null>(null)
+  // 접힌 상태에서 아이콘에 커서를 올리면 나오는 이름표 (y = 항목의 세로 중심)
+  const [flyout, setFlyout] = useState<{ y: number; label: string } | null>(null)
+
+  // 접기/펼치기·페이지 이동으로 항목이 사라지면 이름표도 같이 거둔다
+  useEffect(() => { setFlyout(null) }, [mode, active])
+
+  /** 항목에 커서를 올렸을 때 이름표를 그 항목 높이에 맞춰 띄운다 */
+  const showFlyout = (e: { currentTarget: HTMLElement }, label: string): void => {
+    if (mode === 'full') return
+    const r = e.currentTarget.getBoundingClientRect()
+    setFlyout({ y: r.top + r.height / 2, label })
+  }
+  const hideFlyout = (): void => setFlyout(null)
+  const flyoutProps = (label: string) => ({
+    onMouseEnter: (e: { currentTarget: HTMLElement }) => showFlyout(e, label),
+    onMouseLeave: hideFlyout,
+    onFocus: (e: { currentTarget: HTMLElement }) => showFlyout(e, label),
+    onBlur: hideFlyout,
+  })
 
   useLayoutEffect(() => {
     const nav = navRef.current
@@ -235,8 +254,10 @@ function Sidebar({
             <button
               className={`side-item ${active === m.route ? 'active' : ''}`}
               aria-current={active === m.route ? 'page' : undefined}
-              title={m.label}
+              // 접힌 상태에선 라벨 폭이 0이라 이름이 비어 보인다 — 이름은 aria-label이 책임진다
+              aria-label={m.label}
               onClick={() => navigate(m.route)}
+              {...flyoutProps(m.label)}
             >
               <Icon name={m.icon} className="ic" />
               <span className="side-label">{m.label}</span>
@@ -249,7 +270,8 @@ function Sidebar({
         <button
           className="side-item side-theme"
           onClick={onToggleTheme}
-          title={`${THEME_LABEL[theme]} — 눌러서 ${THEME_LABEL[theme === 'jadan' ? 'yacheong' : 'jadan']}으로`}
+          aria-label={`화면 ${THEME_LABEL[theme]} — 눌러서 ${THEME_LABEL[theme === 'jadan' ? 'yacheong' : 'jadan']}으로`}
+          {...flyoutProps(`${THEME_LABEL[theme]} → ${THEME_LABEL[theme === 'jadan' ? 'yacheong' : 'jadan']}`)}
         >
           <Icon name="theme" className="ic" />
           <span className="side-label">{THEME_LABEL[theme]}</span>
@@ -257,14 +279,15 @@ function Sidebar({
         <button
           className="side-item side-toggle"
           onClick={onToggle}
-          title={mode === 'full' ? '메뉴 접기' : '메뉴 펼치기'}
+          aria-label={mode === 'full' ? '메뉴 접기' : '메뉴 펼치기'}
           aria-expanded={mode === 'full'}
+          {...flyoutProps(mode === 'full' ? '메뉴 접기' : '메뉴 펼치기')}
         >
           <Icon name="collapse" className="ic" />
           <span className="side-label">메뉴 접기</span>
         </button>
         {admin ? (
-          <button className="side-item side-lock" onClick={onLogout} title="관리자 로그아웃">
+          <button className="side-item side-lock" onClick={onLogout} aria-label="관리자 로그아웃" {...flyoutProps('관리자 로그아웃')}>
             <Icon name="lock" className="ic" />
             <span className="side-label">로그아웃</span>
           </button>
@@ -272,13 +295,19 @@ function Sidebar({
           <button
             className={`side-item side-lock ${active === 'admin' ? 'active' : ''}`}
             onClick={() => navigate('admin')}
-            title="관리자 로그인"
+            aria-label="관리자 로그인"
+            {...flyoutProps('관리자 로그인')}
           >
             <Icon name="lock" className="ic" />
             <span className="side-label">관리자</span>
           </button>
         )}
       </div>
+
+      {/* 이름표는 사이드바 안이 아니라 밖에 둔다 — .side-nav의 세로 스크롤에 가로로 잘리지 않게 */}
+      <span className={`side-flyout ${flyout ? 'on' : ''}`} style={{ ['--fy' as string]: `${flyout?.y ?? 0}px` }} aria-hidden>
+        {flyout?.label ?? ''}
+      </span>
     </aside>
   )
 }
