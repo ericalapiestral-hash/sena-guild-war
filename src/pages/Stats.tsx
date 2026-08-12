@@ -27,7 +27,7 @@ const CFG: Record<
 > = {
   siege: {
     title: '공성전 통계',
-    desc: '주차를 고르고 요일(월~일)마다 [편집]을 눌러 점수를 입력하고 [저장]하면 잠겨요. 각 요일 점수를 지난주 같은 요일과 비교해 등락(%)이 표시돼요. 소탕한 사람은 [💎 루비 소탕](지난주 점수 그대로) · [소탕](지난주 -10%) 버튼으로 바로 채울 수 있어요. 커트라인은 요일마다 따로 설정할 수 있고, 이하 점수는 미달로 표시돼요. 명단은 [길드원] 메뉴 등록자가 자동으로 들어옵니다.',
+    desc: '주차를 고르고 요일(월~일)마다 [편집]을 눌러 점수를 입력하고 [저장]하면 잠겨요. 각 요일 점수를 지난주 같은 요일과 비교해 등락(%)이 표시돼요. 소탕한 사람은 [소탕](지난주 점수 그대로) · [-10%](지난주 -10%) 버튼으로 바로 채울 수 있어요. 커트라인은 요일마다 따로 설정할 수 있고, 이하 점수는 미달로 표시돼요. 명단은 [길드원] 메뉴 등록자가 자동으로 들어옵니다.',
     metric: '점수',
     field: 'siegeRounds',
     byDay: true,
@@ -568,11 +568,11 @@ function EntryTable({
   const failCount = rows.filter(isFail).length
 
   // ---- 소탕 ----
-  // 루비 소탕은 지난주 같은 요일 점수를 그대로, 일반 소탕은 거기서 10% 깎아 가져온다.
+  // 소탕은 지난주 같은 요일 점수를 그대로, -10% 소탕은 거기서 10% 깎아 가져온다.
   // 지난주 기록이 있어야 의미가 있으므로 값이 하나도 없으면 열 자체를 감춘다.
   const SWEEPS = [
-    { key: 'ruby', ratio: 1, icon: '💎', short: '💎', full: '루비 소탕', desc: '그대로' },
-    { key: 'normal', ratio: 0.9, icon: '', short: '소탕', full: '일반 소탕', desc: '-10%' },
+    { key: 'full', ratio: 1, short: '소탕', full: '소탕', desc: '지난주 그대로' },
+    { key: 'cut', ratio: 0.9, short: '-10%', full: '-10% 소탕', desc: '지난주 -10%' },
   ] as const
   const sweepOn = !!canSweep && editing && prevValues.size > 0
   const sweptValue = (name: string, ratio: number): number | undefined => {
@@ -659,7 +659,7 @@ function EntryTable({
               }
               onClick={() => sweepEmpty(s.ratio)}
             >
-              {s.icon} {s.full} 일괄 ({s.desc})
+              {s.full} 일괄 ({s.desc})
             </button>
           ))}
           {emptyCount > 0 && <span className="muted" style={{ fontSize: '0.8rem' }}>빈 칸 {emptyCount}명</span>}
