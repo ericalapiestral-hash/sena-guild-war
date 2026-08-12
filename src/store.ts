@@ -84,6 +84,31 @@ function readBase(): string {
   return url.replace(/\/+$/, '')
 }
 
+/**
+ * ★ 로컬 개발 서버에서는 공유 저장소에 절대 쓰지 않는다.
+ *
+ * 개발 중 화면을 확인하려고 넣은 임시 데이터를 저장하면, 그게 그대로 길드 공유
+ * 저장소로 올라가 전원의 실제 기록(공성전·파괴신)을 덮어쓴다. 실제로 한 번 났던
+ * 사고라서 코드로 막아둔다. 읽기(pull)는 허용 — 실제 데이터로 화면을 보는 건 안전하다.
+ *
+ * localhost / 127.0.0.1 / *.local 에서 열렸으면 개발로 간주한다.
+ */
+function isLocalDev(): boolean {
+  if (typeof window === 'undefined') return false
+  const h = window.location.hostname
+  return h === 'localhost' || h === '127.0.0.1' || h === '::1' || h.endsWith('.local')
+}
+
+/** 공유 저장소에 업로드해도 되는 상황인지 */
+function canPush(): boolean {
+  if (!readBase()) return false
+  if (isLocalDev()) {
+    console.warn('[store] 로컬 개발 서버라 공유 저장소 업로드를 건너뜁니다 (변경은 이 브라우저에만 저장).')
+    return false
+  }
+  return true
+}
+
 /** 공유 저장소가 연결된 상태인지 (워커 URL 존재) */
 export function sharedMode(): boolean {
   return !!readBase()
@@ -141,7 +166,7 @@ let pushTimer: number | undefined
 
 /** 잦은 입력(키 입력마다)을 1.2초로 몰아서 한 번만 업로드 */
 function schedulePush() {
-  if (!readBase()) return
+  if (!canPush()) return
   if (pushTimer !== undefined) window.clearTimeout(pushTimer)
   pushTimer = window.setTimeout(() => {
     pushTimer = undefined
@@ -151,7 +176,7 @@ function schedulePush() {
 
 async function push(keepalive = false) {
   const base = readBase()
-  if (!base) return
+  if (!base || !canPush()) return
   saveRev(Math.max(Date.now(), rev + 1))
   // 덱·가이드 편집은 공개(비번 없음) — 워커가 /data POST를 누구나 허용.
   try {
