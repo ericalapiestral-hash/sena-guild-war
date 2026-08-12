@@ -419,25 +419,31 @@ textarea { resize: vertical; min-height: 70px; }
    전환 대상이 width/padding이라 레이아웃이 다시 잡히지만, 사용자가 직접 누른
    한 번의 동작이라 비용이 문제되지 않는다. */
 @media (min-width: 768px) {
-  .sidebar {
-    display: flex;
+  .sidebar { display: flex; transition: width var(--dur-2) var(--ease); }
+  #root { transition: padding-left var(--dur-2) var(--ease); }
+
+  /* 접힘(기본) — 아래 기본 컴포넌트 규칙들이 이 블록보다 뒤에 오므로,
+     같은 명시도로는 덮인다. html:not([data-side='full'])로 한 단계 올려 둔다. */
+  html:not([data-side='full']) .sidebar {
     width: var(--side-w-rail);
     padding-left: 10px;
     padding-right: 10px;
     align-items: center;
-    transition: width var(--dur-2) var(--ease);
   }
-  #root { padding-left: var(--side-w-rail); transition: padding-left var(--dur-2) var(--ease); }
-  .side-group { display: none; }
-  .side-item { justify-content: center; padding-left: 0; padding-right: 0; }
-  .side-brand { justify-content: center; padding-left: 0; padding-right: 0; }
+  html:not([data-side='full']) #root { padding-left: var(--side-w-rail); }
+  html:not([data-side='full']) .side-group { display: none; }
+  /* gap도 0으로 — 라벨 폭이 0이어도 gap이 남으면 아이콘이 그만큼 왼쪽으로 밀려
+     정사각형 표시자와 중심이 어긋난다 */
+  html:not([data-side='full']) .side-item { justify-content: center; padding-left: 0; padding-right: 0; gap: 0; }
+  html:not([data-side='full']) .side-brand { justify-content: center; padding-left: 0; padding-right: 0; }
   /* 글자는 지우지 않고 폭만 0으로 줄여 접히듯 사라지게 한다 */
-  .side-label, .logo-t { opacity: 0; width: 0; margin: 0; }
+  html:not([data-side='full']) .side-label,
+  html:not([data-side='full']) .logo-t { opacity: 0; width: 0; margin: 0; }
 
   html[data-side='full'] .sidebar { width: var(--side-w); padding-left: 12px; padding-right: 12px; align-items: stretch; }
   html[data-side='full'] #root { padding-left: var(--side-w); }
   html[data-side='full'] .side-group { display: block; }
-  html[data-side='full'] .side-item { justify-content: flex-start; padding-left: 12px; padding-right: 12px; }
+  html[data-side='full'] .side-item { justify-content: flex-start; padding-left: 12px; padding-right: 12px; gap: 11px; }
   html[data-side='full'] .side-brand { justify-content: flex-start; padding-left: 12px; padding-right: 12px; }
   html[data-side='full'] .side-label,
   html[data-side='full'] .logo-t { opacity: 1; width: auto; margin: 0; }
@@ -502,13 +508,16 @@ html[data-side='full'] .side-brand::after { left: 12px; right: 12px; }
   will-change: transform;
   pointer-events: none;
 }
-/* 왼쪽 끝의 금속 막대 — 활성 표시의 무게중심 */
-.side-ind::before {
-  content: '';
-  position: absolute;
-  left: 0; top: 0; bottom: 0;
-  width: 3px;
-  background: var(--accent-grad);
+/* 접힌 상태에서는 아이콘 하나만 있으므로 표시자도 정사각형으로.
+   가로로 긴 상자는 아이콘 주위 여백이 좌우로 벌어져 어색하다.
+   폭을 높이(--ind-h, 실측값)와 같게 잡고 가운데 정렬한다. */
+@media (min-width: 768px) {
+  html:not([data-side='full']) .side-ind {
+    left: 50%;
+    right: auto;
+    width: var(--ind-h, 42px);
+    margin-left: calc(var(--ind-h, 42px) / -2);
+  }
 }
 
 .side-group {

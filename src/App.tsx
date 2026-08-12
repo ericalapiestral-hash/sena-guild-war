@@ -125,9 +125,8 @@ function useSidebarMode(): [SideMode, () => void] {
     }
   })
 
-  useEffect(() => {
-    document.documentElement.dataset.side = mode
-  }, [mode])
+  // data-side를 DOM에 쓰는 일은 Sidebar가 맡는다 — 표시자 위치를 재기 '전에'
+  // 속성이 적용돼야 해서, 측정하는 쪽과 같은 레이아웃 이펙트 안에서 처리한다.
 
   const toggle = (): void => {
     const next: SideMode = mode === 'full' ? 'rail' : 'full'
@@ -189,6 +188,10 @@ function Sidebar({
   useLayoutEffect(() => {
     const nav = navRef.current
     if (!nav) return
+    // ★ 접힘/펼침 속성을 먼저 반영한 뒤에 잰다.
+    //   이 쓰기를 다른 이펙트에 두면(자식 이펙트가 부모보다 먼저 도는 탓에)
+    //   그룹 제목이 나타나기 전 위치를 재게 되어 표시자가 엉뚱한 항목에 남는다.
+    document.documentElement.dataset.side = mode
     const measure = (): void => {
       const el = nav.querySelector<HTMLElement>('.side-item.active')
       // 높이가 0이면 아직 레이아웃(또는 CSS)이 적용되기 전이라 표시자를 숨긴 채 다음 측정을 기다린다
@@ -218,7 +221,14 @@ function Sidebar({
       </button>
 
       <nav className="side-nav" ref={navRef} aria-label="주 메뉴">
-        {ind && <span className="side-ind" style={{ transform: `translateY(${ind.y}px)`, height: ind.h }} aria-hidden />}
+        {ind && (
+          <span
+            className="side-ind"
+            // --ind-h: 접힌 상태에서 폭을 높이와 같게 잡아 정사각형으로 만들 때 쓴다
+            style={{ transform: `translateY(${ind.y}px)`, height: ind.h, ['--ind-h' as string]: `${ind.h}px` }}
+            aria-hidden
+          />
+        )}
         {items.map((m) => (
           <div key={m.route} className="side-slot">
             {m.group && <div className="side-group">{m.group}</div>}
