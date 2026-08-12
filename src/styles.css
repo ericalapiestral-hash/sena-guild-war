@@ -438,6 +438,9 @@ textarea { resize: vertical; min-height: 70px; }
      정사각형 표시자와 중심이 어긋난다 */
   html:not([data-side='full']) .side-item { justify-content: center; padding-left: 0; padding-right: 0; gap: 0; }
   html:not([data-side='full']) .side-brand { justify-content: center; padding-left: 0; padding-right: 0; }
+  /* 로고도 gap을 0으로 — 글자('낭만주의') 폭을 0으로 접어도 gap 9px가 남아
+     검 아이콘이 그 절반(4.5px)만큼 왼쪽으로 밀린다. 아래 아이콘 열과 어긋나는 원인. */
+  html:not([data-side='full']) .sidebar .logo { gap: 0; }
   /* 글자는 지우지 않고 폭만 0으로 줄여 접히듯 사라지게 한다 */
   html:not([data-side='full']) .side-label,
   html:not([data-side='full']) .logo-t { opacity: 0; width: 0; margin: 0; }
