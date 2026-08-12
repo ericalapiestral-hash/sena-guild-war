@@ -27,8 +27,8 @@
   font-size: 15px;
 }
 
-/* ====== 자단 紫檀 — 붉은 기가 도는 종이 + 채도를 뺀 자줏빛 (밝은 테마) ====== */
-:root, :root[data-theme='jadan'] {
+/* ====== 자단 紫檀 — 붉은 기가 도는 종이 + 채도를 뺀 자줏빛 (밝은 테마, 선택) ====== */
+:root[data-theme='jadan'] {
   color-scheme: light;
 
   --bg: #f8f5f4;
@@ -102,8 +102,11 @@
   --text-dim: var(--text-2);
 }
 
-/* ====== 야청 夜靑 — 흑연빛 화면 + 옅은 얼음빛 (어두운 테마) ====== */
-:root[data-theme='yacheong'] {
+/* ====== 야청 夜靑 — 흑연빛 화면 + 옅은 얼음빛 (어두운 테마, 기본) ======
+   ★ :root에 직접 걸어 기본값으로 삼는다. 자바스크립트가 붙기 전 첫 화면부터
+   어두운 상태여야 밝은 화면이 번쩍였다 어두워지는 일이 없다.
+   기기의 다크모드 설정은 보지 않는다 — 이 사이트는 야청이 기본. */
+:root, :root[data-theme='yacheong'] {
   color-scheme: dark;
 
   --bg: #15171a;
@@ -177,82 +180,6 @@
   --text-dim: var(--text-2);
 }
 
-/* 시스템이 어두운 모드면 야청을 기본으로 — 사용자가 직접 고른 테마가 있으면 그게 이긴다 */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='jadan']) {
-    color-scheme: dark;
-  
-    --bg: #15171a;
-    --surface: #1c1f23;
-    --surface-2: #23272c;
-    --surface-3: #2b3036;
-    --border: #2b2f35;
-    --border-2: #3a3f47;
-    --text: #e9ecef;
-    --text-2: #a8afb8;
-    --text-3: #8b939d;
-    --ink: #e9ecef;
-  
-    --accent: #8fbccd;
-    --accent-strong: #b0d5e3;
-    --accent-soft: #23303a;
-    --accent-dim: #3d5a68;
-    --accent-grad: linear-gradient(135deg, #b6dcea 0%, #8fbccd 45%, #d3ecf5 72%, #5f8b9c 100%);
-    --accent-line: linear-gradient(90deg, rgba(143, 188, 205, 0) 0%, rgba(143, 188, 205, 0.4) 50%, rgba(143, 188, 205, 0) 100%);
-    --accent-wash: linear-gradient(90deg, rgba(35, 48, 58, 0.95) 0%, rgba(30, 40, 48, 0.7) 100%);
-  
-    --danger: #f09a92;
-    --danger-soft: #3a2422;
-    --danger-line: #59332f;
-    --ok: #7ed3a4;
-    --ok-soft: #1b3328;
-    --ok-line: #2b4d3a;
-    --info: #93bcf3;
-    --info-soft: #1e2c40;
-    --info-line: #2e4360;
-    --purple: #c4a7ec;
-    --purple-soft: #2c2540;
-    --purple-line: #423868;
-  
-    --pos-atk: #f0837a;
-    --pos-mag: #b997f0;
-    --pos-def: #77aef2;
-    --pos-sup: #6fd3a0;
-    --pos-all: #e0bd6a;
-    --pos-none: #6b727b;
-  
-    --paper: linear-gradient(180deg, #1f2328 0%, #1b1e22 100%);
-    --edge: inset 0 1px 0 rgba(255, 255, 255, 0.045);
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4), var(--edge);
-    --shadow-lift: 0 12px 28px -14px rgba(0, 0, 0, 0.7), 0 3px 8px -3px rgba(0, 0, 0, 0.5), var(--edge);
-    --shadow-md: 0 28px 68px -24px rgba(0, 0, 0, 0.85), 0 8px 20px -10px rgba(0, 0, 0, 0.6), var(--edge);
-    --bg-glow: radial-gradient(1200px 560px at 60% -260px, rgba(143, 188, 205, 0.07) 0%, rgba(143, 188, 205, 0) 72%);
-  
-    --glass: linear-gradient(180deg, rgba(28, 31, 35, 0.94) 0%, rgba(24, 27, 30, 0.9) 100%);
-    --glass-flat: rgba(24, 27, 30, 0.93);
-    --scrim: rgba(0, 0, 0, 0.58);
-    --scrim-strong: rgba(0, 0, 0, 0.66);
-  
-    --highlight: #1f272c;
-    --fail-cell: #55302c;
-  
-    --btn-bg: linear-gradient(180deg, #eef1f4 0%, #dfe4e9 100%);
-    --btn-bg-hover: linear-gradient(180deg, #ffffff 0%, #e8edf1 100%);
-    --btn-border: #cbd2d9;
-    --btn-fg: #15171a;
-    --btn-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.6);
-    --btn-shadow-hover: 0 6px 16px -8px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.7);
-  
-    --display-grad: linear-gradient(135deg, #ffffff 0%, #c8d4da 45%, #eef3f6 100%);
-  
-    --scroll-thumb: #3a3f47;
-    --scroll-thumb-hover: #4c525b;
-  
-    --bg-2: var(--surface);
-    --bg-3: var(--surface-2);
-    --text-dim: var(--text-2);
-    }
-}
 
 * { box-sizing: border-box; }
 
@@ -405,21 +332,34 @@ textarea { resize: vertical; min-height: 70px; }
   padding: 14px 12px 12px;
   animation: slide-in-left var(--dur-3) var(--ease) backwards;
 }
-/* 접힘 여부는 html[data-side]가 정한다 (사용자가 고른 값 > 화면 폭 기본값).
+/* ★ 접힌 상태(아이콘 레일)가 기본이고, 펼침이 선택이다.
+   기본값을 CSS에 박아 두어야 자바스크립트가 붙기 전 첫 화면에서 메뉴가
+   펼쳐졌다 접히는 깜빡임이 생기지 않는다.
    전환 대상이 width/padding이라 레이아웃이 다시 잡히지만, 사용자가 직접 누른
    한 번의 동작이라 비용이 문제되지 않는다. */
 @media (min-width: 768px) {
-  .sidebar { display: flex; transition: width var(--dur-2) var(--ease); }
-  #root { padding-left: var(--side-w); transition: padding-left var(--dur-2) var(--ease); }
-
-  html[data-side='rail'] .sidebar { width: var(--side-w-rail); padding-left: 10px; padding-right: 10px; align-items: center; }
-  html[data-side='rail'] #root { padding-left: var(--side-w-rail); }
-  html[data-side='rail'] .side-group { display: none; }
-  html[data-side='rail'] .side-item { justify-content: center; padding-left: 0; padding-right: 0; }
-  html[data-side='rail'] .side-brand { justify-content: center; padding-left: 0; padding-right: 0; }
+  .sidebar {
+    display: flex;
+    width: var(--side-w-rail);
+    padding-left: 10px;
+    padding-right: 10px;
+    align-items: center;
+    transition: width var(--dur-2) var(--ease);
+  }
+  #root { padding-left: var(--side-w-rail); transition: padding-left var(--dur-2) var(--ease); }
+  .side-group { display: none; }
+  .side-item { justify-content: center; padding-left: 0; padding-right: 0; }
+  .side-brand { justify-content: center; padding-left: 0; padding-right: 0; }
   /* 글자는 지우지 않고 폭만 0으로 줄여 접히듯 사라지게 한다 */
-  html[data-side='rail'] .side-label,
-  html[data-side='rail'] .logo-t { opacity: 0; width: 0; margin: 0; }
+  .side-label, .logo-t { opacity: 0; width: 0; margin: 0; }
+
+  html[data-side='full'] .sidebar { width: var(--side-w); padding-left: 12px; padding-right: 12px; align-items: stretch; }
+  html[data-side='full'] #root { padding-left: var(--side-w); }
+  html[data-side='full'] .side-group { display: block; }
+  html[data-side='full'] .side-item { justify-content: flex-start; padding-left: 12px; padding-right: 12px; }
+  html[data-side='full'] .side-brand { justify-content: flex-start; padding-left: 12px; padding-right: 12px; }
+  html[data-side='full'] .side-label,
+  html[data-side='full'] .logo-t { opacity: 1; width: auto; margin: 0; }
 }
 
 .side-brand {
@@ -437,11 +377,12 @@ textarea { resize: vertical; min-height: 70px; }
 .side-brand::after {
   content: '';
   position: absolute;
-  left: 12px; right: 12px; bottom: 6px;
+  left: 14px; right: 14px; bottom: 6px;
   height: 1px;
   background: var(--accent-line);
 }
-html[data-side='rail'] .side-brand::after { left: 14px; right: 14px; }
+/* 레일이 기본이라 선도 좁게 시작하고, 펼쳤을 때 넓어진다 */
+html[data-side='full'] .side-brand::after { left: 12px; right: 12px; }
 .side-brand:hover { background: none; }
 .side-brand:active { transform: none; }
 .sidebar .logo {
@@ -533,10 +474,14 @@ html[data-side='rail'] .side-brand::after { left: 14px; right: 14px; }
 .side-lock { font-weight: 600; }
 /* 접기/펼치기 — 화살표가 방향에 맞춰 돈다 */
 .side-toggle .ic { transition: transform var(--dur-2) var(--ease-slide), color var(--dur-1) var(--ease); }
-html[data-side='rail'] .side-toggle .ic { transform: rotate(180deg); }
+/* 접힘이 기본이라 화살표는 '펼치기' 방향으로 시작한다 */
+.side-toggle .ic { transform: rotate(180deg); }
+html[data-side='full'] .side-toggle .ic { transform: none; }
 /* 테마 — 반쪽 원이 뒤집히며 밝음/어두움을 나타낸다 */
 .side-theme .ic { transition: transform var(--dur-3) var(--ease-slide), color var(--dur-1) var(--ease); }
-html[data-theme='yacheong'] .side-theme .ic { transform: rotate(180deg); }
+/* 야청이 기본이라 회전된 쪽이 기본, 자단일 때 되돌아온다 */
+.side-theme .ic { transform: rotate(180deg); }
+html[data-theme='jadan'] .side-theme .ic { transform: none; }
 
 /* ==== 모바일 상단 앱바 ==== */
 .mobile-appbar {

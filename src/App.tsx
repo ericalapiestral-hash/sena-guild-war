@@ -58,47 +58,30 @@ const THEME_KEY = 'sena-guild-war:theme'
 const THEME_LABEL: Record<Theme, string> = { jadan: '자단', yacheong: '야청' }
 
 /**
- * 고른 적이 없으면 기기 설정(다크 모드)을 따르고, 한 번 고르면 그 선택을 계속 따른다.
- * CSS는 :root[data-theme]와 prefers-color-scheme 양쪽에 같은 토큰을 정의해 두었으므로,
- * 여기서는 속성만 붙이거나 떼면 된다.
+ * 기본은 야청(어두움). 기기의 다크모드 설정은 보지 않는다 — 이 사이트의 기본값이다.
+ * 사용자가 자단으로 바꾸면 그 선택을 계속 따른다.
+ * CSS의 :root 기본값도 야청이라, 스크립트가 붙기 전 첫 화면부터 어둡다(깜빡임 없음).
  */
 function useTheme(): [Theme, () => void] {
-  const [pref, setPref] = useState<Theme | null>(() => {
+  const [theme, setTheme] = useState<Theme>(() => {
     try {
       const v = localStorage.getItem(THEME_KEY)
-      return v === 'jadan' || v === 'yacheong' ? v : null
+      return v === 'jadan' || v === 'yacheong' ? v : 'yacheong'
     } catch {
-      return null
+      return 'yacheong'
     }
   })
-  const [sys, setSys] = useState<Theme>(() =>
-    typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'yacheong' : 'jadan',
-  )
 
   useEffect(() => {
-    if (pref) return
-    const mql = window.matchMedia('(prefers-color-scheme: dark)')
-    const onChange = (): void => setSys(mql.matches ? 'yacheong' : 'jadan')
-    onChange()
-    mql.addEventListener('change', onChange)
-    return () => mql.removeEventListener('change', onChange)
-  }, [pref])
-
-  const theme = pref ?? sys
-
-  useEffect(() => {
-    const root = document.documentElement
-    // 고른 적이 없으면 속성을 붙이지 않아 prefers-color-scheme이 그대로 작동하게 둔다
-    if (pref) root.dataset.theme = pref
-    else delete root.dataset.theme
+    document.documentElement.dataset.theme = theme
     // 모바일 브라우저 상단 바 색까지 맞춘다
     const meta = document.querySelector('meta[name="theme-color"]')
     if (meta) meta.setAttribute('content', theme === 'yacheong' ? '#15171a' : '#f8f5f4')
-  }, [pref, theme])
+  }, [theme])
 
   const toggle = (): void => {
     const next: Theme = theme === 'jadan' ? 'yacheong' : 'jadan'
-    setPref(next)
+    setTheme(next)
     try {
       localStorage.setItem(THEME_KEY, next)
     } catch {
@@ -110,44 +93,27 @@ function useTheme(): [Theme, () => void] {
 }
 
 /**
- * 사이드바 펼침/접힘. 사용자가 한 번이라도 고르면 그 선택을 계속 따르고,
- * 고른 적이 없으면 화면 폭으로 정한다(넓으면 펼침, 좁으면 아이콘 레일).
+ * 사이드바 펼침/접힘. 기본은 접힘(아이콘 레일) — 화면 폭과 무관하게 이 사이트의 기본값이다.
+ * 사용자가 펼치면 그 선택을 계속 따른다.
+ * CSS의 기본값도 레일이라, 스크립트가 붙기 전에 메뉴가 펼쳐졌다 접히는 깜빡임이 없다.
  */
 function useSidebarMode(): [SideMode, () => void] {
-  const [pref, setPref] = useState<SideMode | null>(() => {
+  const [mode, setMode] = useState<SideMode>(() => {
     try {
       const v = localStorage.getItem(SIDE_KEY)
-      return v === 'full' || v === 'rail' ? v : null
+      return v === 'full' || v === 'rail' ? v : 'rail'
     } catch {
-      return null
+      return 'rail'
     }
   })
-  const [auto, setAuto] = useState<SideMode>(() =>
-    typeof window !== 'undefined' && window.innerWidth >= 1100 ? 'full' : 'rail',
-  )
 
-  useEffect(() => {
-    if (pref) return
-    const mql = window.matchMedia('(min-width: 1100px)')
-    const onChange = (): void => setAuto(mql.matches ? 'full' : 'rail')
-    onChange()
-    mql.addEventListener('change', onChange)
-    // 기기 에뮬레이션 등 change가 오지 않는 환경 대비
-    window.addEventListener('resize', onChange)
-    return () => {
-      mql.removeEventListener('change', onChange)
-      window.removeEventListener('resize', onChange)
-    }
-  }, [pref])
-
-  const mode = pref ?? auto
   useEffect(() => {
     document.documentElement.dataset.side = mode
   }, [mode])
 
   const toggle = (): void => {
     const next: SideMode = mode === 'full' ? 'rail' : 'full'
-    setPref(next)
+    setMode(next)
     try {
       localStorage.setItem(SIDE_KEY, next)
     } catch {
