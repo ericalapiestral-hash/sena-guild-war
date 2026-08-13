@@ -700,7 +700,16 @@ export default {
     // ===== 학습 =====
     if (path.endsWith('/learn/latest')) {
       const raw = env.GUILD_KV ? await env.GUILD_KV.get('learn-latest') : null
-      return rawJson(raw)
+      // 예전 기준으로 저장된 비길드전 글이 캐시에 남아 있어도 내보내지 않는다
+      try {
+        const d = JSON.parse(raw || '{}')
+        if (Array.isArray(d.items)) {
+          d.items = d.items.filter((it) => ['공성전', '파괴신', '결투장'].includes(it?.category))
+        }
+        return json(d)
+      } catch {
+        return rawJson(raw)
+      }
     }
     if (path.endsWith('/learn')) return handleLearn(request, env)
 
