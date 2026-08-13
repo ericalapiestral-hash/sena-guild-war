@@ -1787,6 +1787,12 @@ button.ghost:hover { background: var(--surface-2); color: var(--text); }
   font-weight: 700;
   color: var(--danger);
 }
+.ocr-guess {
+  font-style: normal;
+  font-weight: 700;
+  color: var(--accent);
+  white-space: nowrap;
+}
 .ocr-rawtext {
   margin: 8px 0 0;
   padding: 10px;

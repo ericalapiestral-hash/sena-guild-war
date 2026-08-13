@@ -29,11 +29,17 @@ export function ScoreImport({
   const [error, setError] = useState('')
   const [showRaw, setShowRaw] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
+  // 붙여넣기 리스너는 한 번만 등록되므로, 최신 값을 ref로 건네준다.
+  // (예전엔 첫 렌더의 roster를 붙잡아 붙여넣기와 드롭이 다른 결과를 냈다)
+  const runRef = useRef<(f: Blob) => Promise<void>>()
+  const busyRef = useRef(false)
 
   // 미리보기 URL 정리
   useEffect(() => () => { if (imgUrl) URL.revokeObjectURL(imgUrl) }, [imgUrl])
 
   async function run(file: Blob) {
+    if (busyRef.current) return // 읽는 중에 또 넣으면 워커가 겹쳐 폰에서 메모리가 터진다
+    busyRef.current = true
     setError('')
     setRows(null)
     setBusy(true)
@@ -56,21 +62,21 @@ export function ScoreImport({
           ')',
       )
     } finally {
+      busyRef.current = false
       setBusy(false)
     }
   }
+  runRef.current = run
 
   // 붙여넣기(Ctrl+V)로 바로 받기
   useEffect(() => {
     const onPaste = (e: ClipboardEvent): void => {
       const item = [...(e.clipboardData?.items ?? [])].find((i) => i.type.startsWith('image/'))
       const file = item?.getAsFile()
-      if (file) { e.preventDefault(); void run(file) }
+      if (file) { e.preventDefault(); void runRef.current?.(file) }
     }
     window.addEventListener('paste', onPaste)
     return () => window.removeEventListener('paste', onPaste)
-    // run은 매 렌더 새로 만들어지지만 내부에서 최신 roster를 쓰므로 재등록 불필요
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const setRow = (i: number, patch: Partial<OcrRow>) =>
@@ -110,7 +116,7 @@ export function ScoreImport({
           onDrop={(e) => {
             e.preventDefault()
             const f = e.dataTransfer.files?.[0]
-            if (f && f.type.startsWith('image/')) void run(f)
+            if (f && f.type.startsWith('image/') && !busy) void run(f)
           }}
         >
           <div className="ocr-drop-ic" aria-hidden>🖼</div>
@@ -165,7 +171,12 @@ export function ScoreImport({
               <tbody>
                 {rows.map((r, i) => (
                   <tr key={i} className={r.matched ? '' : 'row-fail'}>
-                    <td className="ocr-raw">{r.raw}</td>
+                    <td className="ocr-raw">
+                      {r.raw}
+                      {!r.matched && r.suggestion && (
+                        <em className="ocr-guess"> 혹시 {r.suggestion}?</em>
+                      )}
+                    </td>
                     <td>
                       <select
                         value={r.matched ?? ''}

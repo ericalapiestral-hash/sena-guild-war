@@ -30,6 +30,8 @@ export interface OcrRow {
   confidence: number
   /** 비슷한 후보가 둘 이상이라 사람이 봐야 하는 경우 */
   ambiguous?: boolean
+  /** 단정은 못 하지만 가장 그럴듯한 이름 (고를 때 힌트) */
+  suggestion?: string
 }
 
 /** 비교용 정규화 — 공백·특수문자 제거, 영문 소문자화 */
@@ -55,20 +57,33 @@ function distance(a: string, b: string): number {
   return prev[b.length]
 }
 
+/** 게임 UI에 늘 떠 있는 말들 — 이름으로 오인되면 안 된다 */
+const UI_WORDS = new Set([
+  '공략', '공지', '상점', '보상', '소탕', '입장', '연습전투', '순위', '점수', '길드',
+  '랭킹', '길드원랭킹', '개인랭킹', '길드랭킹', '확인', '취소', '도움말', '전체',
+])
+
 /** 한 후보와의 유사도 0~1 */
 function scoreAgainst(r: string, cand: string): number {
   const c = norm(cand)
   if (!c) return 0
   if (c === r) return 1
-  if (c.includes(r) || r.includes(c)) {
-    // 부분 일치 — 짧은 쪽이 너무 짧으면(1~2글자) 우연일 수 있어 감점
-    const shorter = Math.min(c.length, r.length)
-    return 0.9 * (shorter / Math.max(c.length, r.length)) + 0.05
+
+  // 부분 일치는 앞이나 뒤가 맞을 때만 인정한다. 가운데 토막이 걸리면
+  // ('라에'가 '도라에몽팥빵'에) 엉뚱한 사람에게 붙는다.
+  const edgeMatch =
+    c.startsWith(r) || c.endsWith(r) || r.startsWith(c) || r.endsWith(c)
+  if (edgeMatch) {
+    // 글자가 잘려 읽힌 경우다. 잘린 이름이 **다른 사람의 완전한 이름**에
+    // 밀리면 안 되므로(예: '엉덩' 이 '엉우'에 밀리는 일) 넉넉히 준다.
+    const ratio = Math.min(c.length, r.length) / Math.max(c.length, r.length)
+    return 0.55 + 0.45 * ratio
   }
+
   const d = distance(c, r)
   const len = Math.max(c.length, r.length)
   // 짧은 이름은 한 글자만 틀려도 비율 유사도가 확 떨어진다.
-  // ('나는맛쥐' → '나는땃쥐' 는 4글자 중 1글자라 0.75, '엉우'→'영우'는 0.5)
+  // ('나는맛쥐' → '나는땃쥐' 는 4글자 중 1글자라 0.75)
   // 그래서 절대 편집거리도 같이 보고, 허용 오차 안이면 매칭으로 올린다.
   const tol = len <= 4 ? 1 : Math.floor(len * 0.3)
   const ratio = 1 - d / len
@@ -85,9 +100,11 @@ function scoreAgainst(r: string, cand: string): number {
 export function matchName(
   read: string,
   roster: string[],
-): { name?: string; confidence: number; ambiguous?: boolean } {
+): { name?: string; confidence: number; ambiguous?: boolean; suggestion?: string } {
   const r = norm(read)
   if (!r) return { confidence: 0 }
+  // 화면에 늘 떠 있는 UI 문구가 이름으로 둔갑하는 걸 먼저 막는다 ('공략'→'공리')
+  if (UI_WORDS.has(r)) return { confidence: 0 }
 
   const ranked = roster
     .map((cand) => ({ name: cand, score: scoreAgainst(r, cand) }))
@@ -99,17 +116,29 @@ export function matchName(
   if (best.score < 0.55) return { confidence: best.score }
 
   const second = ranked[1]
-  // 완전 일치가 아닌데 2등이 바짝 붙어 있으면 어느 쪽인지 단정할 수 없다
-  const ambiguous = best.score < 1 && !!second && best.score - second.score < 0.08
-  return { name: best.name, confidence: best.score, ambiguous }
+  const exact = best.score >= 1
+  // 2등이 바짝 붙어 있으면 어느 쪽인지 단정할 수 없다
+  const tooClose = !exact && !!second && best.score - second.score < 0.15
+  // 두 글자 이름은 한 글자가 이름의 절반이라, 완전 일치가 아니면 글자만으로
+  // 가려낼 방법이 없다. 붙이지 않고 사람에게 넘긴다.
+  const tooShort = !exact && norm(best.name).length <= 2
+
+  if (tooClose || tooShort) {
+    // 넘기더라도 짐작은 알려 준다 — 고를 때 힌트가 된다
+    return { confidence: best.score, ambiguous: true, suggestion: best.name }
+  }
+  return { name: best.name, confidence: best.score }
 }
 
-/** '12,496,375' · '12 496 375' · '12.496.375' → 12496375 */
+/**
+ * '12,496,375' · '12 496 375' · '12.496.375' → 12496375
+ * 0도 유효한 값이다 — 공성전 미참여자는 실제로 0점으로 목록에 남는다.
+ */
 function parseScore(s: string): number | undefined {
   const digits = s.replace(/[^\d]/g, '')
   if (!digits) return undefined
   const n = Number(digits)
-  return Number.isSafeInteger(n) && n > 0 ? n : undefined
+  return Number.isSafeInteger(n) && n >= 0 ? n : undefined
 }
 
 /**
@@ -136,6 +165,7 @@ export function parseLines(text: string, roster: string[]): OcrRow[] {
       matched: m.name,
       confidence: m.confidence,
       ambiguous: m.ambiguous,
+      suggestion: m.suggestion,
     })
   }
 
@@ -151,7 +181,8 @@ export function parseLines(text: string, roster: string[]): OcrRow[] {
   }
 
   for (const line of lines) {
-    const m = line.match(/^(.*?)[\s:·|]*([\d][\d,.\s]{0,15})$/)
+    // 구분자를 하나 이상 요구해야 'kyle07 12,496,375'의 07이 점수로 딸려가지 않는다
+    const m = line.match(/^(.*?)[\s:·|]+([\d][\d,.\s]{0,15})$/)
     const onlyNumber = /^[\d][\d,.\s]*$/.test(line)
     const hasDigit = /\d/.test(line)
 
@@ -270,6 +301,21 @@ function nameLeftEdge(words: Word[], rows: number[], scoreX0: number, h: number,
  * 너무 작으면 글자가 뭉개지고 너무 크면 느려서, 폭을 1200~2600으로 맞춘다.
  * 좌표계를 하나로 두려고 판독도 전부 이 캔버스에서 한다.
  */
+interface Rect { left: number; top: number; width: number; height: number }
+
+/**
+ * 잘라낸 조각을 새 캔버스로 넘긴다.
+ * tesseract에 rectangle만 주면 호출마다 원본 전체를 워커로 넘겨 다시 디코드한다.
+ * 조각만 넘기면 훨씬 빠르고, 폰에서 메모리가 터지는 것도 막는다.
+ */
+function crop(src: HTMLCanvasElement, r: Rect): HTMLCanvasElement {
+  const c = document.createElement('canvas')
+  c.width = Math.max(1, Math.round(r.width))
+  c.height = Math.max(1, Math.round(r.height))
+  c.getContext('2d')?.drawImage(src, Math.round(r.left), Math.round(r.top), c.width, c.height, 0, 0, c.width, c.height)
+  return c
+}
+
 async function toCanvas(file: Blob): Promise<HTMLCanvasElement> {
   const bmp = await createImageBitmap(file)
   const scale = Math.min(2600 / bmp.width, Math.max(1, 1200 / bmp.width))
@@ -315,20 +361,39 @@ export async function readImage(
     // 1) 전체 한 번 — 어디에 무엇이 있는지 파악한다.
     //    주의: 여기서 PSM을 명시로 설정하면 인식이 크게 나빠진다(단어 221→95). 기본값을 그대로 둔다.
     step(0, 1, '화면 훑는 중')
-    const { data } = await worker.recognize(canvas, {}, { blocks: true, text: true })
-    const text = data.text ?? ''
-    const words = collectWords(data.blocks)
+    const scan = async () => {
+      const { data } = await worker.recognize(canvas, {}, { blocks: true, text: true })
+      const words = collectWords(data.blocks)
+      return { text: data.text ?? '', words, col: findScoreColumn(words, W) }
+    }
 
-    const col = findScoreColumn(words, W)
+    // 기본 모드로 먼저 본다. 여기서 PSM을 명시로 설정하면 오히려 인식이 크게
+    // 나빠지므로(단어 221→95) 손대지 않는다.
+    let { text, words, col } = await scan()
+
+    // 목록만 잘라 올린 캡처는 기본 모드가 흰 카드 영역을 통째로 건너뛰는 일이 있다.
+    // 그럴 때는 '흩어진 글자 찾기' 모드로 한 번 더 훑는다.
     if (!col || col.items.length < 2) {
-      // 점수 기둥을 못 찾았다 — 표만 잘라 올린 단순한 이미지일 수 있으니 줄 단위로 시도
+      step(0, 1, '다른 방식으로 다시 훑는 중')
+      await worker.setParameters({ tessedit_pageseg_mode: PSM.SPARSE_TEXT })
+      const retry = await scan()
+      await worker.setParameters({ tessedit_pageseg_mode: PSM.AUTO })
+      if (retry.col && retry.col.items.length >= 2) ({ text, words, col } = retry)
+    }
+
+    if (!col || col.items.length < 2) {
+      // 그래도 못 찾았다 — 표만 잘라 올린 단순한 이미지일 수 있으니 줄 단위로 시도
       return { rows: parseLines(text, roster), text }
     }
 
     const h = median(col.items.map((i) => i.y1 - i.y0)) || 30
-    const scoreX0 = Math.min(...col.items.map((i) => i.x0))
-    const scoreX1 = Math.max(...col.items.map((i) => i.x1))
-    const { rows: base, pitch } = rowPositions(col.items)
+    // 위아래가 잘린 행은 글자 높이가 눈에 띄게 낮다. 앞자리가 날아간 점수가
+    // 그럴듯한 숫자로 들어가는 게 누락보다 나쁘므로 아예 뺀다.
+    const solid = col.items.filter((i) => i.y1 - i.y0 >= h * 0.85)
+    const items = solid.length >= 2 ? solid : col.items
+    const scoreX0 = Math.min(...items.map((i) => i.x0))
+    const scoreX1 = Math.max(...items.map((i) => i.x1))
+    const { rows: base, pitch } = rowPositions(items)
     const left = Math.max(0, nameLeftEdge(words, base, scoreX0, h, W))
 
     // 목록 위아래로 한두 칸 더 짚어 본다.
@@ -356,7 +421,7 @@ export async function readImage(
     const reads: string[] = []
     const matches: ReturnType<typeof matchName>[] = []
     for (const y of rows) {
-      const { data: d } = await worker.recognize(canvas, { rectangle: nameRect(y) })
+      const { data: d } = await worker.recognize(crop(canvas, nameRect(y)))
       const read = d.text.replace(/\s+/g, ' ').trim()
       reads.push(read)
       matches.push(matchName(read, roster))
@@ -379,7 +444,7 @@ export async function readImage(
       lang = retryLang
       await worker.setParameters({ tessedit_pageseg_mode: PSM.SINGLE_LINE })
       for (const i of todo) {
-        const { data: d } = await worker.recognize(canvas, { rectangle: nameRect(rows[i]) })
+        const { data: d } = await worker.recognize(crop(canvas, nameRect(rows[i])))
         const read = d.text.replace(/\s+/g, ' ').trim()
         const m = matchName(read, roster)
         if (m.name) {
@@ -401,14 +466,14 @@ export async function readImage(
         scores.push(undefined)
         continue
       }
-      const { data: d } = await worker.recognize(canvas, {
-        rectangle: {
-          left: Math.max(0, Math.round(scoreX0 - h * 2)),
-          top: Math.max(0, Math.round(y - h * 0.6)),
-          width: Math.round(scoreX1 - scoreX0 + h * 3),
-          height: Math.round(h * 2),
-        },
-      })
+      const { data: d } = await worker.recognize(
+        crop(canvas, {
+          left: Math.max(0, scoreX0 - h * 2),
+          top: Math.max(0, y - h * 0.6),
+          width: scoreX1 - scoreX0 + h * 3,
+          height: h * 2,
+        }),
+      )
       scores.push(parseScore(d.text))
       step(++done, total, `점수 읽는 중 ${done - rows.length}/${rows.length}`)
     }
@@ -438,6 +503,7 @@ export async function readImage(
         matched: matches[i].name,
         confidence: matches[i].confidence,
         ambiguous: matches[i].ambiguous,
+        suggestion: matches[i].suggestion,
       }
       // 짚어 본 자리는 애초에 행이 있다는 근거가 없으므로, 이름과 점수가 둘 다
       // 제대로 나왔을 때만 인정한다. 그래야 목록 밖의 안내문 숫자 같은 게 안 섞인다.
@@ -448,6 +514,12 @@ export async function readImage(
       // 이름도 점수도 못 건진 줄은 보여 줘 봐야 방해만 된다
       if (row.matched || score !== undefined) out.push(row)
     })
+
+    // 길드원 랭킹이 아닌 화면(길드 랭킹·서버 랭킹 등)을 올리면 낯선 이름들이
+    // 어설프게 붙는다. 명단에 붙은 비율이 너무 낮으면 표를 내놓지 않는 편이 낫다.
+    const hit = out.filter((r) => r.matched).length
+    if (out.length >= 3 && hit / out.length < 0.4) return { rows: [], text }
+
     return { rows: out, text }
   } finally {
     await worker.terminate().catch(() => {})
