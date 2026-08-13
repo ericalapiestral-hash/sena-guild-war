@@ -83,7 +83,7 @@ export function ScoreImport({
   return (
     <Modal
       title="캡처에서 점수 읽기"
-      desc="공성전 결과 화면을 캡처해 올리면 닉네임과 점수를 읽어 입력칸을 채웁니다."
+      desc="결과 화면을 캡처해 올리면 닉네임과 점수를 읽어 입력칸을 채웁니다. 한 화면에 다 안 나오면 스크롤해서 여러 장을 차례로 올리면 됩니다."
       onClose={onClose}
       wide
       footer={
@@ -174,8 +174,17 @@ export function ScoreImport({
                         <option value="">— 건너뜀 —</option>
                         {roster.map((n) => <option key={n} value={n}>{n}</option>)}
                       </select>
-                      {r.matched && r.confidence < 0.85 && (
-                        <em className="ocr-warn" title="글자가 정확히 일치하지 않아 비슷한 이름으로 맞춘 것">확인 필요</em>
+                      {r.matched && (r.ambiguous || r.confidence < 0.85) && (
+                        <em
+                          className="ocr-warn"
+                          title={
+                            r.ambiguous
+                              ? '비슷한 이름이 둘 이상이라 어느 쪽인지 확실하지 않아요'
+                              : '글자가 정확히 일치하지 않아 비슷한 이름으로 맞춘 것'
+                          }
+                        >
+                          확인 필요
+                        </em>
                       )}
                     </td>
                     <td style={{ textAlign: 'right' }}>
