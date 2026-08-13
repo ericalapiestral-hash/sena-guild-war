@@ -37,11 +37,33 @@ export function ScoreImport({
   // 미리보기 URL 정리
   useEffect(() => () => { if (imgUrl) URL.revokeObjectURL(imgUrl) }, [imgUrl])
 
+  /**
+   * 새로 읽은 행들을 기존 표에 합친다. 30명이 한 화면에 다 안 나와서
+   * 스크롤하며 여러 장을 찍는 게 기본 사용법이다.
+   * - 같은 사람이 두 장에 겹치면: 점수가 같으면 그대로, 다르면 새 값으로
+   *   바꾸되 '확인 필요'를 붙인다 (조용히 덮어쓰지 않게)
+   * - 이름을 못 붙인 줄은 그대로 쌓아 사람이 고르게 둔다
+   */
+  function mergeRows(prev: OcrRow[], added: OcrRow[]): OcrRow[] {
+    const out = [...prev]
+    for (const r of added) {
+      if (r.matched) {
+        const i = out.findIndex((p) => p.matched === r.matched)
+        if (i >= 0) {
+          if (out[i].score !== r.score) out[i] = { ...r, ambiguous: true }
+          continue
+        }
+      }
+      out.push(r)
+    }
+    // 점수 내림차순 = 순위순. 여러 장을 섞어 올려도 표가 게임 화면과 같은 순서가 된다
+    return out.sort((a, b) => (b.score ?? -1) - (a.score ?? -1))
+  }
+
   async function run(file: Blob) {
     if (busyRef.current) return // 읽는 중에 또 넣으면 워커가 겹쳐 폰에서 메모리가 터진다
     busyRef.current = true
     setError('')
-    setRows(null)
     setBusy(true)
     setProgress(0)
     setStatus('준비 중')
@@ -53,11 +75,11 @@ export function ScoreImport({
         setStatus(p.status)
       })
       setRawText(text)
-      setRows(r)
-      if (r.length === 0) setError('이름과 점수를 찾지 못했어요. 표가 크게 나오도록 잘라서 다시 올려보세요.')
+      setRows((prev) => mergeRows(prev ?? [], r))
+      if (r.length === 0) setError('이 캡처에서는 이름과 점수를 찾지 못했어요. 표가 크게 나오도록 잘라서 다시 올려보세요.')
     } catch (e) {
       setError(
-        '글자를 읽는 데 실패했어요. 인터넷 연결을 확인해 주세요 — 처음 한 번은 한국어 인식 데이터를 내려받습니다. (' +
+        '글자를 읽는 데 실패했어요. 인터넷 연결을 확인해 주세요. (' +
           (e instanceof Error ? e.message : String(e)) +
           ')',
       )
@@ -83,6 +105,8 @@ export function ScoreImport({
     setRows((prev) => (prev ? prev.map((r, j) => (j === i ? { ...r, ...patch } : r)) : prev))
 
   const usable = (rows ?? []).filter((r) => r.matched && typeof r.score === 'number')
+  // 아직 어떤 캡처에도 안 나온 길드원 — 다음 장을 언제 찍을지 판단하는 근거
+  const missing = rows ? roster.filter((n) => !usable.some((r) => r.matched === n)) : []
   // 같은 사람이 두 번 잡히면 뒤엣것이 덮어써서 조용히 틀릴 수 있으니 미리 알린다
   const dupes = [...new Set(usable.map((r) => r.matched).filter((n, i, a) => a.indexOf(n) !== i))]
 
@@ -153,6 +177,24 @@ export function ScoreImport({
 
       {rows && rows.length > 0 && (
         <>
+          <div
+            className={`ocr-more ${busy ? 'busy' : ''}`}
+            onClick={() => !busy && fileRef.current?.click()}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => {
+              e.preventDefault()
+              const f = e.dataTransfer.files?.[0]
+              if (f && f.type.startsWith('image/') && !busy) void run(f)
+            }}
+          >
+            ＋ 다른 캡처 추가 — 스크롤해서 찍은 다음 장을 끌어놓거나 Ctrl+V (자동으로 합쳐져요)
+          </div>
+          {missing.length > 0 && (
+            <p className="ocr-missing">
+              아직 없는 길드원 {missing.length}명: {missing.slice(0, 8).join(', ')}
+              {missing.length > 8 && ` 외 ${missing.length - 8}명`}
+            </p>
+          )}
           <div className="hint-row">
             {usable.length}명 인식 · <b>이름이나 점수가 틀렸으면 여기서 고친 뒤 적용하세요.</b>
           </div>
@@ -220,7 +262,7 @@ export function ScoreImport({
           </details>
 
           <button className="small" style={{ marginTop: 10 }} onClick={() => { setRows(null); setError('') }}>
-            다른 이미지로 다시 하기
+            전부 지우고 처음부터
           </button>
         </>
       )}

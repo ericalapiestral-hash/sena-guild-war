@@ -237,16 +237,16 @@ const OCR_DEFAULT_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct'
 
 function ocrPrompt(roster) {
   const list = roster.length ? `\n참고 — 길드원 명단: ${roster.join(', ')}\n읽은 닉네임이 명단의 이름과 사실상 같으면 명단 표기를 그대로 써라.` : ''
-  return `이 이미지는 모바일 게임의 길드원 랭킹 화면 캡처다. 목록의 각 행에서 닉네임과 점수를 읽어라.
+  return `이 이미지는 모바일 게임의 길드원 랭킹 화면 캡처다. 순위 목록의 각 행에서 순위·닉네임·점수를 읽어라.
 
 규칙:
 - 닉네임 아래 작은 보라색 글씨(길드 이름)는 닉네임이 아니다. 무시하라.
-- 순위 숫자와 재화·기타 UI 숫자는 점수가 아니다. 각 행 오른쪽의 큰 숫자만 점수다.
-- 점수는 쉼표를 뺀 정수로 적어라.
+- 재화·기타 UI 숫자는 점수가 아니다. 각 행 오른쪽의 큰 숫자만 점수다.
+- 점수는 쉼표를 뺀 정수로, 순위는 행 왼쪽의 번호를 정수로 적어라.
 - 위나 아래가 잘려 일부만 보이는 행은 빼라.
-- 중요: 화면 하단에는 목록과 구분선으로 분리된 행이 하나 더 있다(어두운 배경, 본인의 순위·닉네임·점수). 이 행을 빠뜨리는 실수가 잦다. 이 행도 반드시 결과에 넣어라.${list}
+- 중요: 화면 맨 아래에 목록과 구분선으로 분리된, 배경이 어두운 별도의 행이 있을 수 있다(본인 순위 요약). 그 행은 목록이 아니다 — 절대 결과에 넣지 마라. 배경이 밝은 목록 행만 읽어라.${list}
 
-다른 말 없이 JSON 배열만 출력하라: [{"name":"닉네임","score":12345678}]`
+다른 말 없이 JSON 배열만 출력하라: [{"rank":21,"name":"닉네임","score":12345678}]`
 }
 
 /** 모델별 입력 형식이 달라서 두 형식을 차례로 시도한다 */
@@ -326,7 +326,8 @@ function extractRows(out) {
     const name = typeof it.name === 'string' ? it.name.trim() : ''
     const score = Number(it.score)
     if (!name || !Number.isSafeInteger(score) || score < 0) continue
-    rows.push({ name, score })
+    const rank = Number.isSafeInteger(Number(it.rank)) && Number(it.rank) > 0 ? Number(it.rank) : undefined
+    rows.push(rank !== undefined ? { rank, name, score } : { name, score })
   }
   return rows
 }

@@ -32,6 +32,8 @@ export interface OcrRow {
   ambiguous?: boolean
   /** 단정은 못 하지만 가장 그럴듯한 이름 (고를 때 힌트) */
   suggestion?: string
+  /** 목록에서 읽은 순위 (여러 장을 합칠 때 정렬용) */
+  rank?: number
 }
 
 /** 비교용 정규화 — 공백·특수문자 제거, 영문 소문자화 */
@@ -337,13 +339,79 @@ function draw(bmp: ImageBitmap, w: number, h: number): HTMLCanvasElement {
   return c
 }
 
+/**
+ * 띠 영역의 평균 밝기(0~255). 목록 행은 밝은 카드 위에 있고,
+ * 하단의 '본인 순위' 행은 어두운 카드라 이걸로 가려낸다.
+ */
+function bandLuma(canvas: HTMLCanvasElement, r: Rect): number {
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return 255
+  const x = Math.max(0, Math.round(r.left))
+  const y = Math.max(0, Math.round(r.top))
+  const w = Math.min(canvas.width - x, Math.max(1, Math.round(r.width)))
+  const h = Math.min(canvas.height - y, Math.max(1, Math.round(r.height)))
+  if (w <= 0 || h <= 0) return 255
+  const d = ctx.getImageData(x, y, w, h).data
+  let sum = 0
+  let n = 0
+  // 전부 훑을 필요 없이 성기게 표본만 뜬다
+  const stride = Math.max(4, Math.floor(d.length / 4 / 400)) * 4
+  for (let i = 0; i < d.length; i += stride) {
+    sum += 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]
+    n++
+  }
+  return n ? sum / n : 255
+}
+
 // ---------------------------------------------------------------- 본체
 
-/** 서버로 보내기 좋게 줄인다. 실측상 1000~1300px 폭에서 가장 잘 읽힌다(원본이 크면 오히려 하단 본인 행을 놓쳤다). */
+/**
+ * 목록(밝은 카드) 영역만 남기고 위아래를 잘라낸다.
+ * 하단의 '본인 순위' 행은 어두운 카드라, 모델에게 말로 빼 달라고 부탁하는 대신
+ * 아예 보내지 않는 쪽이 확실하다. (프롬프트 지시는 실측상 자주 무시됐다)
+ */
+function cropToList(c: HTMLCanvasElement): HTMLCanvasElement {
+  const ctx = c.getContext('2d')
+  if (!ctx) return c
+  // 오른쪽 절반(목록 영역)의 가로줄 평균 밝기로 밝은 띠를 찾는다
+  const x0 = Math.round(c.width * 0.45)
+  const w = Math.max(1, Math.round(c.width * 0.5))
+  const d = ctx.getImageData(x0, 0, w, c.height).data
+  const rowLuma = (y: number): number => {
+    let sum = 0
+    let n = 0
+    const base = y * w * 4
+    for (let i = 0; i < w * 4; i += 24) {
+      sum += 0.299 * d[base + i] + 0.587 * d[base + i + 1] + 0.114 * d[base + i + 2]
+      n++
+    }
+    return n ? sum / n : 0
+  }
+  let top = -1
+  let bottom = -1
+  for (let y = 0; y < c.height; y++) {
+    if (rowLuma(y) >= 150) {
+      if (top < 0) top = y
+      bottom = y
+    }
+  }
+  // 밝은 띠를 못 찾았거나(전부 어두운 화면) 이미 목록만 있는 이미지면 그대로 둔다
+  if (top < 0 || bottom - top < 40 || (top < 8 && c.height - bottom < 8)) return c
+  const pad = 14
+  const cy = Math.max(0, top - pad)
+  const ch = Math.min(c.height, bottom + pad) - cy
+  const out = document.createElement('canvas')
+  out.width = c.width
+  out.height = ch
+  out.getContext('2d')?.drawImage(c, 0, cy, c.width, ch, 0, 0, c.width, ch)
+  return out
+}
+
+/** 서버로 보내기 좋게 줄인다. 실측상 1000~1300px 폭에서 가장 잘 읽힌다. */
 async function toUploadBlob(file: Blob): Promise<{ b64: string; mime: string }> {
   const bmp = await createImageBitmap(file)
   const k = Math.min(1, 1280 / Math.max(bmp.width, bmp.height))
-  const c = draw(bmp, Math.round(bmp.width * k), Math.round(bmp.height * k))
+  const c = cropToList(draw(bmp, Math.round(bmp.width * k), Math.round(bmp.height * k)))
   bmp.close()
   const blob: Blob = await new Promise((res, rej) =>
     c.toBlob((b) => (b ? res(b) : rej(new Error('이미지 변환 실패'))), 'image/jpeg', 0.92),
@@ -370,7 +438,7 @@ async function readImageApi(
   onProgress?.({ progress: 0.35, status: 'AI가 읽는 중' })
   const ctrl = new AbortController()
   const timer = setTimeout(() => ctrl.abort(), 45_000)
-  let data: { ok?: boolean; rows?: Array<{ name: string; score: number }>; error?: string }
+  let data: { ok?: boolean; rows?: Array<{ rank?: number; name: string; score: number }>; error?: string }
   try {
     const res = await fetch(`${base}/ocr`, {
       method: 'POST',
@@ -388,15 +456,19 @@ async function readImageApi(
   const rows: OcrRow[] = []
   for (const r of data.rows) {
     if (typeof r?.name !== 'string' || !Number.isSafeInteger(r?.score) || r.score < 0) continue
+    const rank = Number.isSafeInteger(r.rank) && (r.rank as number) > 0 ? r.rank : undefined
+    // 길드원 랭킹은 1~30위뿐이다. 그 밖의 순위가 읽혔다면 다른 목록(개인 랭킹 등)이다.
+    if (rank !== undefined && rank > 30) continue
     const m = matchName(r.name, roster)
     rows.push({
-      raw: `${r.name}   ${r.score.toLocaleString()}`,
+      raw: `${rank !== undefined ? rank + '위 · ' : ''}${r.name}   ${r.score.toLocaleString()}`,
       readName: r.name,
       score: r.score,
       matched: m.name,
       confidence: m.confidence,
       ambiguous: m.ambiguous,
       suggestion: m.suggestion,
+      rank,
     })
   }
   // 같은 사람이 두 행에 붙었으면 확실한 쪽만 남긴다 (조용한 덮어쓰기 방지)
@@ -518,15 +590,23 @@ async function readImageLocal(
     })
     const left = Math.max(0, nameLeftEdge(words, base, scoreX0, h, W))
 
-    // 목록 위아래로 한두 칸 더 짚어 본다.
-    // '본인 행'은 목록과 떨어진 별도 카드라 1차 패스에서 통째로 놓치는 일이 있는데,
-    // 간격만큼 내려가 잘라 보면 멀쩡히 읽힌다. 헛다리를 짚어도 아래 검증에서 걸러진다.
+    // 목록 위아래로 한 칸씩 더 짚어 본다 — 1차 패스가 놓친 목록 행을 줍기 위해서다.
+    // 헛다리를 짚어도 아래 검증에서 걸러진다.
     const probes: number[] =
       pitch > 0 ? [Math.round(base[base.length - 1] + pitch), Math.round(base[0] - pitch)] : []
     const isProbe = new Set(
       probes.filter((y) => y > h * 0.5 && y + h * 1.5 < canvas.height && !base.includes(y)),
     )
-    const rows = [...base, ...isProbe].sort((a, b) => a - b)
+    // 하단의 '본인 순위' 행은 목록이 아니므로 뺀다. 목록 행은 밝은 카드,
+    // 본인 행은 어두운 카드라 이름 칸의 배경 밝기로 가려진다.
+    const isBright = (y: number) =>
+      bandLuma(canvas, {
+        left,
+        top: y - h * 1.2,
+        width: Math.max(1, scoreX0 - h * 0.5 - left),
+        height: h * 2,
+      }) >= 140
+    const rows = [...base, ...isProbe].filter(isBright).sort((a, b) => a - b)
 
     const total = rows.length * 2
     let done = 0
@@ -576,8 +656,7 @@ async function readImageLocal(
       }
     }
 
-    // 4) 점수 — 숫자만 나오게 묶어 두면 어두운 배경의 본인 행까지 정확하다.
-    //    헛다리로 판명난 자리는 읽지 않는다.
+    // 4) 점수 — 숫자만 나오게 묶어 두면 정확하다. 헛다리로 판명난 자리는 읽지 않는다.
     //    재시도로 언어를 바꿨다면 반드시 되돌린다. 한국어 전용 모델로 숫자를 읽으면
     //    자릿수가 틀어진다(11,975,149 → 1159757149).
     if (lang !== 'kor+eng') await worker.reinitialize('kor+eng')

@@ -1787,6 +1787,24 @@ button.ghost:hover { background: var(--surface-2); color: var(--text); }
   font-weight: 700;
   color: var(--danger);
 }
+.ocr-more {
+  margin: 2px 0 8px;
+  padding: 9px 12px;
+  border: 1.5px dashed var(--border-2);
+  border-radius: var(--radius-sm, 8px);
+  color: var(--text-2);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.ocr-more:hover { border-color: var(--accent); color: var(--accent-strong); }
+.ocr-more.busy { opacity: 0.5; cursor: wait; }
+.ocr-missing {
+  margin: 0 0 8px;
+  font-size: 0.82rem;
+  color: var(--text-3);
+  word-break: keep-all;
+}
 .ocr-guess {
   font-style: normal;
   font-weight: 700;
