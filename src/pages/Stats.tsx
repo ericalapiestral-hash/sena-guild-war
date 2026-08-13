@@ -560,31 +560,28 @@ function EntryTable({
   // ---- 소탕 ----
   // 소탕은 지난주 같은 요일 점수를 그대로, -10% 소탕은 거기서 10% 깎아 가져온다.
   // 지난주 기록이 있어야 의미가 있으므로 값이 하나도 없으면 열 자체를 감춘다.
+  // offset: 실제 게임 점수에 맞추는 보정. -10% 소탕은 계산값보다 1점 높게 들어온다.
   const SWEEPS = [
-    { key: 'full', ratio: 1, short: '소탕', full: '소탕', desc: '지난주 그대로' },
-    { key: 'cut', ratio: 0.9, short: '-10%', full: '-10% 소탕', desc: '지난주 -10%' },
+    { key: 'full', ratio: 1, offset: 0, short: '소탕', full: '소탕', desc: '지난주 그대로' },
+    { key: 'cut', ratio: 0.9, offset: 1, short: '-10%', full: '-10% 소탕', desc: '지난주 -10% +1' },
   ] as const
   const sweepOn = !!canSweep && editing && prevValues.size > 0
-  /**
-   * 소탕 점수 계산 — 소수점은 **내림**.
-   * 반올림으로 두면 지난주 점수 끝자리가 1~5일 때(=절반) 실제 게임 점수보다 1점 높게 나온다.
-   * (예: 12,496,375 → 반올림 11,246,738 / 실제·내림 11,246,737)
-   */
-  const sweptValue = (name: string, ratio: number): number | undefined => {
+  /** 소탕 점수 = 지난주 점수 × 비율(반올림) + 보정 */
+  const sweptValue = (name: string, ratio: number, offset: number): number | undefined => {
     const p = prevValues.get(name)
-    return typeof p === 'number' ? Math.floor(p * ratio) : undefined
+    return typeof p === 'number' ? Math.round(p * ratio) + offset : undefined
   }
-  const applySweep = (name: string, ratio: number): void => {
-    const v = sweptValue(name, ratio)
+  const applySweep = (name: string, ratio: number, offset: number): void => {
+    const v = sweptValue(name, ratio, offset)
     if (typeof v === 'number') setField(name, { value: v })
   }
   /** 아직 비어 있는 칸만 채운다 — 이미 입력한 점수를 실수로 덮어쓰지 않게 */
-  const sweepEmpty = (ratio: number): void => {
+  const sweepEmpty = (ratio: number, offset: number): void => {
     setDraft((prev) => {
       const next = { ...prev }
       for (const name of baseNames) {
         if (typeof next[name]?.value === 'number') continue
-        const v = sweptValue(name, ratio)
+        const v = sweptValue(name, ratio, offset)
         if (typeof v === 'number') next[name] = { ...next[name], value: v }
       }
       return next
@@ -652,7 +649,7 @@ function EntryTable({
                   ? '빈 칸이 없어요. 개별 소탕은 각 줄의 버튼을 쓰세요.'
                   : `점수가 비어 있는 ${emptyCount}명을 ${s.full}(${s.desc}) 값으로 채웁니다. 이미 입력된 점수는 그대로 둡니다.`
               }
-              onClick={() => sweepEmpty(s.ratio)}
+              onClick={() => sweepEmpty(s.ratio, s.offset)}
             >
               {s.full} 일괄 ({s.desc})
             </button>
@@ -769,8 +766,8 @@ function EntryTable({
                           <button
                             key={s.key}
                             className="small"
-                            title={`${s.full} — 지난주 ${fmt(prevValues.get(e.name))}점 → ${fmt(sweptValue(e.name, s.ratio))}점`}
-                            onClick={() => applySweep(e.name, s.ratio)}
+                            title={`${s.full} — 지난주 ${fmt(prevValues.get(e.name))}점 → ${fmt(sweptValue(e.name, s.ratio, s.offset))}점`}
+                            onClick={() => applySweep(e.name, s.ratio, s.offset)}
                           >
                             {s.short}
                           </button>
