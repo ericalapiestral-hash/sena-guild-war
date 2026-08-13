@@ -133,7 +133,7 @@ export function StatsPage({ kind }: { kind: Kind }) {
     // 인쇄와 같은 스타일로, 폭만 촘촘하게(600px) 렌더해 캡처 — 칸 안 빈 공간 축소.
     // 화면 밖에 배치(주의: opacity:0/visibility:hidden으로 숨기면 html2canvas가 빈 이미지를 만든다)
     const wrap = document.createElement('div')
-    wrap.style.cssText = 'position:fixed;left:-10000px;top:0;width:640px;background:#faf7f6;padding:14px;z-index:-1;'
+    wrap.style.cssText = 'position:fixed;left:-10000px;top:0;width:600px;background:#fff;padding:20px;z-index:-1;'
     const clone = src.cloneNode(true) as HTMLElement
     clone.style.display = 'block'
     wrap.appendChild(clone)
@@ -146,7 +146,7 @@ export function StatsPage({ kind }: { kind: Kind }) {
       const h = Math.ceil(wrap.scrollHeight)
       const canvas = await html2canvas(wrap, {
         scale: 2,
-        backgroundColor: '#faf7f6',
+        backgroundColor: '#ffffff',
         logging: false,
         width: w,
         height: h,
@@ -331,26 +331,12 @@ function effValue(e: StatEntry): number | undefined {
   return typeof e.value === 'number' ? e.value : e.mid
 }
 
-/** 등락 % 텍스트 (인쇄용) */
+/** 등락 % 텍스트 (인쇄용, 색 없이 ▲/▼) */
 function pctText(prev?: number, cur?: number): string {
   if (typeof cur !== 'number' || typeof prev !== 'number' || prev === 0) return '—'
   const p = ((cur - prev) / Math.abs(prev)) * 100
   if (Math.abs(p) < 0.05) return '0%'
   return `${p > 0 ? '▲' : '▼'} ${Math.abs(p).toFixed(1)}%`
-}
-
-/** 등락 색 클래스 (훈령 뷰) */
-function pctClass(prev?: number, cur?: number): string {
-  if (typeof cur !== 'number' || typeof prev !== 'number' || prev === 0) return ''
-  const p = ((cur - prev) / Math.abs(prev)) * 100
-  if (Math.abs(p) < 0.05) return ''
-  return p > 0 ? 'pct-up' : 'pct-down'
-}
-
-/** 훈령 순위 표기 — 상위 셋은 한자 */
-const RANK_HANJA = ['一', '二', '三']
-function rankLabel(i: number): string {
-  return i < 3 ? RANK_HANJA[i] : String(i + 1)
 }
 
 
@@ -389,40 +375,34 @@ function PrintContent({
     const isFail = (e: StatEntry) => typeof dayCut === 'number' && typeof e.value === 'number' && e.value <= dayCut
     return (
       <div className="print-root">
-        <div className="print-frame">
-          <div className="print-frame-in">
-            <div className="print-seal" aria-hidden>浪漫</div>
-            <div className="print-brand">낭 만 주 의</div>
-            <h2 className="print-title">공성전 전과 보고</h2>
-            <div className="print-when">{current.label} · {d}요일</div>
-            <div className="print-orn" aria-hidden><i /><b>◆</b><i /></div>
-            {ranked.length === 0 ? (
-              <p style={{ textAlign: 'center' }}>{d}요일에 입력된 점수가 없어요.</p>
-            ) : (
-              <>
-                <table className="print-table">
-                  <thead><tr><th>순위</th><th>길드원</th><th>전 주</th><th>이번 주</th><th>{cfg.deltaLabel}</th></tr></thead>
-                  <tbody>
-                    {ranked.map((e, i) => (
-                      <tr key={e.name}>
-                        <td className={i < 3 ? 'rank-top' : 'rank'}>{rankLabel(i)}</td>
-                        <td className={isFail(e) ? 'cell-fail' : ''}>{e.name}</td>
-                        <td className="num-tab">{fmt(prevMap.get(e.name))}</td>
-                        <td className="num-tab">{fmt(e.value)}</td>
-                        <td className={pctClass(prevMap.get(e.name), e.value)}>{pctText(prevMap.get(e.name), e.value)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                <div className="print-foot">
-                  합계 {fmt(total)} · {ranked.length}명
-                  {typeof dayCut === 'number' && <> · 커트라인 {fmt(dayCut)} 이하 미달</>}
-                </div>
-              </>
-            )}
-            <div className="print-stamp">출력일 {printedAt} · 낭만주의 길드</div>
-          </div>
+        <div className="print-head">
+          <h2>{cfg.title} — {current.label} · {d}요일</h2>
+          <span className="print-meta">출력일 {printedAt} · 낭만주의</span>
         </div>
+        {ranked.length === 0 ? (
+          <p>{d}요일에 입력된 점수가 없어요.</p>
+        ) : (
+          <div className="print-block">
+            <h3>{d}요일</h3>
+            <div className="print-sub">
+              {ranked.length}명 · 합계 {fmt(total)}
+              {typeof dayCut === 'number' && <> · 커트라인 {fmt(dayCut)} 이하 미달</>}
+            </div>
+            <table className="print-table">
+              <thead><tr><th>순위</th><th>길드원</th><th>전 주</th><th>이번 주</th><th>{cfg.deltaLabel}</th></tr></thead>
+              <tbody>
+                {ranked.map((e, i) => (
+                  <tr key={e.name}>
+                    <td>{i + 1}</td><td className={isFail(e) ? 'cell-fail' : ''}>{e.name}</td>
+                    <td className="num-tab">{fmt(prevMap.get(e.name))}</td>
+                    <td className="num-tab">{fmt(e.value)}</td>
+                    <td>{pctText(prevMap.get(e.name), e.value)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     )
   }
@@ -448,42 +428,36 @@ function PrintContent({
   const usedTiers = [...new Set(curRanked.map((e) => tierOf?.get(e.name)).filter((t): t is string => !!t && typeof tierCuts[t] === 'number'))].sort()
   return (
     <div className="print-root">
-      <div className="print-frame">
-        <div className="print-frame-in">
-          <div className="print-seal" aria-hidden>浪漫</div>
-          <div className="print-brand">낭 만 주 의</div>
-          <h2 className="print-title">파괴신 전과 보고</h2>
-          <div className="print-when">
-            {current.label}
-            {prevRound && <> · 전 시즌 {prevRound.label}</>}
-          </div>
-          <div className="print-orn" aria-hidden><i /><b>◆</b><i /></div>
-          <table className="print-table">
-            <thead><tr><th>순위</th><th>길드원</th>{usedTiers.length > 0 && <th>등급</th>}<th>전 시즌</th>{hasMid && <th>중간집계</th>}<th>이번 시즌 집계</th><th>전 시즌 대비</th>{hasMid && <th>중간집계 대비</th>}</tr></thead>
-            <tbody>
-              {curRanked.map((e, i) => (
-                <tr key={e.name}>
-                  <td className={i < 3 ? 'rank-top' : 'rank'}>{rankLabel(i)}</td>
-                  <td className={isFail(e) ? 'cell-fail' : ''}>{e.name}</td>
-                  {usedTiers.length > 0 && <td style={{ textAlign: 'left' }}>{tierOf?.get(e.name) ?? '-'}</td>}
-                  <td className="num-tab">{fmt(prevMap.get(e.name))}</td>
-                  {hasMid && <td className="num-tab">{fmt(e.mid)}</td>}
-                  <td className="num-tab">{fmt(e.value)}</td>
-                  <td className={pctClass(prevMap.get(e.name), effValue(e))}>{pctText(prevMap.get(e.name), effValue(e))}</td>
-                  {hasMid && <td className={pctClass(e.mid, e.value)}>{pctText(e.mid, e.value)}</td>}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <div className="print-foot">
-            합계 {fmt(curTotal)} · {curRanked.length}명
-            {(usedTiers.length > 0 || typeof current.cutline === 'number') && (
-              <> · 커트라인 {usedTiers.map((t) => `${t} ${fmt(tierCuts[t])}`).join(' / ')}
-                {typeof current.cutline === 'number' && `${usedTiers.length ? ' / ' : ''}${usedTiers.length ? '기본 ' : ''}${fmt(current.cutline)}`} 이하 미달</>
-            )}
-          </div>
-          <div className="print-stamp">출력일 {printedAt} · 낭만주의 길드</div>
+      <div className="print-head">
+        <h2>{cfg.title}</h2>
+        <span className="print-meta">출력일 {printedAt} · 낭만주의</span>
+      </div>
+      <div className="print-block">
+        <h3>이번 시즌: {current.label}</h3>
+        <div className="print-sub">
+          {curRanked.length}명 · 합계 {fmt(curTotal)}
+          {prevRound && <> · 전 시즌: {prevRound.label}</>}
+          {(usedTiers.length > 0 || typeof current.cutline === 'number') && (
+            <> · 커트라인 {usedTiers.map((t) => `${t} ${fmt(tierCuts[t])}`).join(' / ')}
+              {typeof current.cutline === 'number' && `${usedTiers.length ? ' / ' : ''}${usedTiers.length ? '기본 ' : ''}${fmt(current.cutline)}`} 이하 미달</>
+          )}
         </div>
+        <table className="print-table">
+          <thead><tr><th>순위</th><th>길드원</th>{usedTiers.length > 0 && <th>등급</th>}<th>전 시즌</th>{hasMid && <th>중간집계</th>}<th>이번 시즌 집계</th><th>전 시즌 대비</th>{hasMid && <th>중간집계 대비</th>}</tr></thead>
+          <tbody>
+            {curRanked.map((e, i) => (
+              <tr key={e.name}>
+                <td>{i + 1}</td><td className={isFail(e) ? 'cell-fail' : ''}>{e.name}</td>
+                {usedTiers.length > 0 && <td style={{ textAlign: 'left' }}>{tierOf?.get(e.name) ?? '-'}</td>}
+                <td className="num-tab">{fmt(prevMap.get(e.name))}</td>
+                {hasMid && <td className="num-tab">{fmt(e.mid)}</td>}
+                <td className="num-tab">{fmt(e.value)}</td>
+                <td>{pctText(prevMap.get(e.name), effValue(e))}</td>
+                {hasMid && <td>{pctText(e.mid, e.value)}</td>}
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   )
