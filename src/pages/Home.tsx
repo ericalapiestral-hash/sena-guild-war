@@ -4,6 +4,7 @@ import { counterHeroNames, getAllArena, getAllCounters, getAllHeroes, useUserDat
 import { navigate } from '../router'
 import { DeckNames } from '../components/HeroSelect'
 import { Delta, cutlineFor, effOf, fmt, lastFilled, latestDayWithData, tierMap } from '../lib/stat'
+import { LearnBriefing } from '../components/LearnBriefing'
 
 const LINKS: Array<{ route: string; label: string; desc: string }> = [
   { route: 'counters', label: '카운터덱', desc: '상대 방덱을 뚫는 조합 찾기' },
@@ -43,6 +44,8 @@ export function HomePage() {
           </button>
         ))}
       </div>
+
+      <LearnBriefing />
 
       {/* 공성전·파괴신은 운영진만 입력하므로, 길드원에겐 최근 기록을 표로 바로 보여준다 */}
       <div className="stat-preview-row">
