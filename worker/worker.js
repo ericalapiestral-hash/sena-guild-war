@@ -545,6 +545,24 @@ newHeroes 규칙:
 - 아는 영웅 목록에 이미 있는 이름의 줄임말이면 넣지 마라. 새 영웅이 확실한 것만.`
 }
 
+/** 브리핑에서 비길드전 글을 걸러낸다 — 어느 경로로 내보내든 같은 기준 */
+function filterBriefing(d) {
+  if (!d || !Array.isArray(d.items)) return d
+  return { ...d, items: d.items.filter((it) => ['공성전', '파괴신', '결투장'].includes(it?.category)) }
+}
+
+/** 라운지에서 지워진 글인지 확인 — 단건 조회가 실패하면 지워진 것으로 본다 */
+async function feedAlive(feedId) {
+  try {
+    const res = await fetch(`${LOUNGE_API}/feed/${feedId}`, { headers: LOUNGE_HEADERS })
+    if (!res.ok) return false
+    const j = await res.json()
+    return !!j?.content?.feed?.feedId
+  } catch {
+    return true // 네트워크 오류로는 글을 지우지 않는다
+  }
+}
+
 async function handleLearn(request, env) {
   if (request.method !== 'POST') return json({ error: 'POST만 지원해요.' }, 405)
   if (!env.AI || !env.GUILD_KV) return json({ error: '서버 설정이 부족해요.' }, 500)
@@ -572,7 +590,7 @@ async function handleLearn(request, env) {
 
   if (Date.now() - state.lastRunAt < LEARN_MIN_INTERVAL_MS) {
     const wait = Math.ceil((LEARN_MIN_INTERVAL_MS - (Date.now() - state.lastRunAt)) / 60000)
-    return json({ ok: false, error: `방금 학습했어요. ${wait}분 뒤에 다시 눌러 주세요.`, latest }, 429)
+    return json({ ok: false, error: `방금 학습했어요. ${wait}분 뒤에 다시 눌러 주세요.`, latest: filterBriefing(latest) }, 429)
   }
 
   // 1) 게시판 훑기
@@ -609,7 +627,7 @@ async function handleLearn(request, env) {
   if (fresh.length === 0) {
     state.lastRunAt = Date.now()
     await env.GUILD_KV.put('learn-state', JSON.stringify(state))
-    return json({ ok: true, freshCount: 0, message: '지난 학습 이후 새 길드전 글이 없어요.', latest })
+    return json({ ok: true, freshCount: 0, message: '지난 학습 이후 새 길드전 글이 없어요.', latest: filterBriefing(latest) })
   }
 
   // 2) 한 번의 AI 호출로 전부 요약
@@ -618,10 +636,10 @@ async function handleLearn(request, env) {
     const out = await runText(env, learnPrompt(fresh, heroes))
     parsed = extractObject(out)
   } catch (e) {
-    return json({ ok: false, error: `요약 모델 호출 실패: ${e && e.message ? e.message : e}`, latest }, 502)
+    return json({ ok: false, error: `요약 모델 호출 실패: ${e && e.message ? e.message : e}`, latest: filterBriefing(latest) }, 502)
   }
   if (!parsed || !Array.isArray(parsed.items)) {
-    return json({ ok: false, error: '모델 응답을 해석하지 못했어요. 잠시 뒤 다시 시도해 주세요.', latest }, 502)
+    return json({ ok: false, error: '모델 응답을 해석하지 못했어요. 잠시 뒤 다시 시도해 주세요.', latest: filterBriefing(latest) }, 502)
   }
 
   const byId = new Map(fresh.map((p) => [p.feedId, p]))
@@ -672,12 +690,16 @@ async function handleLearn(request, env) {
   }
 
   // 최근 학습분(있으면)의 글도 함께 보여 주면 브리핑이 갑자기 짧아지지 않는다.
-  // 예전 기준으로 저장된 기타(비길드전) 글은 여기서도 걸러 낸다.
+  // 예전 기준으로 저장된 기타(비길드전) 글은 걸러 내고, 라운지에서 지워진 글도
+  // 여기서 정리한다 (새 글은 방금 목록에 있었으니 살아 있는 게 확실).
   if (latest && Array.isArray(latest.items)) {
     const have = new Set(result.items.map((i) => i.feedId))
-    for (const it of latest.items) {
-      if (!['공성전', '파괴신', '결투장'].includes(it?.category)) continue
-      if (!have.has(it.feedId) && result.items.length < 15) result.items.push(it)
+    const carry = latest.items.filter(
+      (it) => ['공성전', '파괴신', '결투장'].includes(it?.category) && !have.has(it.feedId),
+    )
+    const alive = await Promise.all(carry.map((it) => feedAlive(it.feedId)))
+    for (let i = 0; i < carry.length; i++) {
+      if (alive[i] && result.items.length < 15) result.items.push(carry[i])
     }
   }
 
