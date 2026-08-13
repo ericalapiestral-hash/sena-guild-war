@@ -1743,6 +1743,61 @@ button.ghost:hover { background: var(--surface-2); color: var(--text); }
 .recent-line { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .recent-line .sec-label { min-width: 38px; font-style: normal; }
 
+/* ---- 캡처에서 점수 읽기 (OCR) ---- */
+.ocr-drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 34px 20px;
+  border: 1px dashed var(--border-2);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  text-align: center;
+  cursor: pointer;
+  transition: border-color var(--dur-1) var(--ease), background var(--dur-1) var(--ease);
+}
+.ocr-drop:hover { border-color: var(--accent); background: var(--accent-soft); }
+.ocr-drop.busy { cursor: default; opacity: 0.6; }
+.ocr-drop-ic { font-size: 1.8rem; }
+
+.ocr-progress { margin-top: 14px; }
+.ocr-bar { height: 6px; border-radius: 999px; background: var(--surface-3); overflow: hidden; }
+.ocr-bar i { display: block; height: 100%; background: var(--accent); transition: width var(--dur-2) var(--ease); }
+.ocr-progress .muted { display: inline-block; margin-top: 6px; font-size: 0.84rem; }
+
+.ocr-error {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--danger-soft);
+  border: 1px solid var(--danger-line);
+  color: var(--danger);
+  font-size: 0.88rem;
+}
+.ocr-preview { max-width: 100%; border-radius: var(--radius-sm); border: 1px solid var(--border); margin-top: 8px; }
+.ocr-table { max-height: 340px; overflow-y: auto; margin-top: 8px; }
+.ocr-table th { position: sticky; top: 0; background: var(--surface); z-index: 1; }
+.ocr-raw { font-size: 0.82rem; color: var(--text-2); word-break: break-all; }
+.ocr-warn {
+  display: inline-block;
+  margin-left: 6px;
+  font-style: normal;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--danger);
+}
+.ocr-rawtext {
+  margin: 8px 0 0;
+  padding: 10px;
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  white-space: pre-wrap;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
 /* ---- 홈: 공성전·파괴신 최근 기록 요약 ----
    운영진만 입력하는 기록이라, 길드원은 홈에서 바로 표로 확인한다. */
 .stat-preview-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 18px; }

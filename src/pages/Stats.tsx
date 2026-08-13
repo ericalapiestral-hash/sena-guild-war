@@ -7,6 +7,7 @@ import { isAdmin } from '../auth'
 import { Markdown } from '../components/Markdown'
 import { DESTROYER_GUIDES } from '../data/destroyerGuide'
 import { Delta, WEEKDAYS, fmt, todayWeekday } from '../lib/stat'
+import { ScoreImport } from '../components/ScoreImport'
 
 type Kind = 'siege' | 'destroyer'
 
@@ -519,6 +520,7 @@ function EntryTable({
   /** 편집 중 ✕로 지운 외부(비명단) 이름 — 저장 시 기록에서 제거됨 */
   const [removedExtra, setRemovedExtra] = useState<string[]>([])
   const [newName, setNewName] = useState('')
+  const [importing, setImporting] = useState(false)
 
   const useTiers = !!tierList?.length
 
@@ -631,8 +633,28 @@ function EntryTable({
       <div className="row between" style={{ marginBottom: 8 }}>
         {heading ? <div className="cc-sec">{heading}</div> : <span />}
         {admin && !editing && <button className="primary small" onClick={startEdit}>✏️ {metric} 입력·수정</button>}
-        {admin && editing && <span className="delta up" style={{ fontSize: '0.85rem' }}>✏️ 편집 중 — 아래 [저장]을 눌러야 반영돼요</span>}
+        {admin && editing && (
+          <span className="row" style={{ gap: 8 }}>
+            <button className="small" onClick={() => setImporting(true)}>📷 캡처에서 읽기</button>
+            <span className="delta up" style={{ fontSize: '0.85rem' }}>✏️ 편집 중 — 아래 [저장]을 눌러야 반영돼요</span>
+          </span>
+        )}
       </div>
+
+      {importing && (
+        <ScoreImport
+          roster={baseNames}
+          metric={metric}
+          onClose={() => setImporting(false)}
+          onApply={(values) =>
+            setDraft((prev) => {
+              const next = { ...prev }
+              for (const { name, value } of values) next[name] = { ...next[name], value }
+              return next
+            })
+          }
+        />
+      )}
 
       {sweepOn && (
         <div className="row" style={{ marginBottom: 10, gap: 8 }}>
