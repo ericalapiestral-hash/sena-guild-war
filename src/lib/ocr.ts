@@ -316,18 +316,25 @@ function crop(src: HTMLCanvasElement, r: Rect): HTMLCanvasElement {
   return c
 }
 
-async function toCanvas(file: Blob): Promise<HTMLCanvasElement> {
+async function toCanvas(file: Blob): Promise<{ canvas: HTMLCanvasElement; bmp: ImageBitmap; scale: number }> {
   const bmp = await createImageBitmap(file)
-  const scale = Math.min(2600 / bmp.width, Math.max(1, 1200 / bmp.width))
-  const canvas = document.createElement('canvas')
-  canvas.width = Math.round(bmp.width * scale)
-  canvas.height = Math.round(bmp.height * scale)
-  const ctx = canvas.getContext('2d')
+  // 좌표를 뽑는 단계는 넉넉히 크게 본다. 작으면 글자 위치가 뭉개져 이름 칸
+  // 경계가 어긋나고, 그러면 판독을 아무리 잘해도 소용이 없다.
+  const scale = Math.min(2600 / bmp.width, Math.max(1, 1900 / bmp.width))
+  const canvas = draw(bmp, Math.round(bmp.width * scale), Math.round(bmp.height * scale))
+  return { canvas, bmp, scale }
+}
+
+/** 원본에서 원하는 크기로 한 번에 그린다 */
+function draw(bmp: ImageBitmap, w: number, h: number): HTMLCanvasElement {
+  const c = document.createElement('canvas')
+  c.width = w
+  c.height = h
+  const ctx = c.getContext('2d')
   if (!ctx) throw new Error('캔버스를 만들 수 없어요')
   ctx.imageSmoothingQuality = 'high'
-  ctx.drawImage(bmp, 0, 0, canvas.width, canvas.height)
-  bmp.close()
-  return canvas
+  ctx.drawImage(bmp, 0, 0, w, h)
+  return c
 }
 
 // ---------------------------------------------------------------- 본체
@@ -343,7 +350,7 @@ export async function readImage(
   onProgress?: (p: OcrProgress) => void,
 ): Promise<{ rows: OcrRow[]; text: string }> {
   const { createWorker, PSM } = await import('tesseract.js')
-  const canvas = await toCanvas(file)
+  const { canvas, bmp, scale } = await toCanvas(file)
   const W = canvas.width
 
   const worker = await createWorker('kor+eng', 1, {
@@ -394,6 +401,23 @@ export async function readImage(
     const scoreX0 = Math.min(...items.map((i) => i.x0))
     const scoreX1 = Math.max(...items.map((i) => i.x1))
     const { rows: base, pitch } = rowPositions(items)
+
+    // 글자가 작으면(폰 캡처 등) 판독 전에 키운다. 이미지 폭이 아니라 **실제 글자
+    // 높이**를 기준으로 삼아야 한다 — 폭으로 정하면 이미 충분히 큰 글자까지
+    // 흐려져 오히려 나빠진다.
+    // 판독용 배율은 **원본의 글자 크기**로 정한다. 이미 또렷한 글자를 억지로
+    // 키우면 흐려져서 오히려 나빠지고, 작은 글자는 키워야 읽힌다.
+    // (원본 글자 31px → 그대로, 15px → 2배 남짓)
+    const glyph = h / scale
+    const readScale = glyph >= 26 ? 1 : Math.min(3, 32 / glyph)
+    const readCanvas =
+      Math.abs(readScale - scale) < 0.02
+        ? canvas
+        : draw(bmp, Math.round(bmp.width * readScale), Math.round(bmp.height * readScale))
+    const f = readScale / scale
+    const zoomed = (r: Rect): Rect => ({
+      left: r.left * f, top: r.top * f, width: r.width * f, height: r.height * f,
+    })
     const left = Math.max(0, nameLeftEdge(words, base, scoreX0, h, W))
 
     // 목록 위아래로 한두 칸 더 짚어 본다.
@@ -421,7 +445,7 @@ export async function readImage(
     const reads: string[] = []
     const matches: ReturnType<typeof matchName>[] = []
     for (const y of rows) {
-      const { data: d } = await worker.recognize(crop(canvas, nameRect(y)))
+      const { data: d } = await worker.recognize(crop(readCanvas, zoomed(nameRect(y))))
       const read = d.text.replace(/\s+/g, ' ').trim()
       reads.push(read)
       matches.push(matchName(read, roster))
@@ -444,7 +468,7 @@ export async function readImage(
       lang = retryLang
       await worker.setParameters({ tessedit_pageseg_mode: PSM.SINGLE_LINE })
       for (const i of todo) {
-        const { data: d } = await worker.recognize(crop(canvas, nameRect(rows[i])))
+        const { data: d } = await worker.recognize(crop(readCanvas, zoomed(nameRect(rows[i]))))
         const read = d.text.replace(/\s+/g, ' ').trim()
         const m = matchName(read, roster)
         if (m.name) {
@@ -467,12 +491,12 @@ export async function readImage(
         continue
       }
       const { data: d } = await worker.recognize(
-        crop(canvas, {
+        crop(readCanvas, zoomed({
           left: Math.max(0, scoreX0 - h * 2),
           top: Math.max(0, y - h * 0.6),
           width: scoreX1 - scoreX0 + h * 3,
           height: h * 2,
-        }),
+        })),
       )
       scores.push(parseScore(d.text))
       step(++done, total, `점수 읽는 중 ${done - rows.length}/${rows.length}`)
@@ -522,6 +546,7 @@ export async function readImage(
 
     return { rows: out, text }
   } finally {
+    bmp.close()
     await worker.terminate().catch(() => {})
   }
 }
