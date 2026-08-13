@@ -137,7 +137,7 @@ export function ScoreImport({
           <div className="ocr-bar"><i style={{ width: `${Math.round(progress * 100)}%` }} /></div>
           <span className="muted">{status} {Math.round(progress * 100)}%</span>
           <p className="muted" style={{ margin: '6px 0 0', fontSize: '0.82rem' }}>
-            처음 한 번은 한국어 인식 데이터를 내려받느라 조금 걸립니다.
+            보통 몇 초면 끝납니다. 서버가 응답하지 않으면 브라우저에서 직접 읽는데, 그때는 30초쯤 걸려요.
           </p>
         </div>
       )}

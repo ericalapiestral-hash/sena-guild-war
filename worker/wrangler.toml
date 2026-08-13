@@ -11,3 +11,7 @@ compatibility_date = "2024-11-01"
 [[kv_namespaces]]
 binding = "GUILD_KV"
 id = "a31934f6fd8d46d7bc45039f1d1b8d93"
+
+# 캡처 점수 읽기(/ocr)용 Workers AI. 무료 할당량(하루 10,000뉴런) 안에서 동작.
+[ai]
+binding = "AI"

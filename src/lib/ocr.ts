@@ -339,12 +339,110 @@ function draw(bmp: ImageBitmap, w: number, h: number): HTMLCanvasElement {
 
 // ---------------------------------------------------------------- 본체
 
+/** 서버로 보내기 좋게 줄인다. 실측상 1000~1300px 폭에서 가장 잘 읽힌다(원본이 크면 오히려 하단 본인 행을 놓쳤다). */
+async function toUploadBlob(file: Blob): Promise<{ b64: string; mime: string }> {
+  const bmp = await createImageBitmap(file)
+  const k = Math.min(1, 1280 / Math.max(bmp.width, bmp.height))
+  const c = draw(bmp, Math.round(bmp.width * k), Math.round(bmp.height * k))
+  bmp.close()
+  const blob: Blob = await new Promise((res, rej) =>
+    c.toBlob((b) => (b ? res(b) : rej(new Error('이미지 변환 실패'))), 'image/jpeg', 0.92),
+  )
+  const buf = new Uint8Array(await blob.arrayBuffer())
+  let bin = ''
+  for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000))
+  return { b64: btoa(bin), mime: 'image/jpeg' }
+}
+
+/** 서버(/ocr)의 AI 모델로 읽는 기본 경로 */
+async function readImageApi(
+  file: Blob,
+  roster: string[],
+  onProgress?: (p: OcrProgress) => void,
+): Promise<{ rows: OcrRow[]; text: string }> {
+  const { WORKER_URL } = await import('../data/config')
+  const base = (WORKER_URL || '').replace(/\/+$/, '')
+  if (!base) throw new Error('서버 주소가 없어요')
+
+  onProgress?.({ progress: 0.15, status: '이미지 준비 중' })
+  const { b64, mime } = await toUploadBlob(file)
+
+  onProgress?.({ progress: 0.35, status: 'AI가 읽는 중' })
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), 45_000)
+  let data: { ok?: boolean; rows?: Array<{ name: string; score: number }>; error?: string }
+  try {
+    const res = await fetch(`${base}/ocr`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ image: b64, mime, roster }),
+      signal: ctrl.signal,
+    })
+    data = await res.json()
+  } finally {
+    clearTimeout(timer)
+  }
+  if (!data.ok || !Array.isArray(data.rows)) throw new Error(data.error || '서버가 읽지 못했어요')
+
+  onProgress?.({ progress: 0.9, status: '결과 정리 중' })
+  const rows: OcrRow[] = []
+  for (const r of data.rows) {
+    if (typeof r?.name !== 'string' || !Number.isSafeInteger(r?.score) || r.score < 0) continue
+    const m = matchName(r.name, roster)
+    rows.push({
+      raw: `${r.name}   ${r.score.toLocaleString()}`,
+      readName: r.name,
+      score: r.score,
+      matched: m.name,
+      confidence: m.confidence,
+      ambiguous: m.ambiguous,
+      suggestion: m.suggestion,
+    })
+  }
+  // 같은 사람이 두 행에 붙었으면 확실한 쪽만 남긴다 (조용한 덮어쓰기 방지)
+  const seen = new Map<string, number>()
+  rows.forEach((r, i) => {
+    if (!r.matched) return
+    const prev = seen.get(r.matched)
+    if (prev === undefined) {
+      seen.set(r.matched, i)
+    } else if (rows[i].confidence > rows[prev].confidence) {
+      rows[prev] = { ...rows[prev], matched: undefined }
+      seen.set(r.matched, i)
+    } else {
+      rows[i] = { ...rows[i], matched: undefined }
+    }
+  })
+  // 다른 화면(길드 랭킹 등)이면 명단에 붙는 비율이 낮다 — 표를 내놓지 않는다
+  const hit = rows.filter((r) => r.matched).length
+  if (rows.length >= 3 && hit / rows.length < 0.4) return { rows: [], text: '' }
+  return { rows, text: data.rows.map((r) => `${r.name}  ${r.score}`).join('\n') }
+}
+
 /**
  * 이미지에서 이름과 점수를 읽는다.
- * tesseract.js는 무겁고(코어 wasm + 한국어 학습데이터) 이 기능을 쓸 때만 필요하므로
- * 동적 import로 분리해 첫 화면 로딩에는 영향을 주지 않는다.
+ * 기본은 서버(/ocr)의 AI 모델 — 몇 초면 끝나고 게임 폰트도 잘 읽는다.
+ * 서버가 죽었거나 무료 할당량이 바닥나면 브라우저 tesseract로 폴백한다.
  */
 export async function readImage(
+  file: Blob,
+  roster: string[],
+  onProgress?: (p: OcrProgress) => void,
+): Promise<{ rows: OcrRow[]; text: string }> {
+  try {
+    return await readImageApi(file, roster, onProgress)
+  } catch {
+    onProgress?.({ progress: 0, status: '서버가 응답하지 않아 브라우저에서 읽어요' })
+    return readImageLocal(file, roster, onProgress)
+  }
+}
+
+/**
+ * 브라우저 안에서 읽는 예비 경로 (tesseract.js).
+ * 서버(/ocr)가 안 될 때만 쓴다 — 무겁고 느리지만 인터넷이 아예 없어도 돈다.
+ * tesseract.js는 이 기능을 쓸 때만 동적 import로 불러와 첫 화면 로딩에 영향이 없다.
+ */
+async function readImageLocal(
   file: Blob,
   roster: string[],
   onProgress?: (p: OcrProgress) => void,

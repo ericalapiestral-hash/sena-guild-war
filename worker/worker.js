@@ -215,11 +215,176 @@ function destroyerStats(data, seasonQuery) {
   }
 }
 
+// ===== 캡처 점수 읽기 (/ocr) =====
+// 게임 랭킹 화면 캡처에서 닉네임·점수를 Workers AI 비전 모델로 읽는다.
+// 브라우저 tesseract는 게임 폰트·아바타 그림에서 한계가 뚜렷해서(자릿수가 끼어드는
+// 오독까지 났다) 서버 쪽 모델로 옮겼다. 클라이언트는 실패 시 tesseract로 폴백.
+
+// 사이트가 아닌 곳에서 무료 할당량을 태우는 걸 막는 최소한의 문지방
+const OCR_ORIGINS = [
+  'https://ericalapiestral-hash.github.io',
+  'http://localhost:5199',
+  'http://localhost:5200',
+]
+
+// 실측 비교 결과(2026-08-13, 실제 랭킹 캡처 3종):
+//   llama-4-scout    — 보이는 행 전부 정확 (10/10·10/10·9/10), 4~7초
+//   llama-3.2-vision — 라이선스 동의 필요해서 미사용
+//   gemma-3-12b      — 이 계정에서 접근 불가
+// 허용 목록 밖 모델은 거부(비싼 모델 무단 사용 방지).
+const OCR_MODELS = ['@cf/meta/llama-4-scout-17b-16e-instruct']
+const OCR_DEFAULT_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct'
+
+function ocrPrompt(roster) {
+  const list = roster.length ? `\n참고 — 길드원 명단: ${roster.join(', ')}\n읽은 닉네임이 명단의 이름과 사실상 같으면 명단 표기를 그대로 써라.` : ''
+  return `이 이미지는 모바일 게임의 길드원 랭킹 화면 캡처다. 목록의 각 행에서 닉네임과 점수를 읽어라.
+
+규칙:
+- 닉네임 아래 작은 보라색 글씨(길드 이름)는 닉네임이 아니다. 무시하라.
+- 순위 숫자와 재화·기타 UI 숫자는 점수가 아니다. 각 행 오른쪽의 큰 숫자만 점수다.
+- 점수는 쉼표를 뺀 정수로 적어라.
+- 위나 아래가 잘려 일부만 보이는 행은 빼라.
+- 중요: 화면 하단에는 목록과 구분선으로 분리된 행이 하나 더 있다(어두운 배경, 본인의 순위·닉네임·점수). 이 행을 빠뜨리는 실수가 잦다. 이 행도 반드시 결과에 넣어라.${list}
+
+다른 말 없이 JSON 배열만 출력하라: [{"name":"닉네임","score":12345678}]`
+}
+
+/** 모델별 입력 형식이 달라서 두 형식을 차례로 시도한다 */
+/** 모델 응답 정규화 — 런타임이 JSON을 이미 파싱해 배열로 주기도 한다(llama-4) */
+function normalizeOut(res) {
+  if (typeof res === 'string') return res
+  if (Array.isArray(res)) return res
+  if (Array.isArray(res?.response)) return res.response
+  return res?.response ?? res?.description ?? ''
+}
+
+function b64of(bytes) {
+  let b = ''
+  for (let i = 0; i < bytes.length; i += 0x8000) {
+    b += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000))
+  }
+  return btoa(b)
+}
+
+async function runVision(env, model, prompt, bytes, mime, debug) {
+  if (debug === 'messages' || debug === 'prompt') {
+    // 진단용: 해당 형식의 원응답을 그대로 돌려본다
+    const req = debug === 'messages'
+      ? { messages: [{ role: 'user', content: [{ type: 'text', text: prompt }, { type: 'image_url', image_url: { url: `data:${mime};base64,${b64of(bytes)}` } }] }], max_tokens: 2048 }
+      : { prompt, image: Array.from(bytes), max_tokens: 2048 }
+    const res = await env.AI.run(model, req)
+    return { out: JSON.stringify(res).slice(0, 4000), shape: 'debug:' + debug }
+  }
+  // 1) messages + data URL (llama-4·gemma 계열)
+  try {
+    const res = await env.AI.run(model, {
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: prompt },
+            { type: 'image_url', image_url: { url: `data:${mime};base64,${b64of(bytes)}` } },
+          ],
+        },
+      ],
+      max_tokens: 2048,
+    })
+    const out = normalizeOut(res)
+    if (out) return { out, shape: 'messages' }
+  } catch (e) {
+    // 형식이 안 맞는 모델이면 아래 형식으로
+  }
+  // 2) prompt + 바이트 배열 (llama-3.2-vision·llava 계열)
+  const res = await env.AI.run(model, {
+    prompt,
+    image: Array.from(bytes),
+    max_tokens: 2048,
+  })
+  return { out: normalizeOut(res), shape: 'prompt' }
+}
+
+/** 모델 출력에서 JSON 배열을 끄집어낸다 (문자열이든, 이미 파싱된 배열이든) */
+function extractRows(out) {
+  let arr = null
+  if (Array.isArray(out)) {
+    // 일부 모델(llama-4 등)은 JSON을 이미 파싱된 배열로 돌려준다
+    arr = out
+  } else if (typeof out === 'string') {
+    const start = out.indexOf('[')
+    const end = out.lastIndexOf(']')
+    if (start < 0 || end <= start) return null
+    try {
+      arr = JSON.parse(out.slice(start, end + 1))
+    } catch {
+      return null
+    }
+  }
+  if (!Array.isArray(arr)) return null
+  const rows = []
+  for (const it of arr) {
+    if (!it || typeof it !== 'object') continue
+    const name = typeof it.name === 'string' ? it.name.trim() : ''
+    const score = Number(it.score)
+    if (!name || !Number.isSafeInteger(score) || score < 0) continue
+    rows.push({ name, score })
+  }
+  return rows
+}
+
+async function handleOcr(request, env) {
+  if (request.method !== 'POST') return json({ error: 'POST만 지원해요.' }, 405)
+  if (!env.AI) return json({ error: '서버에 AI 바인딩이 없어요.' }, 500)
+
+  const origin = request.headers.get('origin') || ''
+  if (!OCR_ORIGINS.includes(origin)) return json({ error: '허용되지 않은 출처예요.' }, 403)
+
+  const text = await request.text()
+  if (text.length > 8_000_000) return json({ error: '이미지가 너무 커요. 목록 부분만 잘라서 올려보세요.' }, 413)
+
+  let body
+  try {
+    body = JSON.parse(text)
+  } catch {
+    return json({ error: '요청 형식이 올바르지 않아요.' }, 400)
+  }
+
+  const b64 = typeof body.image === 'string' ? body.image : ''
+  if (!b64) return json({ error: 'image(base64)가 필요해요.' }, 400)
+  const mime = typeof body.mime === 'string' && /^image\/[a-z+.-]+$/.test(body.mime) ? body.mime : 'image/png'
+  const roster = Array.isArray(body.roster)
+    ? body.roster.filter((n) => typeof n === 'string' && n.length <= 40).slice(0, 100)
+    : []
+  const model = OCR_MODELS.includes(body.model) ? body.model : OCR_DEFAULT_MODEL
+
+  let bytes
+  try {
+    const bin = atob(b64)
+    bytes = new Uint8Array(bin.length)
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+  } catch {
+    return json({ error: 'base64를 해석할 수 없어요.' }, 400)
+  }
+
+  try {
+    const { out, shape } = await runVision(env, model, ocrPrompt(roster), bytes, mime, body.debug)
+    const raw = (typeof out === 'string' ? out : JSON.stringify(out)).slice(0, 2000)
+    if (String(shape).startsWith('debug:')) return json({ ok: false, model, shape, raw: (typeof out === 'string' ? out : JSON.stringify(out)).slice(0, 4000) })
+    const rows = extractRows(out)
+    if (!rows) return json({ ok: false, error: '모델 출력에서 표를 찾지 못했어요.', model, raw }, 502)
+    return json({ ok: true, rows, model, shape, raw })
+  } catch (e) {
+    return json({ ok: false, error: `모델 호출 실패: ${e && e.message ? e.message : e}`, model }, 502)
+  }
+}
+
 export default {
   async fetch(request, env) {
     if (request.method === 'OPTIONS') return new Response(null, { headers: corsHeaders() })
 
     const path = new URL(request.url).pathname.replace(/\/+$/, '')
+
+    // ===== 캡처 점수 읽기 =====
+    if (path.endsWith('/ocr')) return handleOcr(request, env)
 
     // ===== 통계 API (읽기 전용) =====
     // GET /api/siege?week=<주차 라벨(부분일치 가능)>&day=<월~일>
