@@ -671,10 +671,12 @@ async function handleLearn(request, env) {
     }
   }
 
-  // 최근 학습분(있으면)의 글도 함께 보여 주면 브리핑이 갑자기 짧아지지 않는다
+  // 최근 학습분(있으면)의 글도 함께 보여 주면 브리핑이 갑자기 짧아지지 않는다.
+  // 예전 기준으로 저장된 기타(비길드전) 글은 여기서도 걸러 낸다.
   if (latest && Array.isArray(latest.items)) {
     const have = new Set(result.items.map((i) => i.feedId))
     for (const it of latest.items) {
+      if (!['공성전', '파괴신', '결투장'].includes(it?.category)) continue
       if (!have.has(it.feedId) && result.items.length < 15) result.items.push(it)
     }
   }
