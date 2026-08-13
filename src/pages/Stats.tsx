@@ -565,9 +565,14 @@ function EntryTable({
     { key: 'cut', ratio: 0.9, short: '-10%', full: '-10% 소탕', desc: '지난주 -10%' },
   ] as const
   const sweepOn = !!canSweep && editing && prevValues.size > 0
+  /**
+   * 소탕 점수 계산 — 소수점은 **내림**.
+   * 반올림으로 두면 지난주 점수 끝자리가 1~5일 때(=절반) 실제 게임 점수보다 1점 높게 나온다.
+   * (예: 12,496,375 → 반올림 11,246,738 / 실제·내림 11,246,737)
+   */
   const sweptValue = (name: string, ratio: number): number | undefined => {
     const p = prevValues.get(name)
-    return typeof p === 'number' ? Math.round(p * ratio) : undefined
+    return typeof p === 'number' ? Math.floor(p * ratio) : undefined
   }
   const applySweep = (name: string, ratio: number): void => {
     const v = sweptValue(name, ratio)
@@ -579,8 +584,8 @@ function EntryTable({
       const next = { ...prev }
       for (const name of baseNames) {
         if (typeof next[name]?.value === 'number') continue
-        const p = prevValues.get(name)
-        if (typeof p === 'number') next[name] = { ...next[name], value: Math.round(p * ratio) }
+        const v = sweptValue(name, ratio)
+        if (typeof v === 'number') next[name] = { ...next[name], value: v }
       }
       return next
     })
