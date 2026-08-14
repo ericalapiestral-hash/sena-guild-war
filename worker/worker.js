@@ -763,12 +763,14 @@ async function handleLearn(request, env) {
   // 글마다 이미지까지 읽는 개별 분석. 실패한 글은 seen에 넣지 않아 다음에 다시 시도한다.
   const items = []
   const processed = []
+  const excluded = new Set() // 공략 아님·내용 없음으로 판정된 글 — 이월분에서도 빼야 한다
   for (const post of fresh) {
     post.images = await loadPostImages(post)
     // 텍스트도 이미지도 사실상 없는 글은 배울 게 없다 — 모델을 부르지 않는다
     const realChars = post.text.replace(/\[이미지\]/g, '').replace(/\s/g, '').length
     if (realChars < 80 && post.images.length === 0) {
       processed.push(post.feedId)
+      excluded.add(post.feedId)
       continue
     }
     let a = null
@@ -779,7 +781,10 @@ async function handleLearn(request, env) {
     }
     if (!a) continue
     processed.push(post.feedId)
-    if (!a.isGuide || !['공성전', '파괴신', '결투장'].includes(a.category)) continue
+    if (!a.isGuide || !['공성전', '파괴신', '결투장'].includes(a.category)) {
+      excluded.add(post.feedId)
+      continue
+    }
     items.push({
       feedId: post.feedId,
       title: post.title,
@@ -832,7 +837,10 @@ async function handleLearn(request, env) {
   if (latest && Array.isArray(latest.items)) {
     const have = new Set(result.items.map((i) => i.feedId))
     const carry = latest.items.filter(
-      (it) => ['공성전', '파괴신', '결투장'].includes(it?.category) && !have.has(it.feedId),
+      (it) =>
+        ['공성전', '파괴신', '결투장'].includes(it?.category) &&
+        !have.has(it.feedId) &&
+        !excluded.has(it.feedId),
     )
     const alive = await Promise.all(carry.map((it) => feedAlive(it.feedId)))
     for (let i = 0; i < carry.length; i++) {
