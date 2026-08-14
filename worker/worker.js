@@ -250,11 +250,13 @@ function ocrPrompt(roster) {
 }
 
 /** 모델별 입력 형식이 달라서 두 형식을 차례로 시도한다 */
-/** 모델 응답 정규화 — 런타임이 JSON을 이미 파싱해 배열로 주기도 한다(llama-4) */
+/** 모델 응답 정규화 — llama-4는 파싱된 배열, gpt-oss는 OpenAI chat 형식으로 온다 */
 function normalizeOut(res) {
   if (typeof res === 'string') return res
   if (Array.isArray(res)) return res
   if (Array.isArray(res?.response)) return res.response
+  const chat = res?.choices?.[0]?.message?.content
+  if (typeof chat === 'string' && chat) return chat
   return res?.response ?? res?.description ?? ''
 }
 
@@ -399,6 +401,10 @@ const LEARN_BOARDS = [
 // 길드전(공성전·파괴신) + 결투장 글만 학습한다
 const LEARN_KEYWORDS = ['공성', '파괴신', '길드전', '결투장', '결장', '방덱', '공덱', '카운터', '침공']
 const LEARN_MIN_INTERVAL_MS = 10 * 60 * 1000 // 연타로 할당량 태우는 것 방지
+// 글 분석(비전): mistral-small이 scout보다 요약이 훨씬 촘촘하고 영웅 이름도 정식 명칭으로 쓴다 (A/B 실측 2026-08-13)
+const LEARN_VISION_MODEL = '@cf/mistralai/mistral-small-3.1-24b-instruct'
+// 종합(텍스트): 추론형 gpt-oss-120b — 신규 영웅 판별처럼 목록 대조가 필요한 일에 강하다
+const LEARN_SYNTH_MODELS = ['@cf/openai/gpt-oss-120b', '@cf/meta/llama-3.3-70b-instruct-fp8-fast']
 const LEARN_MAX_POSTS = 6 // 한 번에 분석할 새 글 상한 (글마다 모델 1회라 8→6)
 const LEARN_MAX_IMAGES = 3 // 글 하나에서 읽을 이미지 상한
 
@@ -550,7 +556,7 @@ function extractObject(out) {
 const normName = (v) => String(v ?? '').toLowerCase().replace(/[\s·.,_\-]/g, '')
 
 /** 글 하나 분석 — 본문 텍스트 + 덱 스크린샷 이미지를 함께 읽는다 */
-async function analyzePost(env, post, heroes) {
+async function analyzePost(env, post, heroes, model) {
   const heroList = heroes.length ? `\n\n참고 — 등록된 영웅 목록: ${heroes.join(', ')}\n영웅 이름은 이 목록의 표기를 그대로 써라. 목록에 없는 새 영웅이 보이면 그 이름 그대로 적어라.` : ''
   const prompt = `너는 모바일 게임 '세븐나이츠 리버스'의 길드전 분석가다. 커뮤니티 공략 글 하나를 분석하라.
 
@@ -574,11 +580,21 @@ JSON으로만 답하라:
 
   const content = [{ type: 'text', text: prompt }]
   for (const dataUrl of post.images) content.push({ type: 'image_url', image_url: { url: dataUrl } })
-  const res = await env.AI.run(OCR_DEFAULT_MODEL, {
-    messages: [{ role: 'user', content }],
-    max_tokens: 1024,
-  })
-  const parsed = extractObject(normalizeOut(res))
+  const tryModel = async (m) => {
+    const res = await env.AI.run(m, { messages: [{ role: 'user', content }], max_tokens: 1024 })
+    return extractObject(normalizeOut(res))
+  }
+  let parsed = null
+  try {
+    parsed = await tryModel(model || LEARN_VISION_MODEL)
+  } catch { /* 아래 폴백으로 */ }
+  if (!parsed) {
+    try {
+      parsed = await tryModel(OCR_DEFAULT_MODEL)
+    } catch {
+      return null
+    }
+  }
   if (!parsed || typeof parsed !== 'object') return null
   return {
     isGuide: parsed.isGuide !== false,
@@ -612,19 +628,23 @@ JSON으로만 답하라:
 }
 
 newHeroes 규칙: 덱 이름·조합 별칭(라오엘·파마덱·선란덱 등)과 줄임말·오타·스킬명·펫 이름은 영웅이 아니다.`
-  try {
-    const res = await env.AI.run(OCR_DEFAULT_MODEL, {
-      messages: [{ role: 'user', content: [{ type: 'text', text: prompt }] }],
-      max_tokens: 512,
-    })
-    const parsed = extractObject(normalizeOut(res))
-    return {
-      meta: String(parsed?.meta ?? '').slice(0, 400),
-      newHeroes: Array.isArray(parsed?.newHeroes) ? parsed.newHeroes : [],
-    }
-  } catch {
-    return { meta: '', newHeroes: [] }
+  for (const m of [...LEARN_SYNTH_MODELS, OCR_DEFAULT_MODEL]) {
+    try {
+      const res = await env.AI.run(m, {
+        messages: [{ role: 'user', content: [{ type: 'text', text: prompt }] }],
+        // 추론형 모델은 생각하는 데도 토큰을 쓴다 — 넉넉히
+        max_tokens: 2048,
+      })
+      const parsed = extractObject(normalizeOut(res))
+      if (parsed) {
+        return {
+          meta: String(parsed.meta ?? '').slice(0, 400),
+          newHeroes: Array.isArray(parsed.newHeroes) ? parsed.newHeroes : [],
+        }
+      }
+    } catch { /* 다음 모델로 */ }
   }
+  return { meta: '', newHeroes: [] }
 }
 
 /** 브리핑에서 비길드전 글을 걸러낸다 — 어느 경로로 내보내든 같은 기준 */
@@ -645,16 +665,15 @@ async function feedAlive(feedId) {
   }
 }
 
-/** 게시판을 훑어 길드전 관련 글 후보를 모은다 */
+/** 게시판을 훑어 길드전 관련 글 후보를 모은다 (게시판 병렬) */
 async function harvestLoungePosts() {
   const posts = []
-  for (const b of LEARN_BOARDS) {
-    let feeds = []
-    try {
-      feeds = await fetchLoungeFeeds(b.id, b.take)
-    } catch {
-      continue
-    }
+  const boardFeeds = await Promise.all(
+    LEARN_BOARDS.map((b) => fetchLoungeFeeds(b.id, b.take).catch(() => [])),
+  )
+  for (let bi = 0; bi < LEARN_BOARDS.length; bi++) {
+    const b = LEARN_BOARDS[bi]
+    const feeds = boardFeeds[bi]
     for (const item of feeds) {
       const f = item.feed ?? {}
       if (!f.feedId) continue
@@ -677,18 +696,12 @@ async function harvestLoungePosts() {
   return posts
 }
 
-/** 글에 딸린 이미지를 내려받아 비전 입력으로 준비 */
+/** 글에 딸린 이미지를 내려받아 비전 입력으로 준비 (병렬, 한 장 실패해도 진행) */
 async function loadPostImages(post) {
-  const images = []
-  for (const u of post.imageUrls.slice(0, LEARN_MAX_IMAGES)) {
-    try {
-      const dataUrl = await fetchImageDataUrl(u)
-      if (dataUrl) images.push(dataUrl)
-    } catch {
-      // 한 장 실패해도 나머지로 진행
-    }
-  }
-  return images
+  const results = await Promise.all(
+    post.imageUrls.slice(0, LEARN_MAX_IMAGES).map((u) => fetchImageDataUrl(u).catch(() => null)),
+  )
+  return results.filter(Boolean)
 }
 
 async function handleLearn(request, env) {
@@ -726,9 +739,10 @@ async function handleLearn(request, env) {
     post.images = imgTrace.filter((t) => t.ok).length
       ? await loadPostImages(post)
       : []
+    const dbgModel = ['@cf/mistralai/mistral-small-3.1-24b-instruct', OCR_DEFAULT_MODEL].includes(body.model) ? body.model : undefined
     try {
-      const a = await analyzePost(env, post, heroes)
-      return json({ ok: true, debug: true, title: post.title, textChars: post.text.length, imageUrlCount: post.imageUrls.length, imgTrace, imageCount: post.images.length, analysis: a })
+      const a = await analyzePost(env, post, heroes, dbgModel)
+      return json({ ok: true, debug: true, model: dbgModel || OCR_DEFAULT_MODEL, title: post.title, textChars: post.text.length, imageUrlCount: post.imageUrls.length, imgTrace, imageCount: post.images.length, analysis: a })
     } catch (e) {
       return json({ ok: false, error: String(e && e.message ? e.message : e), imgTrace }, 502)
     }
@@ -760,24 +774,29 @@ async function handleLearn(request, env) {
     return json({ ok: true, freshCount: 0, message: '지난 학습 이후 새 길드전 글이 없어요.', latest: filterBriefing(latest) })
   }
 
-  // 글마다 이미지까지 읽는 개별 분석. 실패한 글은 seen에 넣지 않아 다음에 다시 시도한다.
+  // 글마다 이미지까지 읽는 개별 분석 — 전부 병렬로 돌려 벽시계 시간을 줄인다.
+  // 실패한 글은 seen에 넣지 않아 다음에 다시 시도한다.
+  const analyses = await Promise.all(
+    fresh.map(async (post) => {
+      post.images = await loadPostImages(post)
+      // 텍스트도 이미지도 사실상 없는 글은 배울 게 없다 — 모델을 부르지 않는다
+      const realChars = post.text.replace(/\[이미지\]/g, '').replace(/\s/g, '').length
+      if (realChars < 80 && post.images.length === 0) return { post, skip: true }
+      try {
+        return { post, a: await analyzePost(env, post, heroes) }
+      } catch {
+        return { post, a: null }
+      }
+    }),
+  )
   const items = []
   const processed = []
   const excluded = new Set() // 공략 아님·내용 없음으로 판정된 글 — 이월분에서도 빼야 한다
-  for (const post of fresh) {
-    post.images = await loadPostImages(post)
-    // 텍스트도 이미지도 사실상 없는 글은 배울 게 없다 — 모델을 부르지 않는다
-    const realChars = post.text.replace(/\[이미지\]/g, '').replace(/\s/g, '').length
-    if (realChars < 80 && post.images.length === 0) {
+  for (const { post, a, skip } of analyses) {
+    if (skip) {
       processed.push(post.feedId)
       excluded.add(post.feedId)
       continue
-    }
-    let a = null
-    try {
-      a = await analyzePost(env, post, heroes)
-    } catch {
-      a = null
     }
     if (!a) continue
     processed.push(post.feedId)
