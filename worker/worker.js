@@ -379,9 +379,10 @@ async function handleOcr(request, env) {
 }
 
 // ===== 학습 API (/learn) =====
-// 공식 네이버 라운지(공략&TIP·Best 공략)에서 길드전 관련 새 글을 모아
-// Workers AI로 요약하고, 아는 영웅 목록에 없는 이름은 '신규 영웅 후보'로 띄운다.
-// 관리자가 사이트에서 버튼을 눌렀을 때만 돈다. 결과는 KV에 저장돼 전 길드원이 본다.
+// 공식 네이버 라운지(공략&TIP·Best 공략)에서 길드전 관련 새 글을 모아 요약한다.
+// v2: 글마다 본문 이미지(덱 스크린샷)까지 비전 모델로 읽는 개별 분석 후,
+//     전체를 한 번 더 종합해 메타 흐름과 신규 영웅 후보를 뽑는다.
+// 관리자 버튼으로만 돌고, 결과는 KV에 저장된다.
 // (디시인사이드는 데이터센터 IP를 막아 워커에서 못 읽는다 — 실측 2026-08-13)
 
 const LOUNGE = 'sena_rebirth'
@@ -398,7 +399,8 @@ const LEARN_BOARDS = [
 // 길드전(공성전·파괴신) + 결투장 글만 학습한다
 const LEARN_KEYWORDS = ['공성', '파괴신', '길드전', '결투장', '결장', '방덱', '공덱', '카운터', '침공']
 const LEARN_MIN_INTERVAL_MS = 10 * 60 * 1000 // 연타로 할당량 태우는 것 방지
-const LEARN_MAX_POSTS = 8 // 한 번에 요약할 새 글 상한
+const LEARN_MAX_POSTS = 6 // 한 번에 분석할 새 글 상한 (글마다 모델 1회라 8→6)
+const LEARN_MAX_IMAGES = 3 // 글 하나에서 읽을 이미지 상한
 
 const unescapeHtml2 = (v) =>
   String(v ?? '')
@@ -477,21 +479,58 @@ const loungeContentsToText = (raw) => {
   return s2.startsWith('<') ? loungeHtmlToText(s2) : loungeDocToText(raw)
 }
 
+/** 본문에서 이미지 주소를 모은다 (스마트에디터 JSON의 image·imageStrip) */
+function collectLoungeImages(raw) {
+  let doc
+  try {
+    doc = typeof raw === 'string' ? JSON.parse(raw) : raw
+  } catch {
+    return []
+  }
+  const urls = []
+  const walk = (node) => {
+    if (!node || typeof node !== 'object') return
+    if (Array.isArray(node)) {
+      for (const v of node) walk(v)
+      return
+    }
+    if (typeof node.src === 'string' && /pstatic\.net/.test(node.src)) urls.push(node.src)
+    for (const k of Object.keys(node)) {
+      if (k === 'src') continue
+      walk(node[k])
+    }
+  }
+  for (const c of doc?.document?.components ?? []) {
+    if (c['@ctype'] === 'image' || c['@ctype'] === 'imageStrip') walk(c)
+  }
+  return [...new Set(urls)]
+}
+
+/** 네이버 CDN 이미지 → data URL.
+ *  리사이즈는 w1024로 (이 CDN은 w750/w800/w1024/w1280만 유효 — w960 등은 404).
+ *  그마저 실패하면 원본 파라미터 그대로 받는다. */
+async function fetchImageDataUrl(url, trace) {
+  const sized = url.includes('?type=') ? url.replace(/\?type=[^&]*/, '?type=w1024') : url + '?type=w1024'
+  const headers = { 'User-Agent': LOUNGE_HEADERS['User-Agent'], Referer: LOUNGE_HEADERS.Referer }
+  let res = await fetch(sized, { headers })
+  if (!res.ok && sized !== url) res = await fetch(url, { headers })
+  if (trace) trace.status = res.status
+  if (!res.ok) return null
+  const type = res.headers.get('content-type') || ''
+  if (!type.startsWith('image/')) return null
+  const buf = new Uint8Array(await res.arrayBuffer())
+  if (buf.length > 2_500_000) return null // 비전 입력으로 과한 크기는 버린다
+  let bin = ''
+  for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000))
+  return `data:${type};base64,${btoa(bin)}`
+}
+
 async function fetchLoungeFeeds(boardId, take) {
   const q = new URLSearchParams({ offset: '0', limit: String(take), order: 'NEW', boardId: String(boardId), buffFilteringYN: 'N' })
   const res = await fetch(`${LOUNGE_API}/feed?${q}`, { headers: LOUNGE_HEADERS })
   if (!res.ok) throw new Error(`라운지 응답 ${res.status}`)
   const j = await res.json()
   return j?.content?.feeds ?? []
-}
-
-/** 텍스트 전용 모델 호출 */
-async function runText(env, prompt) {
-  const res = await env.AI.run(OCR_DEFAULT_MODEL, {
-    messages: [{ role: 'user', content: [{ type: 'text', text: prompt }] }],
-    max_tokens: 2048,
-  })
-  return normalizeOut(res)
 }
 
 /** 모델 출력에서 JSON 객체를 끄집어낸다 */
@@ -510,39 +549,82 @@ function extractObject(out) {
 
 const normName = (v) => String(v ?? '').toLowerCase().replace(/[\s·.,_\-]/g, '')
 
-function learnPrompt(posts, heroes) {
-  const heroList = heroes.length ? `\n\n아는 영웅 목록(이 게임의 등록된 영웅들): ${heroes.join(', ')}` : ''
-  const corpus = posts
-    .map((p) => `### 글 ${p.feedId} [${p.board}] ${p.title} (${p.date})\n${p.text.slice(0, 2200)}`)
-    .join('\n\n')
-  return `너는 모바일 게임 '세븐나이츠 리버스'의 길드전 분석가다. 아래는 공식 커뮤니티에 새로 올라온 글들이다.
+/** 글 하나 분석 — 본문 텍스트 + 덱 스크린샷 이미지를 함께 읽는다 */
+async function analyzePost(env, post, heroes) {
+  const heroList = heroes.length ? `\n\n참고 — 등록된 영웅 목록: ${heroes.join(', ')}\n영웅 이름은 이 목록의 표기를 그대로 써라. 목록에 없는 새 영웅이 보이면 그 이름 그대로 적어라.` : ''
+  const prompt = `너는 모바일 게임 '세븐나이츠 리버스'의 길드전 분석가다. 커뮤니티 공략 글 하나를 분석하라.
 
-${corpus}${heroList}
+제목: ${post.title}
+게시판: ${post.board} (작성 ${post.date})
+본문:
+${post.text.slice(0, 5000) || '(텍스트 없음 — 이미지 공략)'}
 
-각 글을 분석해 JSON으로만 답하라:
+${post.images.length ? `첨부 이미지 ${post.images.length}장이 함께 주어진다. 덱 스크린샷이면 영웅 구성·순서·장비를 읽어라.` : '이미지 없음.'}${heroList}
+
+JSON으로만 답하라:
 {
- "items": [
-   {"feedId": 숫자, "category": "공성전"|"파괴신"|"결투장"|"기타", "summary": "핵심만 2~3문장", "heroes": ["글에 등장한 영웅 이름들"]}
- ],
- "newHeroes": ["아는 영웅 목록에 없는 새 영웅으로 보이는 이름들 (확실한 것만, 없으면 빈 배열)"],
- "meta": "전체 글들에서 읽히는 최근 흐름 한두 문장 (새 메타·자주 쓰이는 덱 등)"
+ "isGuide": true|false,   // 공략·정보 글이면 true. 질문·요청·건의·불만·잡담이거나, 본문·이미지에 배울 내용이 사실상 없으면 false
+ "category": "공성전"|"파괴신"|"결투장"|"기타",
+ "summary": "3~5문장으로 충분히. 덱 조합은 영웅 이름 그대로, 스킬 순서·수치·상대 가능한 방덱 같은 조건도 구체적으로. 두루뭉술한 문장 금지. 원문·이미지에 없는 내용을 지어내지 마라.",
+ "decks": [{"side": "공덱"|"방덱", "heroes": ["영웅1","영웅2","영웅3"]}],   // 글·이미지에서 확인된 덱만
+ "heroes": ["글과 이미지에 등장한 영웅 이름 전부"]
 }
 
-분류 규칙:
-- 공성전·길드전 글 = "공성전", 파괴신 글 = "파괴신"
-- 결투장 글 = "결투장" (상결=상급 결투장, 일결=일반 결투장, 실시간결도 전부 결투장)
-- 총력전·던전·성장·모험 등 그 밖의 컨텐츠 = "기타"
-- 공략이 아닌 글(질문·요청·건의·불만·잡담)은 items에서 아예 빼라
+분류: 공성전·길드전="공성전", 파괴신="파괴신", 결투장(상결·일결·실시간결)="결투장", 총력전·던전·성장 등="기타".`
 
-요약 규칙:
-- 글에 나온 실제 덱 조합을 영웅 이름 그대로 적어라. 예: "여포·미스트·란드그리드 방덱을 선란·태오·콜트 속공덱으로 카운터".
-- "다양한 덱과 전략을 소개합니다" 같은 두루뭉술한 문장 금지. 원문에 구체적 내용이 없으면 없다고 적어라.
-- 이미지가 대부분인 글은 제목과 남은 텍스트로만 판단하고 summary 끝에 "(이미지 위주 글)"을 붙여라.
-- 지어내지 마라.
+  const content = [{ type: 'text', text: prompt }]
+  for (const dataUrl of post.images) content.push({ type: 'image_url', image_url: { url: dataUrl } })
+  const res = await env.AI.run(OCR_DEFAULT_MODEL, {
+    messages: [{ role: 'user', content }],
+    max_tokens: 1024,
+  })
+  const parsed = extractObject(normalizeOut(res))
+  if (!parsed || typeof parsed !== 'object') return null
+  return {
+    isGuide: parsed.isGuide !== false,
+    category: ['공성전', '파괴신', '결투장'].includes(parsed.category) ? parsed.category : '기타',
+    summary: String(parsed.summary ?? '').slice(0, 700),
+    decks: Array.isArray(parsed.decks)
+      ? parsed.decks
+          .filter((d) => d && ['공덱', '방덱'].includes(d.side) && Array.isArray(d.heroes))
+          .map((d) => ({ side: d.side, heroes: d.heroes.filter((h) => typeof h === 'string').slice(0, 8) }))
+          .slice(0, 6)
+      : [],
+    heroes: Array.isArray(parsed.heroes) ? parsed.heroes.filter((h) => typeof h === 'string').slice(0, 25) : [],
+  }
+}
 
-newHeroes 규칙:
-- 덱 이름·조합 별칭(라오엘, 파마덱, 선란덱 등)과 줄임말·오타·스킬명은 영웅이 아니다.
-- 아는 영웅 목록에 이미 있는 이름의 줄임말이면 넣지 마라. 새 영웅이 확실한 것만.`
+/** 분석된 글들을 종합 — 메타 흐름과 신규 영웅 후보 */
+async function synthesizeLearn(env, items, heroes) {
+  const lines = items
+    .map((it) => `- [${it.category}] ${it.title}: ${it.summary}\n  영웅: ${(it.heroes ?? []).join(', ')}`)
+    .join('\n')
+  const prompt = `너는 모바일 게임 '세븐나이츠 리버스'의 길드전 분석가다. 아래는 방금 분석한 커뮤니티 글 요약들이다.
+
+${lines}
+
+등록된 영웅 목록: ${heroes.join(', ')}
+
+JSON으로만 답하라:
+{
+ "meta": "이 글들에서 읽히는 최근 흐름 한두 문장 (자주 쓰이는 덱·영웅, 메타 변화)",
+ "newHeroes": ["등록된 영웅 목록에 없는 새 영웅으로 보이는 이름 (확실한 것만, 없으면 빈 배열)"]
+}
+
+newHeroes 규칙: 덱 이름·조합 별칭(라오엘·파마덱·선란덱 등)과 줄임말·오타·스킬명·펫 이름은 영웅이 아니다.`
+  try {
+    const res = await env.AI.run(OCR_DEFAULT_MODEL, {
+      messages: [{ role: 'user', content: [{ type: 'text', text: prompt }] }],
+      max_tokens: 512,
+    })
+    const parsed = extractObject(normalizeOut(res))
+    return {
+      meta: String(parsed?.meta ?? '').slice(0, 400),
+      newHeroes: Array.isArray(parsed?.newHeroes) ? parsed.newHeroes : [],
+    }
+  } catch {
+    return { meta: '', newHeroes: [] }
+  }
 }
 
 /** 브리핑에서 비길드전 글을 걸러낸다 — 어느 경로로 내보내든 같은 기준 */
@@ -563,37 +645,8 @@ async function feedAlive(feedId) {
   }
 }
 
-async function handleLearn(request, env) {
-  if (request.method !== 'POST') return json({ error: 'POST만 지원해요.' }, 405)
-  if (!env.AI || !env.GUILD_KV) return json({ error: '서버 설정이 부족해요.' }, 500)
-  const origin = request.headers.get('origin') || ''
-  if (!OCR_ORIGINS.includes(origin)) return json({ error: '허용되지 않은 출처예요.' }, 403)
-
-  let body = {}
-  try {
-    body = JSON.parse(await request.text())
-  } catch {
-    body = {}
-  }
-  const heroes = Array.isArray(body.heroes)
-    ? body.heroes.filter((n) => typeof n === 'string' && n.length <= 40).slice(0, 250)
-    : []
-
-  let state = { seen: [], lastRunAt: 0 }
-  try {
-    const raw = await env.GUILD_KV.get('learn-state')
-    if (raw) state = { ...state, ...JSON.parse(raw) }
-  } catch { /* 초기 상태로 */ }
-
-  const latestRaw = await env.GUILD_KV.get('learn-latest')
-  const latest = latestRaw ? JSON.parse(latestRaw) : null
-
-  if (Date.now() - state.lastRunAt < LEARN_MIN_INTERVAL_MS) {
-    const wait = Math.ceil((LEARN_MIN_INTERVAL_MS - (Date.now() - state.lastRunAt)) / 60000)
-    return json({ ok: false, error: `방금 학습했어요. ${wait}분 뒤에 다시 눌러 주세요.`, latest: filterBriefing(latest) }, 429)
-  }
-
-  // 1) 게시판 훑기
+/** 게시판을 훑어 길드전 관련 글 후보를 모은다 */
+async function harvestLoungePosts() {
   const posts = []
   for (const b of LEARN_BOARDS) {
     let feeds = []
@@ -616,11 +669,88 @@ async function handleLearn(request, env) {
         title,
         date: String(f.createdDate ?? '').slice(0, 8),
         text,
+        imageUrls: collectLoungeImages(f.contents),
         url: `https://game.naver.com/lounge/${LOUNGE}/board/${b.id}/detail/${f.feedId}`,
       })
     }
   }
+  return posts
+}
 
+/** 글에 딸린 이미지를 내려받아 비전 입력으로 준비 */
+async function loadPostImages(post) {
+  const images = []
+  for (const u of post.imageUrls.slice(0, LEARN_MAX_IMAGES)) {
+    try {
+      const dataUrl = await fetchImageDataUrl(u)
+      if (dataUrl) images.push(dataUrl)
+    } catch {
+      // 한 장 실패해도 나머지로 진행
+    }
+  }
+  return images
+}
+
+async function handleLearn(request, env) {
+  if (request.method !== 'POST') return json({ error: 'POST만 지원해요.' }, 405)
+  if (!env.AI || !env.GUILD_KV) return json({ error: '서버 설정이 부족해요.' }, 500)
+  const origin = request.headers.get('origin') || ''
+  if (!OCR_ORIGINS.includes(origin)) return json({ error: '허용되지 않은 출처예요.' }, 403)
+
+  let body = {}
+  try {
+    body = JSON.parse(await request.text())
+  } catch {
+    body = {}
+  }
+  const heroes = Array.isArray(body.heroes)
+    ? body.heroes.filter((n) => typeof n === 'string' && n.length <= 40).slice(0, 250)
+    : []
+
+  // 진단: 글 하나만 분석해 보고 상태는 건드리지 않는다 (품질 점검용)
+  if (body.debugFeedId) {
+    const posts = await harvestLoungePosts()
+    const post = posts.find((p) => p.feedId === Number(body.debugFeedId))
+    if (!post) return json({ ok: false, error: '후보 목록에서 해당 글을 못 찾았어요.' }, 404)
+    // 이미지 손실 지점을 볼 수 있게 단계별 결과를 담는다
+    const imgTrace = []
+    for (const u of post.imageUrls.slice(0, LEARN_MAX_IMAGES)) {
+      try {
+        const t = {}
+        const d = await fetchImageDataUrl(u, t)
+        imgTrace.push({ url: u.slice(0, 90), ok: !!d, status: t.status, len: d ? d.length : 0 })
+      } catch (e) {
+        imgTrace.push({ url: u.slice(0, 90), ok: false, err: String(e && e.message ? e.message : e) })
+      }
+    }
+    post.images = imgTrace.filter((t) => t.ok).length
+      ? await loadPostImages(post)
+      : []
+    try {
+      const a = await analyzePost(env, post, heroes)
+      return json({ ok: true, debug: true, title: post.title, textChars: post.text.length, imageUrlCount: post.imageUrls.length, imgTrace, imageCount: post.images.length, analysis: a })
+    } catch (e) {
+      return json({ ok: false, error: String(e && e.message ? e.message : e), imgTrace }, 502)
+    }
+  }
+
+  let state = { seen: [], lastRunAt: 0 }
+  try {
+    const raw = await env.GUILD_KV.get('learn-state')
+    if (raw) state = { ...state, ...JSON.parse(raw) }
+  } catch { /* 초기 상태로 */ }
+  // 전체 재학습: 본 글 목록을 비우고 처음부터 다시 (파이프라인을 고쳤을 때 사용)
+  if (body.relearn === true) state.seen = []
+
+  const latestRaw = await env.GUILD_KV.get('learn-latest')
+  const latest = latestRaw ? JSON.parse(latestRaw) : null
+
+  if (Date.now() - state.lastRunAt < LEARN_MIN_INTERVAL_MS) {
+    const wait = Math.ceil((LEARN_MIN_INTERVAL_MS - (Date.now() - state.lastRunAt)) / 60000)
+    return json({ ok: false, error: `방금 학습했어요. ${wait}분 뒤에 다시 눌러 주세요.`, latest: filterBriefing(latest) }, 429)
+  }
+
+  const posts = await harvestLoungePosts()
   const seen = new Set(state.seen)
   const fresh = posts.filter((p) => !seen.has(p.feedId)).slice(0, LEARN_MAX_POSTS)
 
@@ -630,42 +760,49 @@ async function handleLearn(request, env) {
     return json({ ok: true, freshCount: 0, message: '지난 학습 이후 새 길드전 글이 없어요.', latest: filterBriefing(latest) })
   }
 
-  // 2) 한 번의 AI 호출로 전부 요약
-  let parsed = null
-  try {
-    const out = await runText(env, learnPrompt(fresh, heroes))
-    parsed = extractObject(out)
-  } catch (e) {
-    return json({ ok: false, error: `요약 모델 호출 실패: ${e && e.message ? e.message : e}`, latest: filterBriefing(latest) }, 502)
-  }
-  if (!parsed || !Array.isArray(parsed.items)) {
-    return json({ ok: false, error: '모델 응답을 해석하지 못했어요. 잠시 뒤 다시 시도해 주세요.', latest: filterBriefing(latest) }, 502)
-  }
-
-  const byId = new Map(fresh.map((p) => [p.feedId, p]))
+  // 글마다 이미지까지 읽는 개별 분석. 실패한 글은 seen에 넣지 않아 다음에 다시 시도한다.
   const items = []
-  for (const it of parsed.items) {
-    const src = byId.get(Number(it?.feedId))
-    if (!src) continue
-    // 길드전(공성전·파괴신)과 결투장 글만 브리핑에 남긴다 — 그 밖의 컨텐츠는 버림
-    if (!['공성전', '파괴신', '결투장'].includes(it.category)) continue
+  const processed = []
+  for (const post of fresh) {
+    post.images = await loadPostImages(post)
+    // 텍스트도 이미지도 사실상 없는 글은 배울 게 없다 — 모델을 부르지 않는다
+    const realChars = post.text.replace(/\[이미지\]/g, '').replace(/\s/g, '').length
+    if (realChars < 80 && post.images.length === 0) {
+      processed.push(post.feedId)
+      continue
+    }
+    let a = null
+    try {
+      a = await analyzePost(env, post, heroes)
+    } catch {
+      a = null
+    }
+    if (!a) continue
+    processed.push(post.feedId)
+    if (!a.isGuide || !['공성전', '파괴신', '결투장'].includes(a.category)) continue
     items.push({
-      feedId: src.feedId,
-      title: src.title,
-      date: src.date,
-      board: src.board,
-      url: src.url,
-      category: it.category,
-      summary: String(it.summary ?? '').slice(0, 600),
-      heroes: Array.isArray(it.heroes) ? it.heroes.filter((h) => typeof h === 'string').slice(0, 20) : [],
+      feedId: post.feedId,
+      title: post.title,
+      date: post.date,
+      board: post.board,
+      url: post.url,
+      category: a.category,
+      summary: a.summary,
+      decks: a.decks,
+      heroes: a.heroes,
     })
   }
 
-  // 3) 신규 영웅 후보 — 모델 제안을 아는 목록과 서버에서 한 번 더 대조
+  if (processed.length === 0) {
+    return json({ ok: false, error: '분석에 모두 실패했어요. 잠시 뒤 다시 시도해 주세요.', latest: filterBriefing(latest) }, 502)
+  }
+
+  // 종합 — 메타 흐름·신규 영웅 후보
+  const syn = items.length ? await synthesizeLearn(env, items, heroes) : { meta: '', newHeroes: [] }
   const known = new Set(heroes.map(normName))
   const newHeroes = [
     ...new Set(
-      (Array.isArray(parsed.newHeroes) ? parsed.newHeroes : [])
+      syn.newHeroes
         .filter((h) => typeof h === 'string' && h.trim().length >= 2 && h.length <= 20)
         .map((h) => h.trim())
         .filter((h) => !known.has(normName(h))),
@@ -677,7 +814,7 @@ async function handleLearn(request, env) {
     freshCount: items.length,
     items,
     newHeroes,
-    meta: String(parsed.meta ?? '').slice(0, 400),
+    meta: syn.meta,
   }
 
   // 이전 학습분의 새 영웅 후보는 등록 전까지 잊지 않게 이어 붙인다
@@ -703,7 +840,7 @@ async function handleLearn(request, env) {
     }
   }
 
-  state.seen = [...state.seen, ...fresh.map((p) => p.feedId)].slice(-500)
+  state.seen = [...state.seen, ...processed].slice(-500)
   state.lastRunAt = Date.now()
   await env.GUILD_KV.put('learn-latest', JSON.stringify(result))
   await env.GUILD_KV.put('learn-state', JSON.stringify(state))
