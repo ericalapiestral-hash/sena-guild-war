@@ -112,7 +112,10 @@ function readBase(): string {
  * localhost / 127.0.0.1 / *.local 에서 열렸으면 개발로 간주한다.
  */
 function isLocalDev(): boolean {
-  if (typeof window === 'undefined') return false
+  // 브라우저가 아니면(Node에서 번들을 불러 테스트하는 경우 등) 무조건 개발로 간주.
+  // 실제로 이 판정이 false라서 Node 단위 테스트의 importJson이 실서버에
+  // 빈 데이터를 push해 전 길드 데이터를 덮어쓴 사고가 있었다 (2026-08-14, 백업으로 복구).
+  if (typeof window === 'undefined') return true
   const h = window.location.hostname
   return h === 'localhost' || h === '127.0.0.1' || h === '::1' || h.endsWith('.local')
 }
