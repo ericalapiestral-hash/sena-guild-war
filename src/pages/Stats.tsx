@@ -26,7 +26,7 @@ const CFG: Record<
 > = {
   siege: {
     title: '공성전 통계',
-    desc: '주차를 고르고 요일(월~일)마다 [편집]을 눌러 점수를 입력하고 [저장]하면 잠겨요. 각 요일 점수를 지난주 같은 요일과 비교해 등락(%)이 표시돼요. 소탕한 사람은 [소탕](지난주 점수 그대로) · [-10%](지난주 -10%) 버튼으로 바로 채울 수 있어요. 커트라인은 요일마다 따로 설정할 수 있고, 이하 점수는 미달로 표시돼요. 명단은 [길드원] 메뉴 등록자가 자동으로 들어옵니다.',
+    desc: '주차를 고르고 요일(월~일)마다 [편집]을 눌러 점수를 입력하고 [저장]하면 잠겨요. 각 요일 점수를 지난주 같은 요일과 비교해 등락(%)이 표시돼요. 점수는 [📷 캡처에서 읽기]로 결과 화면을 붙여넣으면 자동으로 채워져요. 커트라인은 요일마다 따로 설정할 수 있고, 이하 점수는 미달로 표시돼요. 명단은 [길드원] 메뉴 등록자가 자동으로 들어옵니다.',
     metric: '점수',
     field: 'siegeRounds',
     byDay: true,
@@ -297,7 +297,6 @@ export function StatsPage({ kind }: { kind: Kind }) {
             prevLabel={cfg.prevLabel}
             finalLabel={cfg.finalLabel}
             prevRoundLabel={prevRound?.label}
-            canSweep={cfg.byDay}
             onSaveAll={saveAll}
           />
         </div>
@@ -484,7 +483,6 @@ function EntryTable({
   prevLabel,
   finalLabel,
   prevRoundLabel,
-  canSweep,
   onSaveAll,
 }: {
   roster: string[]
@@ -508,8 +506,6 @@ function EntryTable({
   prevLabel: string
   finalLabel: string
   prevRoundLabel?: string
-  /** 소탕 버튼 사용 (공성전) — 지난주 같은 요일 점수를 그대로/-10%로 채운다 */
-  canSweep?: boolean
   onSaveAll: (list: StatEntry[], cutline?: number, tierCuts?: Record<string, number>) => void
 }) {
   const [editing, setEditing] = useState(false)
@@ -559,41 +555,7 @@ function EntryTable({
   }
   const failCount = rows.filter(isFail).length
 
-  // ---- 소탕 ----
-  // 소탕은 지난주 같은 요일 점수를 그대로, -10% 소탕은 거기서 10% 깎아 가져온다.
-  // 지난주 기록이 있어야 의미가 있으므로 값이 하나도 없으면 열 자체를 감춘다.
-  // offset: 실제 게임 점수에 맞추는 보정. -10% 소탕은 계산값보다 1점 높게 들어온다.
-  const SWEEPS = [
-    { key: 'full', ratio: 1, offset: 0, short: '소탕', full: '소탕', desc: '지난주 그대로' },
-    { key: 'cut', ratio: 0.9, offset: 1, short: '-10%', full: '-10% 소탕', desc: '지난주 -10% +1' },
-  ] as const
-  const sweepOn = !!canSweep && editing && prevValues.size > 0
-  /** 소탕 점수 = 지난주 점수 × 비율(반올림) + 보정 */
-  const sweptValue = (name: string, ratio: number, offset: number): number | undefined => {
-    const p = prevValues.get(name)
-    return typeof p === 'number' ? Math.round(p * ratio) + offset : undefined
-  }
-  const applySweep = (name: string, ratio: number, offset: number): void => {
-    const v = sweptValue(name, ratio, offset)
-    if (typeof v === 'number') setField(name, { value: v })
-  }
-  /** 아직 비어 있는 칸만 채운다 — 이미 입력한 점수를 실수로 덮어쓰지 않게 */
-  const sweepEmpty = (ratio: number, offset: number): void => {
-    setDraft((prev) => {
-      const next = { ...prev }
-      for (const name of baseNames) {
-        if (typeof next[name]?.value === 'number') continue
-        const v = sweptValue(name, ratio, offset)
-        if (typeof v === 'number') next[name] = { ...next[name], value: v }
-      }
-      return next
-    })
-  }
-  const emptyCount = baseNames.filter(
-    (n) => typeof draft[n]?.value !== 'number' && typeof prevValues.get(n) === 'number',
-  ).length
-
-  const cols = 5 + (showMid ? 3 : 0) + (showJoined ? 1 : 0) + (showVerdict ? 1 : 0) + (sweepOn ? 1 : 0) + (editing ? 1 : 0)
+  const cols = 5 + (showMid ? 3 : 0) + (showJoined ? 1 : 0) + (showVerdict ? 1 : 0) + (editing ? 1 : 0)
 
   function startEdit() {
     const d: Record<string, Partial<StatEntry>> = {}
@@ -654,30 +616,6 @@ function EntryTable({
             })
           }
         />
-      )}
-
-      {sweepOn && (
-        <div className="row" style={{ marginBottom: 10, gap: 8 }}>
-          <span className="muted" style={{ fontSize: '0.85rem' }}>
-            소탕 — 지난주{prevRoundLabel ? ` (${prevRoundLabel})` : ''} 같은 요일 점수 기준
-          </span>
-          {SWEEPS.map((s) => (
-            <button
-              key={s.key}
-              className="small"
-              disabled={emptyCount === 0}
-              title={
-                emptyCount === 0
-                  ? '빈 칸이 없어요. 개별 소탕은 각 줄의 버튼을 쓰세요.'
-                  : `점수가 비어 있는 ${emptyCount}명을 ${s.full}(${s.desc}) 값으로 채웁니다. 이미 입력된 점수는 그대로 둡니다.`
-              }
-              onClick={() => sweepEmpty(s.ratio, s.offset)}
-            >
-              {s.full} 일괄 ({s.desc})
-            </button>
-          ))}
-          {emptyCount > 0 && <span className="muted" style={{ fontSize: '0.8rem' }}>빈 칸 {emptyCount}명</span>}
-        </div>
       )}
 
       {hasCutline && editing && (
@@ -748,7 +686,6 @@ function EntryTable({
               {showMid && <th style={{ textAlign: 'right' }}>{prevLabel}{prevRoundLabel ? <span className="muted" style={{ fontWeight: 400, fontSize: '0.75rem' }}> ({prevRoundLabel})</span> : ''}</th>}
               {showMid && <th style={{ textAlign: 'right' }}>중간집계</th>}
               <th style={{ textAlign: 'right' }}>{showMid ? finalLabel : metric}</th>
-              {sweepOn && <th style={{ width: 132 }}>소탕</th>}
               <th style={{ width: 100 }}>{deltaLabel}</th>
               {showMid && <th style={{ width: 110 }}>중간집계 대비</th>}
               {showVerdict && <th style={{ width: 64 }}>판정</th>}
@@ -780,26 +717,6 @@ function EntryTable({
                     onChange={(ev) => setField(e.name, { value: ev.target.value === '' ? undefined : Number(ev.target.value) })}
                     style={{ width: 120, textAlign: 'right' }} />
                 ) : (<b className="num-tab">{fmt(e.value)}</b>)}</td>
-                {sweepOn && (
-                  <td>
-                    {typeof prevValues.get(e.name) === 'number' ? (
-                      <span className="row" style={{ gap: 4, flexWrap: 'nowrap' }}>
-                        {SWEEPS.map((s) => (
-                          <button
-                            key={s.key}
-                            className="small"
-                            title={`${s.full} — 지난주 ${fmt(prevValues.get(e.name))}점 → ${fmt(sweptValue(e.name, s.ratio, s.offset))}점`}
-                            onClick={() => applySweep(e.name, s.ratio, s.offset)}
-                          >
-                            {s.short}
-                          </button>
-                        ))}
-                      </span>
-                    ) : (
-                      <span className="muted" style={{ fontSize: '0.78rem' }}>지난주 기록 없음</span>
-                    )}
-                  </td>
-                )}
                 <td><Delta prev={prevValues.get(e.name)} cur={effOf(e)} /></td>
                 {showMid && <td><Delta prev={e.mid} cur={e.value} /></td>}
                 {showVerdict && <td>{typeof effOf(e) === 'number' ? (isFail(e) ? <span className="badge lose">미달</span> : <span className="badge win">통과</span>) : <span className="muted">—</span>}</td>}
