@@ -600,12 +600,23 @@ JSON으로만 답하라:
     isGuide: parsed.isGuide !== false,
     category: ['공성전', '파괴신', '결투장'].includes(parsed.category) ? parsed.category : '기타',
     summary: String(parsed.summary ?? '').slice(0, 700),
-    decks: Array.isArray(parsed.decks)
-      ? parsed.decks
-          .filter((d) => d && ['공덱', '방덱'].includes(d.side) && Array.isArray(d.heroes))
-          .map((d) => ({ side: d.side, heroes: d.heroes.filter((h) => typeof h === 'string').slice(0, 8) }))
-          .slice(0, 6)
-      : [],
+    decks: (() => {
+      if (!Array.isArray(parsed.decks)) return []
+      const seen = new Set()
+      const out = []
+      for (const d of parsed.decks) {
+        if (!d || !['공덱', '방덱'].includes(d.side) || !Array.isArray(d.heroes)) continue
+        const heroes = d.heroes.filter((h) => typeof h === 'string').slice(0, 8)
+        if (!heroes.length) continue
+        // 같은 구성의 덱이 반복 추출되는 일이 있어 걸러낸다
+        const key = d.side + '|' + [...heroes].sort().join(',')
+        if (seen.has(key)) continue
+        seen.add(key)
+        out.push({ side: d.side, heroes })
+        if (out.length >= 6) break
+      }
+      return out
+    })(),
     heroes: Array.isArray(parsed.heroes) ? parsed.heroes.filter((h) => typeof h === 'string').slice(0, 25) : [],
   }
 }
