@@ -196,6 +196,16 @@ export interface ArenaEntry {
 }
 
 /** localStorage에 저장되는 사용자 데이터 전체 */
+/** 기준 커트라인 — 회차마다 넣는 값과 별개로, 상시 참고하는 기준표.
+ *  파괴신은 파이 초월 단계별(키: Member.tier와 같은 '파이 6초' 표기), 공성전은 요일별. */
+export interface CutlineGuide {
+  destroyerByTier: Record<string, number>
+  /** 키: 월~일 */
+  siegeByDay: Record<string, number>
+  /** 자유 메모 (예: 적용 기준·면제 조건) */
+  memo?: string
+}
+
 export interface UserData {
   customHeroes: Hero[]
   /** 초기 데이터 위에 덮어쓰는 카운터 엔트리 (id 충돌 시 사용자 버전 우선) */
@@ -213,4 +223,6 @@ export interface UserData {
   siegeRounds: StatRound[]
   /** 파괴신 통계 (회차별) */
   destroyerRounds: StatRound[]
+  /** 커트라인 기준표 */
+  cutlineGuide?: CutlineGuide
 }

@@ -979,6 +979,17 @@ export default {
           }
         }
 
+        const prevRaw = await env.GUILD_KV.get('guild-data')
+
+        // 구버전 클라이언트 보호 — cutlineGuide(커트라인 기준표)를 모르는 빌드가
+        // 저장해도 이미 적어 둔 기준표가 지워지지 않게 이월한다.
+        if (prevRaw && !('cutlineGuide' in data)) {
+          try {
+            const prevData = JSON.parse(prevRaw)
+            if (prevData && prevData.cutlineGuide) data.cutlineGuide = prevData.cutlineGuide
+          } catch { /* 이월 실패해도 저장은 진행 */ }
+        }
+
         // 편집 버전은 서버 시각으로 강제 — 클라이언트가 미래 시각을 넣어
         // 모두의 동기화를 얼려버리는 조작 방지. 응답으로 돌려줘 클라이언트가 맞춰 저장.
         data._rev = Date.now()
@@ -990,7 +1001,7 @@ export default {
         const needPrev = Date.now() - lastBackupAt > 10 * 60 * 1000
         const needDaily = day !== lastDailyDay
         if (needPrev || needDaily) {
-          const prev = await env.GUILD_KV.get('guild-data')
+          const prev = prevRaw
           if (prev) {
             if (needPrev && prev !== next) {
               await env.GUILD_KV.put('guild-data-prev', prev)

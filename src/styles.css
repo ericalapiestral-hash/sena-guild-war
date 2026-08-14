@@ -838,6 +838,13 @@ h2 { font-size: 1.18rem; letter-spacing: -0.028em; margin: 28px 0 10px; font-wei
   .print-root { display: block; }
 }
 
+/* ---- 커트라인 기준 ---- */
+.cutline-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+}
+
 /* ---- 테이블 ---- */
 .table-wrap { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; }

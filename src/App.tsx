@@ -3,6 +3,7 @@ import { navigate, useRoute } from './router'
 import { Icon } from './components/Icon'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { HomePage } from './pages/Home'
+import { CutlinesPage } from './pages/Cutlines'
 import { CountersPage } from './pages/Counters'
 import { ArenaPage } from './pages/Arena'
 import { HeroesPage } from './pages/Heroes'
@@ -30,16 +31,17 @@ const MENU: MenuItem[] = [
   { route: 'guide', label: '가이드', icon: 'book' },
   { route: 'siege', label: '공성전', icon: 'siege', group: '길드 기록' },
   { route: 'destroyer', label: '파괴신', icon: 'destroyer' },
+  { route: 'cutlines', label: '커트라인', icon: 'cutline' },
   { route: 'members', label: '길드원', icon: 'users', admin: true, group: '운영' },
   { route: 'settings', label: '데이터', icon: 'data', admin: true },
 ]
 
 // 모바일 하단 탭은 5칸(4 + 더보기) — 자주 쓰는 대전 콘텐츠를 앞에 두고 나머지는 '더보기'로
 const PRIMARY = ['home', 'counters', 'arena', 'heroes']
-const SECONDARY = ['guide', 'siege', 'destroyer']
+const SECONDARY = ['guide', 'siege', 'destroyer', 'cutlines']
 const ADMIN_ITEMS = MENU.filter((m) => m.admin)
 const fullLabel = (label: string) =>
-  ({ 데이터: '데이터 관리', 길드원: '길드원 관리', 공성전: '공성전 통계', 파괴신: '파괴신 통계' } as Record<string, string>)[label] ?? label
+  ({ 데이터: '데이터 관리', 길드원: '길드원 관리', 공성전: '공성전 통계', 파괴신: '파괴신 통계', 커트라인: '커트라인 기준' } as Record<string, string>)[label] ?? label
 const ROUTES = [...MENU.map((m) => m.route), 'admin']
 
 const Brand = () => (
@@ -376,6 +378,7 @@ export default function App() {
                 {base === 'guide' && <GuidePage />}
                 {base === 'siege' && <StatsPage kind="siege" />}
                 {base === 'destroyer' && <StatsPage kind="destroyer" />}
+                {base === 'cutlines' && <CutlinesPage />}
                 {base === 'members' && <MembersPage />}
                 {base === 'settings' && <SettingsPage />}
                 {base === 'admin' && admin && <AdminHome onLogout={doLogout} />}

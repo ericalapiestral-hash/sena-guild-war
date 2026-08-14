@@ -38,6 +38,24 @@ function normalize(raw: unknown): UserData {
   for (const k of ARRAY_FIELDS) {
     if (Array.isArray(src[k])) (base as unknown as Record<string, unknown>)[k] = src[k]
   }
+  // 커트라인 기준표(객체 필드) — 숫자 값만 살린다
+  const cg = src.cutlineGuide as Record<string, unknown> | undefined
+  if (cg && typeof cg === 'object' && !Array.isArray(cg)) {
+    const nums = (o: unknown): Record<string, number> => {
+      const out: Record<string, number> = {}
+      if (o && typeof o === 'object' && !Array.isArray(o)) {
+        for (const [k, v] of Object.entries(o as Record<string, unknown>)) {
+          if (typeof v === 'number' && Number.isFinite(v) && v >= 0) out[k] = v
+        }
+      }
+      return out
+    }
+    base.cutlineGuide = {
+      destroyerByTier: nums(cg.destroyerByTier),
+      siegeByDay: nums(cg.siegeByDay),
+      ...(typeof cg.memo === 'string' && cg.memo.trim() ? { memo: String(cg.memo).slice(0, 2000) } : {}),
+    }
+  }
   return base
 }
 
