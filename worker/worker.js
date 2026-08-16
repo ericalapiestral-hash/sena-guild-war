@@ -1,7 +1,10 @@
 // 낭만주의 길드 공유 백엔드 (Cloudflare Worker)
-//  공유 데이터 (GET/POST /data) — KV(GUILD_KV)에 길드 공유 데이터(카운터덱·영웅·가이드·통계 등) 저장.
-//  (AI 공략검색 기능은 2026-07-14 제거됨.)
-// KV 설정은 worker/README.md 참고.
+//  /data      — KV(GUILD_KV)에 길드 공유 데이터(카운터덱·영웅·가이드·통계 등) 저장·조회
+//  /ocr       — 결과 화면 캡처에서 점수·순위 판독 (Workers AI)
+//  /learn     — 네이버 라운지 새 공략 수집·분류·요약 (Workers AI)
+//  /api/*     — 공성전·파괴신 통계 읽기 전용
+// 외부 API 키 없음 — AI는 전부 Workers AI 바인딩(env.AI)으로 돈다.
+// 설정·배포는 worker/README.md 참고.
 
 function corsHeaders() {
   return {

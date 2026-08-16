@@ -22,7 +22,7 @@ export function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
         <div className="login-lock">🔒</div>
         <h1 style={{ textAlign: 'center' }}>관리자 로그인</h1>
         <p className="page-desc" style={{ textAlign: 'center' }}>
-          운영진 전용 페이지(AI 검색 · 길드원 · 데이터)는 비밀번호가 필요해요.
+          운영진 전용 페이지(길드원 · 데이터)는 비밀번호가 필요해요.
         </p>
         <input
           type="password"

@@ -10,7 +10,6 @@ import initialArena from './data/arena.json'
 import { WORKER_URL } from './data/config'
 
 const LS_KEY = 'sena-guild-war:v1'
-const SEARCH_CFG = 'sena-guild-war:search-config'
 const REV_KEY = 'sena-guild-war:rev'
 
 const EMPTY: UserData = {
@@ -89,17 +88,8 @@ function persistLocal() {
 
 // ---- 공유 저장소(워커 KV) 연동 ----
 
-function searchCfg(): { workerUrl?: string; password?: string } {
-  try {
-    return JSON.parse(localStorage.getItem(SEARCH_CFG) || '{}')
-  } catch {
-    return {}
-  }
-}
-
 function readBase(): string {
-  const url = WORKER_URL || String(searchCfg().workerUrl || '')
-  return url.replace(/\/+$/, '')
+  return WORKER_URL.replace(/\/+$/, '')
 }
 
 /**

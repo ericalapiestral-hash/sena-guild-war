@@ -2,9 +2,8 @@ name = "sena-guild-search"
 main = "worker.js"
 compatibility_date = "2024-11-01"
 
-# (AI 검색 기능 제거됨 — 관련 vars/secrets 불필요. ANTHROPIC_API_KEY·GUILD_PASSWORD 시크릿은
-#  더 이상 안 쓰이니 원하면 `npx wrangler secret delete ANTHROPIC_API_KEY` 로 지워도 됨.
-#  Anthropic API 키도 콘솔에서 폐기 가능.)
+# 이 워커는 외부 API 키를 쓰지 않는다 — AI 작업은 전부 Workers AI(아래 [ai] 바인딩)로 돈다.
+# 시크릿(secret)도, vars도 필요 없다. 추가하기 전에 정말 필요한지 다시 생각할 것.
 
 # 공유 데이터(카운터덱·영웅·가이드·통계) 저장용 KV. 아래 명령으로 만들고 출력된 id를 넣으세요:
 #   npx wrangler kv namespace create GUILD_KV
@@ -12,6 +11,6 @@ compatibility_date = "2024-11-01"
 binding = "GUILD_KV"
 id = "a31934f6fd8d46d7bc45039f1d1b8d93"
 
-# 캡처 점수 읽기(/ocr)용 Workers AI. 무료 할당량(하루 10,000뉴런) 안에서 동작.
+# 캡처 점수 읽기(/ocr)·학습(/learn)용 Workers AI. 무료 할당량(하루 10,000뉴런) 안에서 동작.
 [ai]
 binding = "AI"
