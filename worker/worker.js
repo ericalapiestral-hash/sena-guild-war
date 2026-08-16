@@ -589,6 +589,42 @@ function extractObject(out) {
 const normName = (v) => String(v ?? '').toLowerCase().replace(/[\s·.,_\-]/g, '')
 
 /** 글 하나 분석 — 본문 텍스트 + 덱 스크린샷 이미지를 함께 읽는다 */
+/**
+ * 모델이 뽑아온 '영웅 이름' 목록에서 영웅이 아닌 것을 걸러낸다.
+ *
+ * 실측(2026-08-17 브리핑)으로 섞여 들어온 것들:
+ *   '103','104'      — 본문의 스탯 수치를 이름으로 읽음
+ *   '버프해제 영웅'   — 영웅명이 아니라 역할 설명
+ *   '관통 영웅'
+ *
+ * ★ 명단(roster)과 대조해서 거르지는 않는다. 그렇게 하면 신규 영웅을 전부
+ *   떨어뜨려, 신규 영웅 감지라는 기능 자체가 죽는다. 이름의 '형태'만 본다.
+ */
+const HERO_NAME_BAD_TAIL = /(영웅|캐릭터|덱|펫)$/
+function cleanHeroNames(list, limit) {
+  if (!Array.isArray(list)) return []
+  const out = []
+  const seen = new Set()
+  for (const raw of list) {
+    if (typeof raw !== 'string') continue
+    const n = raw.trim()
+    if (!n || n.length > 20) continue
+    // 한글·영문이 한 글자도 없으면 이름이 아니다 ('103', '29/100' 등)
+    if (!/[가-힣a-zA-Z]/.test(n)) continue
+    // ★ 한 글자 이름을 자르면 안 된다 — 룩·린·리·진이 실제 영웅이다.
+    //   (최소 2자로 걸었다가 이 넷을 통째로 날린 적이 있다)
+    //   다만 한 글자면 한글일 때만 인정한다. 영문 한 글자는 이름이 아니라 잘린 조각이다.
+    if (n.length === 1 && !/[가-힣]/.test(n)) continue
+    if (HERO_NAME_BAD_TAIL.test(n)) continue
+    const key = n.replace(/\s+/g, '').toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(n)
+    if (out.length >= limit) break
+  }
+  return out
+}
+
 async function analyzePost(env, post, heroes, model) {
   const heroList = heroes.length ? `\n\n참고 — 등록된 영웅 목록: ${heroes.join(', ')}\n영웅 이름은 이 목록의 표기를 그대로 써라. 목록에 없는 새 영웅이 보이면 그 이름 그대로 적어라.` : ''
   const prompt = `너는 모바일 게임 '세븐나이츠 리버스'의 길드전 분석가다. 커뮤니티 공략 글 하나를 분석하라.
@@ -639,7 +675,7 @@ JSON으로만 답하라:
       const out = []
       for (const d of parsed.decks) {
         if (!d || !['공덱', '방덱'].includes(d.side) || !Array.isArray(d.heroes)) continue
-        const heroes = d.heroes.filter((h) => typeof h === 'string').slice(0, 8)
+        const heroes = cleanHeroNames(d.heroes, 8)
         if (!heroes.length) continue
         // 같은 구성의 덱이 반복 추출되는 일이 있어 걸러낸다
         const key = d.side + '|' + [...heroes].sort().join(',')
@@ -650,7 +686,7 @@ JSON으로만 답하라:
       }
       return out
     })(),
-    heroes: Array.isArray(parsed.heroes) ? parsed.heroes.filter((h) => typeof h === 'string').slice(0, 25) : [],
+    heroes: cleanHeroNames(parsed.heroes, 25),
   }
 }
 
@@ -888,14 +924,7 @@ async function runLearn(env, heroes, { relearn = false } = {}) {
   const syn = items.length ? await synthesizeLearn(env, items, heroes) : { meta: '', newHeroes: [] }
   const known = new Set(heroes.map(normName))
   const newHeroes = rosterKnown
-    ? [
-        ...new Set(
-          syn.newHeroes
-            .filter((h) => typeof h === 'string' && h.trim().length >= 2 && h.length <= 20)
-            .map((h) => h.trim())
-            .filter((h) => !known.has(normName(h))),
-        ),
-      ].slice(0, 10)
+    ? cleanHeroNames(syn.newHeroes, 50).filter((h) => !known.has(normName(h))).slice(0, 10)
     : []
 
   const result = {
@@ -996,8 +1025,20 @@ export default {
       try {
         const d = JSON.parse(raw || '{}')
         if (Array.isArray(d.items)) {
-          d.items = d.items.filter((it) => ['공성전', '파괴신', '결투장'].includes(it?.category))
+          d.items = d.items
+            .filter((it) => ['공성전', '파괴신', '결투장'].includes(it?.category))
+            // 영웅 이름도 읽기 경로에서 한 번 더 거른다 — 분류 필터와 같은 이중 방어.
+            // 이렇게 해야 예전 기준으로 저장돼 KV에 남아 있는 '103','버프해제 영웅' 같은
+            // 값이 다시 학습할 때까지 기다리지 않고 바로 사라진다.
+            .map((it) => ({
+              ...it,
+              heroes: cleanHeroNames(it?.heroes, 25),
+              decks: Array.isArray(it?.decks)
+                ? it.decks.map((k) => ({ ...k, heroes: cleanHeroNames(k?.heroes, 8) })).filter((k) => k.heroes.length)
+                : it?.decks,
+            }))
         }
+        if (Array.isArray(d.newHeroes)) d.newHeroes = cleanHeroNames(d.newHeroes, 10)
         // 자동 루틴이 살아 있는지 화면에서 확인할 수 있게 마지막 실행 기록을 같이 준다
         try {
           if (cronRaw) d.cron = JSON.parse(cronRaw)
