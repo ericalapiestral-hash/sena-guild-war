@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { exportJson, importJson, resetAll, todayLocal, useUserData } from '../store'
+import { LearnBriefing } from '../components/LearnBriefing'
 
 export function SettingsPage() {
   useUserData()
@@ -30,9 +31,11 @@ export function SettingsPage() {
     <div>
       <h1>데이터 관리</h1>
       <p className="page-desc">
-        직접 입력한 데이터(카운터, 덱, 길드원, 가이드)는 이 브라우저의 저장소에 보관됩니다.
-        백업하거나 다른 기기·길드원에게 옮길 때 여기를 사용하세요.
+        직접 입력한 데이터(카운터, 덱, 길드원, 가이드)는 길드 공유 저장소에 보관되고,
+        연결이 없으면 이 브라우저에만 남습니다. 백업하거나 배포본 기본값으로 올릴 때 여기를 사용하세요.
       </p>
+
+      <LearnBriefing />
 
       <div className="card">
         <strong>내보내기</strong>

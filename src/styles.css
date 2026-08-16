@@ -1794,6 +1794,50 @@ button.ghost:hover { background: var(--surface-2); color: var(--text); }
   font-weight: 700;
   color: var(--danger);
 }
+/* ---- 최신 공략 브리핑 ---- */
+.learn-when { font-style: normal; font-weight: 400; margin-left: 8px; color: var(--text-3); font-size: 0.78rem; }
+.learn-note { margin: 0 0 8px; font-size: 0.85rem; color: var(--text-2); }
+.learn-new-heroes {
+  margin: 0 0 10px;
+  padding: 8px 12px;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-dim);
+  border-radius: var(--radius-sm, 8px);
+  font-size: 0.88rem;
+  color: var(--accent-strong);
+  word-break: keep-all;
+}
+.learn-meta { margin: 0 0 10px; font-size: 0.86rem; color: var(--text-2); line-height: 1.55; word-break: keep-all; }
+.learn-list { display: flex; flex-direction: column; gap: 8px; }
+.learn-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 8px);
+  background: var(--surface);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s, transform 0.15s;
+}
+.learn-item:hover { border-color: var(--accent-dim); transform: translateY(-1px); }
+.learn-line1 { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.learn-line1 strong { font-size: 0.92rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.learn-cat {
+  flex: 0 0 auto;
+  font-style: normal;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 999px;
+}
+.cat-siege { background: var(--accent-soft); color: var(--accent-strong); }
+.cat-destroyer { background: var(--danger-soft); color: var(--danger); }
+.cat-arena { background: var(--info-soft); color: var(--info); }
+.cat-etc { background: var(--surface-2); color: var(--text-3); }
+.learn-summary { font-size: 0.84rem; color: var(--text-2); line-height: 1.5; word-break: keep-all; }
+
 .ocr-more {
   margin: 2px 0 8px;
   padding: 9px 12px;
