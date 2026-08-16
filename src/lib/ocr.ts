@@ -36,6 +36,9 @@ export interface OcrRow {
   rank?: number
 }
 
+/** 길드원 랭킹으로 인정할 최대 순위 — 이보다 크면 다른 목록(개인 랭킹 등)으로 본다 */
+const MAX_GUILD_RANK = 60
+
 /** 비교용 정규화 — 공백·특수문자 제거, 영문 소문자화 */
 const norm = (s: string): string => s.toLowerCase().replace(/[\s·.,_\-|/\\[\]()]/g, '')
 
@@ -427,6 +430,7 @@ async function readImageApi(
   file: Blob,
   roster: string[],
   onProgress?: (p: OcrProgress) => void,
+  metric?: string,
 ): Promise<{ rows: OcrRow[]; text: string }> {
   const { WORKER_URL } = await import('../data/config')
   const base = (WORKER_URL || '').replace(/\/+$/, '')
@@ -443,7 +447,9 @@ async function readImageApi(
     const res = await fetch(`${base}/ocr`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ image: b64, mime, roster }),
+      // metric — 화면에 적힌 수치 이름('점수'/'딜량'). 워커가 프롬프트에 넣어
+      // 파괴신 딜량처럼 자릿수가 큰 값을 흘리지 않게 한다. 워커가 값을 검증한다.
+      body: JSON.stringify({ image: b64, mime, roster, metric }),
       signal: ctrl.signal,
     })
     data = await res.json()
@@ -457,8 +463,10 @@ async function readImageApi(
   for (const r of data.rows) {
     if (typeof r?.name !== 'string' || !Number.isSafeInteger(r?.score) || r.score < 0) continue
     const rank = Number.isSafeInteger(r.rank) && (r.rank as number) > 0 ? r.rank : undefined
-    // 길드원 랭킹은 1~30위뿐이다. 그 밖의 순위가 읽혔다면 다른 목록(개인 랭킹 등)이다.
-    if (rank !== undefined && rank > 30) continue
+    // 개인 랭킹처럼 전혀 다른 목록을 읽었을 때 걸러내는 문지방.
+    // 예전엔 30이었는데, 명단이 30명을 넘으면 마지막 사람이 조용히 사라졌다.
+    // 길드 인원보다 넉넉하되 개인 랭킹(수백~수천 위)과는 확실히 구분되는 값으로 둔다.
+    if (rank !== undefined && rank > MAX_GUILD_RANK) continue
     const m = matchName(r.name, roster)
     rows.push({
       raw: `${rank !== undefined ? rank + '위 · ' : ''}${r.name}   ${r.score.toLocaleString()}`,
@@ -500,9 +508,11 @@ export async function readImage(
   file: Blob,
   roster: string[],
   onProgress?: (p: OcrProgress) => void,
+  /** 화면에 적힌 수치 이름 ('점수' | '딜량') — 서버 프롬프트에만 쓰인다 */
+  metric?: string,
 ): Promise<{ rows: OcrRow[]; text: string }> {
   try {
-    return await readImageApi(file, roster, onProgress)
+    return await readImageApi(file, roster, onProgress, metric)
   } catch {
     onProgress?.({ progress: 0, status: '서버가 응답하지 않아 브라우저에서 읽어요' })
     return readImageLocal(file, roster, onProgress)

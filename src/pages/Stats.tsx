@@ -40,7 +40,7 @@ const CFG: Record<
   },
   destroyer: {
     title: '파괴신 통계',
-    desc: '시즌별로 [편집]을 눌러 중간집계·최종 딜량과 커트라인을 입력하고 [저장]하면 잠겨요. 전 시즌 / 이번 시즌 중간집계 / 이번 시즌 집계를 나란히 비교하고, 커트라인 이하는 미달로 표시돼요. 명단은 [길드원] 메뉴 등록자가 자동으로 들어옵니다.',
+    desc: '시즌별로 [편집]을 눌러 중간집계·최종 딜량과 커트라인을 입력하고 [저장]하면 잠겨요. 딜량은 [📷 캡처에서 읽기]로 결과 화면을 붙여넣으면 자동으로 채워지는데, 중간집계와 최종 집계 중 어디에 넣을지 고를 수 있어요. 전 시즌 / 이번 시즌 중간집계 / 이번 시즌 집계를 나란히 비교하고, 커트라인 이하는 미달로 표시돼요. 명단은 [길드원] 메뉴 등록자가 자동으로 들어옵니다.',
     metric: '딜량',
     field: 'destroyerRounds',
     byDay: false,
@@ -620,11 +620,15 @@ function EntryTable({
           roster={baseNames}
           extraNames={(knownExtra ?? []).filter((n) => !baseNames.includes(n))}
           metric={metric}
+          // 파괴신은 중간집계·최종 두 칸이라 어디에 넣을지 물어본다.
+          // 시즌 도중 캡처가 최종 집계로 잘못 들어가면 순위·미달이 통째로 어긋난다.
+          targets={showMid ? [{ key: 'mid', label: '중간집계' }, { key: 'value', label: finalLabel }] : undefined}
           onClose={() => setImporting(false)}
-          onApply={(values) =>
+          onApply={(values, target) =>
             setDraft((prev) => {
               const next = { ...prev }
-              for (const { name, value } of values) next[name] = { ...next[name], value }
+              const field = target === 'mid' ? 'mid' : 'value'
+              for (const { name, value } of values) next[name] = { ...next[name], [field]: value }
               return next
             })
           }

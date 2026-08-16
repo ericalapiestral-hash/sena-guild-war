@@ -238,14 +238,35 @@ const OCR_ORIGINS = [
 const OCR_MODELS = ['@cf/meta/llama-4-scout-17b-16e-instruct']
 const OCR_DEFAULT_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct'
 
-function ocrPrompt(roster) {
+// 읽을 수치의 이름. 파괴신은 '점수'가 아니라 '딜량'이라 화면에 그렇게 적혀 있다.
+// ★ 이 값은 프롬프트에 그대로 들어가므로 클라이언트 문자열을 믿지 않는다 — 목록에 있는
+//   것만 허용한다. (임의 텍스트를 넣게 두면 프롬프트를 갈아끼울 수 있다)
+const OCR_METRICS = ['점수', '딜량']
+const OCR_DEFAULT_METRIC = '점수'
+
+/** 받침 유무에 따라 조사를 고른다 ('점수를' / '딜량을'). 한글 음절은 종성 28개 단위로 배열돼 있다. */
+function josa(word, withFinal, withoutFinal) {
+  const c = word.charCodeAt(word.length - 1)
+  const hangul = c >= 0xac00 && c <= 0xd7a3
+  return hangul && (c - 0xac00) % 28 !== 0 ? withFinal : withoutFinal
+}
+
+function ocrPrompt(roster, metric = OCR_DEFAULT_METRIC) {
+  const m = OCR_METRICS.includes(metric) ? metric : OCR_DEFAULT_METRIC
+  const eul = josa(m, '을', '를')
+  const i = josa(m, '이', '가')
+  const eun = josa(m, '은', '는')
   const list = roster.length ? `\n참고 — 길드원 명단: ${roster.join(', ')}\n읽은 닉네임이 명단의 이름과 사실상 같으면 명단 표기를 그대로 써라.` : ''
-  return `이 이미지는 모바일 게임의 길드원 랭킹 화면 캡처다. 순위 목록의 각 행에서 순위·닉네임·점수를 읽어라.
+  // 파괴신 딜량은 억 단위까지 가서 자릿수가 길다 — 자릿수를 흘리지 않도록 못을 박는다
+  const digits = m === '딜량'
+    ? `\n- ${m}${eun} 수억까지 갈 수 있는 큰 수다. 자릿수를 빠뜨리지 말고 보이는 그대로 옮겨라. 억/만 같은 단위 글자가 붙어 있으면 실제 정수로 바꿔 적어라.`
+    : ''
+  return `이 이미지는 모바일 게임의 길드원 랭킹 화면 캡처다. 순위 목록의 각 행에서 순위·닉네임·${m}${eul} 읽어라.
 
 규칙:
 - 닉네임 아래 작은 보라색 글씨(길드 이름)는 닉네임이 아니다. 무시하라.
-- 재화·기타 UI 숫자는 점수가 아니다. 각 행 오른쪽의 큰 숫자만 점수다.
-- 점수는 쉼표를 뺀 정수로, 순위는 행 왼쪽의 번호를 정수로 적어라.
+- 재화·기타 UI 숫자는 ${m}${i} 아니다. 각 행 오른쪽의 큰 숫자만 ${m}이다.
+- ${m}${eun} 쉼표를 뺀 정수로, 순위는 행 왼쪽의 번호를 정수로 적어라.${digits}
 - 위나 아래가 잘려 일부만 보이는 행은 빼라.
 - 중요: 화면 맨 아래에 목록과 구분선으로 분리된, 배경이 어두운 별도의 행이 있을 수 있다(본인 순위 요약). 그 행은 목록이 아니다 — 절대 결과에 넣지 마라. 배경이 밝은 목록 행만 읽어라.${list}
 
@@ -361,6 +382,7 @@ async function handleOcr(request, env) {
     ? body.roster.filter((n) => typeof n === 'string' && n.length <= 40).slice(0, 100)
     : []
   const model = OCR_MODELS.includes(body.model) ? body.model : OCR_DEFAULT_MODEL
+  const metric = OCR_METRICS.includes(body.metric) ? body.metric : OCR_DEFAULT_METRIC
 
   let bytes
   try {
@@ -372,7 +394,7 @@ async function handleOcr(request, env) {
   }
 
   try {
-    const { out, shape } = await runVision(env, model, ocrPrompt(roster), bytes, mime, body.debug)
+    const { out, shape } = await runVision(env, model, ocrPrompt(roster, metric), bytes, mime, body.debug)
     const raw = (typeof out === 'string' ? out : JSON.stringify(out)).slice(0, 2000)
     if (String(shape).startsWith('debug:')) return json({ ok: false, model, shape, raw: (typeof out === 'string' ? out : JSON.stringify(out)).slice(0, 4000) })
     const rows = extractRows(out)

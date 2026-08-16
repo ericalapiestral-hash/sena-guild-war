@@ -3,6 +3,16 @@ import { Modal } from './Modal'
 import { matchName, readImage, type OcrRow } from '../lib/ocr'
 
 /**
+ * 받침 유무에 따라 조사를 고른다 ('점수를' / '딜량을').
+ * 한글 음절은 U+AC00부터 28개 종성 단위로 배열돼 있어, 나머지가 0이면 받침이 없다.
+ */
+function josa(word: string, withFinal: string, withoutFinal: string): string {
+  const c = word.charCodeAt(word.length - 1)
+  const hangul = c >= 0xac00 && c <= 0xd7a3
+  return hangul && (c - 0xac00) % 28 !== 0 ? withFinal : withoutFinal
+}
+
+/**
  * 결과 화면 캡처에서 닉네임·점수를 읽어 채우는 창.
  *
  * OCR은 틀릴 수 있으므로 **바로 반영하지 않는다**. 읽은 결과를 표로 보여주고,
@@ -13,6 +23,7 @@ export function ScoreImport({
   roster,
   extraNames,
   metric,
+  targets,
   onApply,
   onClose,
 }: {
@@ -24,7 +35,13 @@ export function ScoreImport({
    */
   extraNames?: string[]
   metric: string
-  onApply: (values: Array<{ name: string; value: number }>) => void
+  /**
+   * 읽은 값을 어느 칸에 넣을지. 두 개 이상이면 사용자가 고른다.
+   * 파괴신은 중간집계·최종 집계 두 칸이라, 안 물어보면 시즌 도중 캡처가
+   * 최종 집계로 잘못 들어간다. 공성전은 칸이 하나라 생략한다.
+   */
+  targets?: Array<{ key: string; label: string }>
+  onApply: (values: Array<{ name: string; value: number }>, target: string) => void
   onClose: () => void
 }) {
   const [imgUrl, setImgUrl] = useState<string | null>(null)
@@ -35,6 +52,7 @@ export function ScoreImport({
   const [rawText, setRawText] = useState('')
   const [error, setError] = useState('')
   const [showRaw, setShowRaw] = useState(false)
+  const [target, setTarget] = useState(targets?.[0]?.key ?? 'value')
   const fileRef = useRef<HTMLInputElement>(null)
   // 붙여넣기 리스너는 한 번만 등록되므로, 최신 값을 ref로 건네준다.
   // (예전엔 첫 렌더의 roster를 붙잡아 붙여넣기와 드롭이 다른 결과를 냈다)
@@ -84,7 +102,7 @@ export function ScoreImport({
       const { rows: r, text } = await readImage(file, candidates, (p) => {
         setProgress(p.progress)
         setStatus(p.status)
-      })
+      }, metric)
       setRawText(text)
       setRows((prev) => mergeRows(prev ?? [], r))
       if (r.length === 0) setError('이 캡처에서는 이름과 점수를 찾지 못했어요. 표가 크게 나오도록 잘라서 다시 올려보세요.')
@@ -120,11 +138,13 @@ export function ScoreImport({
   const missing = rows ? roster.filter((n) => !usable.some((r) => r.matched === n)) : []
   // 같은 사람이 두 번 잡히면 뒤엣것이 덮어써서 조용히 틀릴 수 있으니 미리 알린다
   const dupes = [...new Set(usable.map((r) => r.matched).filter((n, i, a) => a.indexOf(n) !== i))]
+  // 칸이 둘 이상일 때만 어디에 넣는지 밝힌다 (공성전은 칸이 하나라 군더더기)
+  const targetLabel = targets && targets.length > 1 ? targets.find((t) => t.key === target)?.label : undefined
 
   return (
     <Modal
-      title="캡처에서 점수 읽기"
-      desc="결과 화면을 캡처해 올리면 닉네임과 점수를 읽어 입력칸을 채웁니다. 한 화면에 다 안 나오면 스크롤해서 여러 장을 차례로 올리면 됩니다."
+      title={`캡처에서 ${metric} 읽기`}
+      desc={`결과 화면을 캡처해 올리면 닉네임과 ${metric}${josa(metric, '을', '를')} 읽어 입력칸을 채웁니다. 한 화면에 다 안 나오면 스크롤해서 여러 장을 차례로 올리면 됩니다.`}
       onClose={onClose}
       wide
       footer={
@@ -134,15 +154,35 @@ export function ScoreImport({
             className="primary"
             disabled={usable.length === 0}
             onClick={() => {
-              onApply(usable.map((r) => ({ name: r.matched as string, value: r.score as number })))
+              onApply(usable.map((r) => ({ name: r.matched as string, value: r.score as number })), target)
               onClose()
             }}
           >
-            {usable.length > 0 ? `${usable.length}명 적용` : '적용'}
+            {usable.length > 0
+              ? `${usable.length}명 ${targetLabel ? `${targetLabel}에 ` : ''}적용`
+              : '적용'}
           </button>
         </>
       }
     >
+      {/* 파괴신처럼 넣을 칸이 둘일 때 — 올리기 전에 정하고, 결과를 본 뒤에도 바꿀 수 있다 */}
+      {targets && targets.length > 1 && (
+        <div className="ocr-target">
+          <span className="ocr-target-label">어느 칸에 넣을까요?</span>
+          <div className="row" style={{ gap: 6 }}>
+            {targets.map((t) => (
+              <button
+                key={t.key}
+                className={`small ${target === t.key ? 'primary' : ''}`}
+                onClick={() => setTarget(t.key)}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {!rows && (
         <div
           className={`ocr-drop ${busy ? 'busy' : ''}`}

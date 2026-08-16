@@ -1861,6 +1861,20 @@ button.ghost:hover { background: var(--surface-2); color: var(--text); }
 .cat-etc { background: var(--surface-2); color: var(--text-3); }
 .learn-summary { font-size: 0.84rem; color: var(--text-2); line-height: 1.5; word-break: keep-all; }
 
+/* 캡처 값을 어느 칸에 넣을지 (파괴신 중간집계/최종) */
+.ocr-target {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 0 0 12px;
+  padding: 9px 12px;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-dim);
+  border-radius: var(--radius-sm, 8px);
+}
+.ocr-target-label { font-size: 0.85rem; font-weight: 600; color: var(--accent-strong); }
+
 .ocr-more {
   margin: 2px 0 8px;
   padding: 9px 12px;
