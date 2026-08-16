@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { CutlineGuide } from '../types'
-import { update, useUserData } from '../store'
+import { activeMembers, update, useUserData } from '../store'
 import { isAdmin } from '../auth'
 import { WEEKDAYS, fmt } from '../lib/stat'
 
@@ -25,9 +25,10 @@ export function CutlinesPage() {
   const guide = userData.cutlineGuide ?? EMPTY_GUIDE
 
   // 파이 초월 단계 목록 = 저장된 기준 + 길드원 등급에 실제로 있는 단계
+  // (외부 처리한 계정은 빼고 센다 — 지금 길드에 없는 사람이 인원수를 부풀리면 안 된다)
   const memberTiers = useMemo(() => {
     const count = new Map<string, number>()
-    for (const m of userData.members) {
+    for (const m of activeMembers(userData.members)) {
       if (m.tier) count.set(m.tier, (count.get(m.tier) ?? 0) + 1)
     }
     return count

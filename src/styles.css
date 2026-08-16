@@ -813,6 +813,27 @@ h2 { font-size: 1.18rem; letter-spacing: -0.028em; margin: 28px 0 10px; font-wei
 .badge.role-정예멤버 { color: var(--info); background: var(--info-soft); border-color: var(--info-line); }
 .badge.alt { color: var(--muted); background: var(--surface-2); border-color: var(--border); }
 .badge.tier { color: var(--accent-strong); background: var(--accent-soft); border-color: var(--accent-dim); }
+.badge.excluded { color: var(--text-3); background: var(--surface-2); border-color: var(--border-2); }
+
+/* ---- 길드원 명단: 외부 처리·일괄 선택 ---- */
+.member-pick { display: flex; align-items: center; padding: 2px 6px 2px 0; cursor: pointer; }
+.member-pick input { cursor: pointer; }
+/* 지금 길드에 없는 계정 — 명단에는 남기되 눈에 덜 걸리게 */
+.member-card.is-excluded { opacity: 0.62; }
+.member-card.is-excluded strong { text-decoration: line-through; text-decoration-thickness: 1px; }
+.member-card.is-selected { border-color: var(--accent-dim); box-shadow: inset 3px 0 0 var(--accent-strong); }
+.member-bulk { border-color: var(--accent-dim); background: var(--accent-soft); position: sticky; top: 8px; z-index: 3; }
+.member-excluded-note {
+  margin: 0 0 10px;
+  padding: 8px 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius-sm, 8px);
+  font-size: 0.82rem;
+  color: var(--text-2);
+  line-height: 1.5;
+  word-break: keep-all;
+}
 
 /* 인쇄·이미지 저장 공용 표 스타일 — .print-root는 화면에선 숨김(인쇄 시·캡처 복제본에서만 보임) */
 /* 인쇄·이미지 저장은 테마와 무관하게 항상 흰 바탕·검은 글자 */

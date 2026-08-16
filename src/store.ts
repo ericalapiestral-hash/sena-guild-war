@@ -3,7 +3,7 @@
 // 로컬 모드: 워커 미연결 시 각자 브라우저(localStorage)에만 저장(기존 동작).
 
 import { useSyncExternalStore } from 'react'
-import type { ArenaEntry, CounterDeck, CounterEntry, CounterHeroSlot, Hero, UserData } from './types'
+import type { ArenaEntry, CounterDeck, CounterEntry, CounterHeroSlot, Hero, Member, UserData } from './types'
 import initialHeroes from './data/heroes.json'
 import initialCounters from './data/counters.json'
 import initialArena from './data/arena.json'
@@ -267,6 +267,29 @@ export function toSlot(h: string | CounterHeroSlot): CounterHeroSlot {
 /** 카운터덱의 영웅 이름 목록 (검색·매칭용) */
 export function counterHeroNames(c: CounterDeck): string[] {
   return (c.heroes || []).map(slotName)
+}
+
+// ---- 길드원 명단 ----
+// '외부 처리'된 계정은 지금 길드에 없는 계정이다. 자리 때문에 들락날락하는
+// 부계정을 삭제하지 않고 내려두려고 만든 구분이라, 판정 기준은 한 군데로 모은다.
+//
+// ★ 이 구분은 '누가 있어야 하는가'(명단)만 바꾼다. '누가 실제로 몇 점을 냈는가'
+//   (StatRound.entries/days)는 이름으로 저장돼 있어 손대지 않는다 — 지난 회차
+//   기록에서 사람이 사라지면 그때 표가 거짓이 되기 때문.
+
+/** 지금 길드에 있는 길드원만 */
+export function activeMembers(members: Member[]): Member[] {
+  return members.filter((m) => !m.excluded)
+}
+
+/** 외부 처리해 둔 계정만 */
+export function excludedMembers(members: Member[]): Member[] {
+  return members.filter((m) => m.excluded)
+}
+
+/** 통계·커트라인이 기준으로 삼는 명단 (외부 처리 제외) */
+export function rosterNames(members: Member[]): string[] {
+  return activeMembers(members).map((m) => m.name)
 }
 
 // ---- 병합된 뷰 (초기 데이터 + 사용자 데이터) ----

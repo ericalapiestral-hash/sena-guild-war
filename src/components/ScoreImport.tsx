@@ -11,11 +11,18 @@ import { matchName, readImage, type OcrRow } from '../lib/ocr'
  */
 export function ScoreImport({
   roster,
+  extraNames,
   metric,
   onApply,
   onClose,
 }: {
   roster: string[]
+  /**
+   * 명단 밖이지만 이름은 아는 계정 (외부 처리한 길드원).
+   * 판독 후보와 수동 선택 목록에는 넣되, '아직 안 나온 사람' 집계에는 넣지 않는다 —
+   * 지금 길드에 없는 계정이라 캡처에 안 나오는 게 정상이기 때문.
+   */
+  extraNames?: string[]
   metric: string
   onApply: (values: Array<{ name: string; value: number }>) => void
   onClose: () => void
@@ -36,6 +43,10 @@ export function ScoreImport({
 
   // 미리보기 URL 정리
   useEffect(() => () => { if (imgUrl) URL.revokeObjectURL(imgUrl) }, [imgUrl])
+
+  /** 이름을 붙여볼 후보 전체 (명단 + 외부 처리한 계정) */
+  const extras = extraNames ?? []
+  const candidates = extras.length ? [...roster, ...extras] : roster
 
   /**
    * 새로 읽은 행들을 기존 표에 합친다. 30명이 한 화면에 다 안 나와서
@@ -70,7 +81,7 @@ export function ScoreImport({
     if (imgUrl) URL.revokeObjectURL(imgUrl)
     setImgUrl(URL.createObjectURL(file))
     try {
-      const { rows: r, text } = await readImage(file, roster, (p) => {
+      const { rows: r, text } = await readImage(file, candidates, (p) => {
         setProgress(p.progress)
         setStatus(p.status)
       })
@@ -226,6 +237,11 @@ export function ScoreImport({
                       >
                         <option value="">— 건너뜀 —</option>
                         {roster.map((n) => <option key={n} value={n}>{n}</option>)}
+                        {extras.length > 0 && (
+                          <optgroup label="외부 처리한 계정">
+                            {extras.map((n) => <option key={n} value={n}>{n}</option>)}
+                          </optgroup>
+                        )}
                       </select>
                       {r.matched && (r.ambiguous || r.confidence < 0.85) && (
                         <em

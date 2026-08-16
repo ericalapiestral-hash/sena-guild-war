@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import html2canvas from 'html2canvas'
 import type { StatEntry, StatRound, UserData } from '../types'
-import { newId, todayLocal, update, useUserData } from '../store'
+import { activeMembers, excludedMembers, newId, rosterNames, todayLocal, update, useUserData } from '../store'
 import { isAdmin } from '../auth'
 import { Markdown } from '../components/Markdown'
 import { DESTROYER_GUIDES } from '../data/destroyerGuide'
@@ -60,7 +60,12 @@ export function StatsPage({ kind }: { kind: Kind }) {
   const cfg = CFG[kind]
   const rounds = data[cfg.field]
   const admin = isAdmin()
-  const roster = data.members.map((m) => m.name)
+  // 명단은 '지금 길드에 있는' 사람만 — 외부 처리한 계정은 미달·누락 집계 대상이 아니다.
+  // 지난 회차에 남아 있는 그들의 점수는 storedExtra(외부) 경로로 그대로 표에 남는다.
+  const roster = rosterNames(data.members)
+  // 캡처 판독에는 외부 계정 이름도 넘긴다 — 복귀 처리를 깜빡한 채 캡처를 올려도
+  // 이름이 엉뚱하게 붙지 않고, 수동 선택 목록에서도 고를 수 있게.
+  const knownExtra = excludedMembers(data.members).map((m) => m.name)
   // 파괴신에만 공략 문서 탭 (감탱이 시트 이관본)
   const guides = kind === 'destroyer' ? DESTROYER_GUIDES : null
   const [view, setView] = useState<'stats' | 'guide'>('stats')
@@ -75,8 +80,11 @@ export function StatsPage({ kind }: { kind: Kind }) {
     ? (cfg.byDay ? current.dayCutlines?.[day] ?? current.cutline : current.cutline)
     : undefined
   // 파괴신: 길드원 등급(영웅 초월 단계)별 커트라인 — 이름→등급, 등급 목록
+  // 이름→등급은 외부 계정까지 담아 둔다 — 그들이 외부 행으로 남아 있을 때
+  // 엉뚱한 기본 커트라인 대신 본인 등급 기준이 적용되도록.
   const tierOf = new Map(data.members.filter((m) => m.tier).map((m) => [m.name, m.tier as string]))
-  const tierList = [...new Set(data.members.map((m) => m.tier).filter((t): t is string => !!t))].sort()
+  // 커트라인을 입력할 등급 목록은 활동 중인 사람 기준 — 아무도 없는 등급까지 칸을 만들 필요는 없다
+  const tierList = [...new Set(activeMembers(data.members).map((m) => m.tier).filter((t): t is string => !!t))].sort()
   const tierCutlines = current?.tierCutlines
 
   const currentIndex = current ? rounds.findIndex((r) => r.id === current.id) : -1
@@ -280,6 +288,7 @@ export function StatsPage({ kind }: { kind: Kind }) {
           <EntryTable
             key={(current.id) + (cfg.byDay ? day : '')}
             roster={roster}
+            knownExtra={knownExtra}
             stored={stored}
             metric={cfg.metric}
             admin={admin}
@@ -466,6 +475,7 @@ function PrintContent({
 
 function EntryTable({
   roster,
+  knownExtra,
   stored,
   metric,
   admin,
@@ -486,6 +496,8 @@ function EntryTable({
   onSaveAll,
 }: {
   roster: string[]
+  /** 명단 밖이지만 이름은 아는 계정 (외부 처리한 길드원) — 캡처 판독 후보로만 쓴다 */
+  knownExtra?: string[]
   stored: StatEntry[]
   metric: string
   admin: boolean
@@ -606,6 +618,7 @@ function EntryTable({
       {importing && (
         <ScoreImport
           roster={baseNames}
+          extraNames={(knownExtra ?? []).filter((n) => !baseNames.includes(n))}
           metric={metric}
           onClose={() => setImporting(false)}
           onApply={(values) =>
