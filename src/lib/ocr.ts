@@ -39,6 +39,27 @@ export interface OcrRow {
 /** 길드원 랭킹으로 인정할 최대 순위 — 이보다 크면 다른 목록(개인 랭킹 등)으로 본다 */
 const MAX_GUILD_RANK = 60
 
+/**
+ * 목록 맨 아래에 고정된 '본인 순위' 행을 떼어낸다.
+ *
+ * 게임 랭킹 화면은 스크롤과 무관하게 본인 행을 목록 끝에 붙여 둔다. 그 행은
+ * 스크롤해서 다음 장을 찍으면 목록 안에서 제자리로 다시 잡히므로 중복이다.
+ * 판별 근거는 순위가 위 행에서 이어지지 않고 뛴다는 것 (예: … 4, 5 다음에 13).
+ *
+ * 프롬프트로도 빼라고 지시하지만 모델이 자주 무시한다 — 실측 확인(2026-08-17,
+ * 파괴신 실캡처)에서 지시를 넣고 배포해도 그대로 딸려 왔다. 그래서 여기서 확정적으로 건다.
+ *
+ * 순위가 이어지는 경우(…12 다음 13)는 건드리지 않는다. 그때는 그 행이 목록의
+ * 실제 다음 행일 수도 있고, 중복이라면 이름 기준 병합이 알아서 처리한다.
+ */
+function dropPinnedSelfRow(rows: OcrRow[]): OcrRow[] {
+  if (rows.length < 2) return rows
+  const last = rows[rows.length - 1]
+  const prev = rows[rows.length - 2]
+  if (last.rank === undefined || prev.rank === undefined) return rows
+  return last.rank > prev.rank + 1 ? rows.slice(0, -1) : rows
+}
+
 /** 비교용 정규화 — 공백·특수문자 제거, 영문 소문자화 */
 const norm = (s: string): string => s.toLowerCase().replace(/[\s·.,_\-|/\\[\]()]/g, '')
 
@@ -511,11 +532,14 @@ export async function readImage(
   /** 화면에 적힌 수치 이름 ('점수' | '딜량') — 서버 프롬프트에만 쓰인다 */
   metric?: string,
 ): Promise<{ rows: OcrRow[]; text: string }> {
+  // 본인 고정행 제거는 서버·브라우저 어느 경로로 읽었든 똑같이 건다
   try {
-    return await readImageApi(file, roster, onProgress, metric)
+    const r = await readImageApi(file, roster, onProgress, metric)
+    return { ...r, rows: dropPinnedSelfRow(r.rows) }
   } catch {
     onProgress?.({ progress: 0, status: '서버가 응답하지 않아 브라우저에서 읽어요' })
-    return readImageLocal(file, roster, onProgress)
+    const r = await readImageLocal(file, roster, onProgress)
+    return { ...r, rows: dropPinnedSelfRow(r.rows) }
   }
 }
 
