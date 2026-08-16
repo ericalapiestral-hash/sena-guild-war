@@ -14,12 +14,20 @@ interface LearnItem {
   summary: string
   heroes: string[]
 }
+/** 자동 루틴(cron)의 마지막 실행 기록 — 루틴이 살아 있는지 확인용 */
+interface LearnCron {
+  at: number
+  ok: boolean
+  freshCount?: number
+  error?: string | null
+}
 interface LearnData {
   at: number
   freshCount?: number
   items: LearnItem[]
   newHeroes: string[]
   meta: string
+  cron?: LearnCron
 }
 
 const base = WORKER_URL.replace(/\/+$/, '')
@@ -29,6 +37,36 @@ const CATEGORY_CLASS: Record<string, string> = {
   파괴신: 'cat-destroyer',
   결투장: 'cat-arena',
   기타: 'cat-etc',
+}
+
+/**
+ * 자동 루틴이 도는지 운영진만 보는 한 줄.
+ *
+ * 예전에 트리거가 사라진 걸 아무도 몰라 학습이 조용히 멈춘 적이 있다.
+ * 루틴은 하루 한 번이라, 마지막 실행이 이틀 넘게 밀렸으면 눈에 띄게 표시한다.
+ */
+function CronStatus({ cron }: { cron?: LearnCron }) {
+  if (!cron) {
+    return <p className="learn-cron">🕓 자동 루틴 기록이 아직 없어요 — 워커를 배포했는지 확인해 주세요.</p>
+  }
+  const days = Math.floor((Date.now() - cron.at) / 86400000)
+  const when = new Date(cron.at).toLocaleString('ko-KR', {
+    month: 'numeric',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+  const stale = days >= 2
+  if (!cron.ok) {
+    return <p className="learn-cron bad">⚠️ 자동 루틴 실패 ({when}) — {cron.error || '원인 불명'}</p>
+  }
+  return (
+    <p className={`learn-cron${stale ? ' bad' : ''}`}>
+      {stale ? '⚠️' : '🕓'} 자동 루틴 {when} 실행
+      {cron.freshCount ? ` · 새 글 ${cron.freshCount}개` : ' · 새 글 없음'}
+      {stale && ` — ${days}일째 안 돌고 있어요`}
+    </p>
+  )
 }
 
 /**
@@ -107,6 +145,8 @@ export function LearnBriefing() {
           </button>
         )}
       </div>
+
+      {admin && <CronStatus cron={data?.cron} />}
 
       {note && <p className="learn-note">{note}</p>}
 

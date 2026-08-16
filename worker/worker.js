@@ -762,20 +762,39 @@ async function handleLearn(request, env) {
     }
   }
 
+  // 영웅 로스터를 KV에 캐시해 둔다 — 자동 루틴(cron)에는 클라이언트가 없어서,
+  // 운영진이 마지막으로 보낸 이 목록으로 신규 영웅을 판별한다.
+  if (heroes.length) {
+    await env.GUILD_KV.put('learn-heroes', JSON.stringify(heroes))
+  }
+
+  const { status, ...rest } = await runLearn(env, heroes, { relearn: body.relearn === true })
+  return json(rest, status)
+}
+
+/**
+ * 학습 본체 — 운영진 버튼(HTTP)과 자동 루틴(cron) 양쪽에서 부른다.
+ * Response가 아니라 평범한 객체({status, ...})를 돌려주고, HTTP 변환은 부르는 쪽이 한다.
+ */
+async function runLearn(env, heroes, { relearn = false } = {}) {
+  // 로스터를 모르면 "처음 보는 이름"을 가려낼 수가 없다 — 아는 영웅까지 전부
+  // 신규로 뜨는 오탐을 막기 위해, 목록이 비었으면 신규 영웅 판별을 건너뛴다.
+  const rosterKnown = heroes.length > 0
+
   let state = { seen: [], lastRunAt: 0 }
   try {
     const raw = await env.GUILD_KV.get('learn-state')
     if (raw) state = { ...state, ...JSON.parse(raw) }
   } catch { /* 초기 상태로 */ }
   // 전체 재학습: 본 글 목록을 비우고 처음부터 다시 (파이프라인을 고쳤을 때 사용)
-  if (body.relearn === true) state.seen = []
+  if (relearn) state.seen = []
 
   const latestRaw = await env.GUILD_KV.get('learn-latest')
   const latest = latestRaw ? JSON.parse(latestRaw) : null
 
   if (Date.now() - state.lastRunAt < LEARN_MIN_INTERVAL_MS) {
     const wait = Math.ceil((LEARN_MIN_INTERVAL_MS - (Date.now() - state.lastRunAt)) / 60000)
-    return json({ ok: false, error: `방금 학습했어요. ${wait}분 뒤에 다시 눌러 주세요.`, latest: filterBriefing(latest) }, 429)
+    return { ok: false, status: 429, error: `방금 학습했어요. ${wait}분 뒤에 다시 눌러 주세요.`, latest: filterBriefing(latest) }
   }
 
   const posts = await harvestLoungePosts()
@@ -785,7 +804,7 @@ async function handleLearn(request, env) {
   if (fresh.length === 0) {
     state.lastRunAt = Date.now()
     await env.GUILD_KV.put('learn-state', JSON.stringify(state))
-    return json({ ok: true, freshCount: 0, message: '지난 학습 이후 새 길드전 글이 없어요.', latest: filterBriefing(latest) })
+    return { ok: true, status: 200, freshCount: 0, message: '지난 학습 이후 새 길드전 글이 없어요.', latest: filterBriefing(latest) }
   }
 
   // 글마다 이미지까지 읽는 개별 분석 — 전부 병렬로 돌려 벽시계 시간을 줄인다.
@@ -832,20 +851,22 @@ async function handleLearn(request, env) {
   }
 
   if (processed.length === 0) {
-    return json({ ok: false, error: '분석에 모두 실패했어요. 잠시 뒤 다시 시도해 주세요.', latest: filterBriefing(latest) }, 502)
+    return { ok: false, status: 502, error: '분석에 모두 실패했어요. 잠시 뒤 다시 시도해 주세요.', latest: filterBriefing(latest) }
   }
 
   // 종합 — 메타 흐름·신규 영웅 후보
   const syn = items.length ? await synthesizeLearn(env, items, heroes) : { meta: '', newHeroes: [] }
   const known = new Set(heroes.map(normName))
-  const newHeroes = [
-    ...new Set(
-      syn.newHeroes
-        .filter((h) => typeof h === 'string' && h.trim().length >= 2 && h.length <= 20)
-        .map((h) => h.trim())
-        .filter((h) => !known.has(normName(h))),
-    ),
-  ].slice(0, 10)
+  const newHeroes = rosterKnown
+    ? [
+        ...new Set(
+          syn.newHeroes
+            .filter((h) => typeof h === 'string' && h.trim().length >= 2 && h.length <= 20)
+            .map((h) => h.trim())
+            .filter((h) => !known.has(normName(h))),
+        ),
+      ].slice(0, 10)
+    : []
 
   const result = {
     at: Date.now(),
@@ -856,7 +877,7 @@ async function handleLearn(request, env) {
   }
 
   // 이전 학습분의 새 영웅 후보는 등록 전까지 잊지 않게 이어 붙인다
-  if (latest && Array.isArray(latest.newHeroes)) {
+  if (rosterKnown && latest && Array.isArray(latest.newHeroes)) {
     for (const h of latest.newHeroes) {
       if (!known.has(normName(h)) && !result.newHeroes.some((x) => normName(x) === normName(h)) && result.newHeroes.length < 10) {
         result.newHeroes.push(h)
@@ -885,10 +906,49 @@ async function handleLearn(request, env) {
   state.lastRunAt = Date.now()
   await env.GUILD_KV.put('learn-latest', JSON.stringify(result))
   await env.GUILD_KV.put('learn-state', JSON.stringify(state))
-  return json({ ok: true, ...result })
+  return { ok: true, status: 200, ...result }
+}
+
+/**
+ * 자동 루틴 — cron(wrangler.toml [triggers])이 하루 한 번 부른다.
+ *
+ * 예전에는 홈 화면의 브리핑을 누가 열어야만 학습이 돌았는데, 그 UI를 내리면서
+ * 아무도 안 돌리는 상태로 한동안 방치됐다. 사람 손을 안 타게 여기서 돌린다.
+ *
+ * 결과는 learn-latest(브리핑)에, 실행 기록은 learn-cron에 남긴다 —
+ * 루틴이 살아 있는지 [데이터] 페이지에서 눈으로 확인할 수 있게.
+ */
+async function learnCron(env) {
+  if (!env.AI || !env.GUILD_KV) return
+
+  // 영웅 로스터는 클라이언트가 마지막 학습 때 올려 둔 것을 쓴다.
+  // 없으면 요약까지만 하고 신규 영웅 판별은 건너뛴다 (runLearn이 알아서 처리).
+  let heroes = []
+  try {
+    const raw = await env.GUILD_KV.get('learn-heroes')
+    const parsed = raw ? JSON.parse(raw) : null
+    if (Array.isArray(parsed)) heroes = parsed.filter((n) => typeof n === 'string')
+  } catch {
+    /* 로스터 없이 진행 */
+  }
+
+  let log
+  try {
+    const out = await runLearn(env, heroes)
+    log = { at: Date.now(), ok: !!out.ok, freshCount: out.freshCount ?? 0, error: out.error || null, roster: heroes.length }
+  } catch (e) {
+    // 실패해도 seen에 안 들어간 글은 다음 실행에서 다시 시도된다
+    log = { at: Date.now(), ok: false, error: String(e && e.message ? e.message : e), roster: heroes.length }
+  }
+  await env.GUILD_KV.put('learn-cron', JSON.stringify(log))
 }
 
 export default {
+  // 자동 루틴 — wrangler.toml 의 [triggers] crons 스케줄에 맞춰 호출된다.
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(learnCron(env))
+  },
+
   async fetch(request, env) {
     if (request.method === 'OPTIONS') return new Response(null, { headers: corsHeaders() })
 
@@ -899,13 +959,19 @@ export default {
 
     // ===== 학습 =====
     if (path.endsWith('/learn/latest')) {
-      const raw = env.GUILD_KV ? await env.GUILD_KV.get('learn-latest') : null
+      const [raw, cronRaw] = env.GUILD_KV
+        ? await Promise.all([env.GUILD_KV.get('learn-latest'), env.GUILD_KV.get('learn-cron')])
+        : [null, null]
       // 예전 기준으로 저장된 비길드전 글이 캐시에 남아 있어도 내보내지 않는다
       try {
         const d = JSON.parse(raw || '{}')
         if (Array.isArray(d.items)) {
           d.items = d.items.filter((it) => ['공성전', '파괴신', '결투장'].includes(it?.category))
         }
+        // 자동 루틴이 살아 있는지 화면에서 확인할 수 있게 마지막 실행 기록을 같이 준다
+        try {
+          if (cronRaw) d.cron = JSON.parse(cronRaw)
+        } catch { /* 기록이 깨졌으면 없는 셈 */ }
         return json(d)
       } catch {
         return rawJson(raw)
