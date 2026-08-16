@@ -525,6 +525,8 @@ function EntryTable({
   const [draftCutline, setDraftCutline] = useState<number | undefined>(undefined)
   const [draftTierCuts, setDraftTierCuts] = useState<Record<string, number>>({})
   const [localExtra, setLocalExtra] = useState<string[]>([])
+  /** 편집 중 표에 쓸 이름 순서 (점수순으로 얼려 둔 값) */
+  const [editOrder, setEditOrder] = useState<string[]>([])
   /** 편집 중 ✕로 지운 외부(비명단) 이름 — 저장 시 기록에서 제거됨 */
   const [removedExtra, setRemovedExtra] = useState<string[]>([])
   const [newName, setNewName] = useState('')
@@ -549,7 +551,30 @@ function EntryTable({
   const joinedCount = rows.filter((e) => e.joined).length
   const ranked = [...rows].sort((a, b) => (effOf(b) ?? -Infinity) - (effOf(a) ?? -Infinity))
   const top = scored.length ? ranked[0] : undefined
-  const displayRows = editing ? rows : ranked // 편집 중엔 명단 순서 고정, 잠금 시 점수순 정렬
+
+  /**
+   * 순위 숫자 — 표에 놓인 자리가 아니라 '지금 값'으로 매긴다.
+   * 편집 중에는 표 순서를 얼려 두기 때문에(아래 참고), 자리로 번호를 매기면
+   * 방금 점수를 넣은 사람이 맨 아래 자리의 번호를 달고 있게 된다.
+   * 동점이면 같은 순위가 나오는데, 자리 번호보다 이쪽이 사실에 가깝다.
+   */
+  const rankOf = (e: StatEntry): number | undefined => {
+    const v = effOf(e)
+    if (typeof v !== 'number') return undefined
+    return rows.filter((o) => (effOf(o) ?? -Infinity) > v).length + 1
+  }
+
+  /**
+   * 편집 중 표 순서. 점수순으로 보되 **타이핑 중에는 얼려 둔다** —
+   * 값이 바뀔 때마다 다시 정렬하면 한 글자 칠 때마다 행이 뛰어다닌다.
+   * 편집 시작·캡처 적용·[다시 정렬] 때만 새로 잡는다.
+   * 편집 중에 추가된 외부 이름은 순서 목록에 없으므로 뒤로 보낸다.
+   */
+  const orderIdx = new Map(editOrder.map((n, i) => [n, i]))
+  const editRows = editOrder.length
+    ? [...rows].sort((a, b) => (orderIdx.get(a.name) ?? Infinity) - (orderIdx.get(b.name) ?? Infinity))
+    : rows
+  const displayRows = editing ? editRows : ranked
 
   const effCutline = editing ? draftCutline : cutline
   const effTierCuts = editing ? draftTierCuts : (tierCutlines ?? {})
@@ -569,6 +594,15 @@ function EntryTable({
 
   const cols = 5 + (showMid ? 3 : 0) + (showJoined ? 1 : 0) + (showVerdict ? 1 : 0) + (editing ? 1 : 0)
 
+  /** 주어진 값 기준 점수순 이름 배열 — 편집 표의 순서를 잡는 데 쓴다 */
+  function rankedNames(source: Record<string, Partial<StatEntry>>, names: string[]): string[] {
+    const val = (n: string) => {
+      const e = source[n] ?? {}
+      return typeof e.value === 'number' ? e.value : showMid && typeof e.mid === 'number' ? e.mid : undefined
+    }
+    return [...names].sort((a, b) => (val(b) ?? -Infinity) - (val(a) ?? -Infinity))
+  }
+
   function startEdit() {
     const d: Record<string, Partial<StatEntry>> = {}
     for (const name of baseNames) { const e = storedMap.get(name); if (e) d[name] = { value: e.value, mid: e.mid, joined: e.joined, memo: e.memo } }
@@ -577,6 +611,7 @@ function EntryTable({
     setDraftTierCuts({ ...(tierCutlines ?? {}) })
     setLocalExtra([])
     setRemovedExtra([])
+    setEditOrder(rankedNames(d, baseNames))
     setEditing(true)
   }
   const setField = (name: string, patch: Partial<StatEntry>) => setDraft((prev) => ({ ...prev, [name]: { ...prev[name], ...patch } }))
@@ -588,12 +623,14 @@ function EntryTable({
     setEditing(false)
     setLocalExtra([])
     setRemovedExtra([])
+    setEditOrder([])
   }
   function cancel() {
     setEditing(false)
     setLocalExtra([])
     setRemovedExtra([])
     setDraft({})
+    setEditOrder([])
   }
   function addExternal() {
     const n = newName.trim()
@@ -610,6 +647,9 @@ function EntryTable({
         {admin && editing && (
           <span className="row" style={{ gap: 8 }}>
             <button className="small" onClick={() => setImporting(true)}>📷 캡처에서 읽기</button>
+            {/* 손으로 입력하면 순서를 얼려 둔 채로 두다가, 다 넣고 나서 이걸로 정렬 */}
+            <button className="small" title="지금 입력된 값 기준으로 표를 점수순으로 다시 정렬합니다"
+              onClick={() => setEditOrder(rankedNames(draft, baseNames))}>↕ 점수순 다시 정렬</button>
             <span className="delta up" style={{ fontSize: '0.85rem' }}>✏️ 편집 중 — 아래 [저장]을 눌러야 반영돼요</span>
           </span>
         )}
@@ -624,14 +664,14 @@ function EntryTable({
           // 시즌 도중 캡처가 최종 집계로 잘못 들어가면 순위·미달이 통째로 어긋난다.
           targets={showMid ? [{ key: 'mid', label: '중간집계' }, { key: 'value', label: finalLabel }] : undefined}
           onClose={() => setImporting(false)}
-          onApply={(values, target) =>
-            setDraft((prev) => {
-              const next = { ...prev }
-              const field = target === 'mid' ? 'mid' : 'value'
-              for (const { name, value } of values) next[name] = { ...next[name], [field]: value }
-              return next
-            })
-          }
+          onApply={(values, target) => {
+            const field = target === 'mid' ? 'mid' : 'value'
+            const next = { ...draft }
+            for (const { name, value } of values) next[name] = { ...next[name], [field]: value }
+            setDraft(next)
+            // 캡처를 넣었으면 순위가 확 바뀐다 — 이때는 표 순서를 새로 잡아 준다
+            setEditOrder(rankedNames(next, baseNames))
+          }}
         />
       )}
 
@@ -717,7 +757,7 @@ function EntryTable({
             )}
             {displayRows.map((e, i) => (
               <tr key={e.name} className={isFail(e) ? 'row-fail' : ''}>
-                <td><b>{editing ? i + 1 : typeof effOf(e) === 'number' ? i + 1 : '-'}</b></td>
+                <td><b>{rankOf(e) ?? '-'}</b></td>
                 <td className={isFail(e) ? 'cell-fail' : ''}>
                   <b>{e.name}</b>
                   {tierOf?.get(e.name) && <span className="muted" style={{ marginLeft: 4, fontSize: '0.72rem' }}>{tierOf.get(e.name)}</span>}
