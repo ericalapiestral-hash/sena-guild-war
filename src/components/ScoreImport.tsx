@@ -119,6 +119,13 @@ export function ScoreImport({
   }
   runRef.current = run
 
+  /** 여러 장을 한 번에 받아 차례로 읽는다 (동시에 돌리면 워커가 겹쳐 폰에서 메모리가 터진다) */
+  async function runMany(files: File[]) {
+    for (const f of files.filter((f) => f.type.startsWith('image/'))) await run(f)
+  }
+  /** 드롭된 것 중 이미지 전부 */
+  const droppedFiles = (e: React.DragEvent) => [...(e.dataTransfer.files ?? [])]
+
   // 붙여넣기(Ctrl+V)로 바로 받기
   useEffect(() => {
     const onPaste = (e: ClipboardEvent): void => {
@@ -183,27 +190,36 @@ export function ScoreImport({
         </div>
       )}
 
-      {!rows && (
+      {/* ★ 파일 입력은 조건부 블록 밖에 둔다 — 안에 두었더니 첫 장을 읽은 뒤 블록이
+          사라지면서 fileRef.current가 null이 되어, [＋ 다른 캡처 추가] 클릭이
+          아무 반응 없이 무시됐다. multiple이라 한 번에 여러 장도 고를 수 있다. */}
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        multiple
+        hidden
+        onChange={(e) => {
+          const fs = [...(e.target.files ?? [])]
+          e.target.value = '' // 같은 파일을 다시 골라도 onChange가 뜨게
+          void runMany(fs)
+        }}
+      />
+
+      {/* 아직 읽은 게 없을 때 (0명 인식으로 끝난 경우 포함 — 그때도 다시 올릴 길이 있어야 한다) */}
+      {(!rows || rows.length === 0) && (
         <div
           className={`ocr-drop ${busy ? 'busy' : ''}`}
           onClick={() => !busy && fileRef.current?.click()}
           onDragOver={(e) => e.preventDefault()}
           onDrop={(e) => {
             e.preventDefault()
-            const f = e.dataTransfer.files?.[0]
-            if (f && f.type.startsWith('image/') && !busy) void run(f)
+            if (!busy) void runMany(droppedFiles(e))
           }}
         >
           <div className="ocr-drop-ic" aria-hidden>🖼</div>
           <strong>캡처 이미지를 여기에 끌어다 놓거나 클릭해서 고르세요</strong>
-          <span className="muted">Ctrl+V 로 붙여넣어도 됩니다</span>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*"
-            hidden
-            onChange={(e) => { const f = e.target.files?.[0]; if (f) void run(f) }}
-          />
+          <span className="muted">여러 장을 한 번에 골라도 되고, Ctrl+V 로 붙여넣어도 됩니다</span>
         </div>
       )}
 
@@ -234,11 +250,10 @@ export function ScoreImport({
             onDragOver={(e) => e.preventDefault()}
             onDrop={(e) => {
               e.preventDefault()
-              const f = e.dataTransfer.files?.[0]
-              if (f && f.type.startsWith('image/') && !busy) void run(f)
+              if (!busy) void runMany(droppedFiles(e))
             }}
           >
-            ＋ 다른 캡처 추가 — 스크롤해서 찍은 다음 장을 끌어놓거나 Ctrl+V (자동으로 합쳐져요)
+            ＋ 다른 캡처 추가 — 눌러서 고르거나, 끌어놓거나, Ctrl+V (여러 장도 한 번에, 자동으로 합쳐져요)
           </div>
           {missing.length > 0 && (
             <p className="ocr-missing">
