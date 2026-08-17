@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import html2canvas from 'html2canvas'
-import type { StatEntry, StatRound, UserData } from '../types'
+import type { CutlineGuide, StatEntry, StatRound, UserData } from '../types'
 import { activeMembers, excludedMembers, newId, rosterNames, todayLocal, update, useUserData } from '../store'
 import { isAdmin } from '../auth'
 import { Markdown } from '../components/Markdown'
@@ -26,7 +26,7 @@ const CFG: Record<
 > = {
   siege: {
     title: '공성전 통계',
-    desc: '주차를 고르고 요일(월~일)마다 [편집]을 눌러 점수를 입력하고 [저장]하면 잠겨요. 각 요일 점수를 지난주 같은 요일과 비교해 등락(%)이 표시돼요. 점수는 [📷 캡처에서 읽기]로 결과 화면을 붙여넣으면 자동으로 채워져요. 커트라인은 요일마다 따로 설정할 수 있고, 이하 점수는 미달로 표시돼요. 명단은 [길드원] 메뉴 등록자가 자동으로 들어옵니다.',
+    desc: '주차를 고르고 요일(월~일)마다 [편집]을 눌러 점수를 입력하고 [저장]하면 잠겨요. 각 요일 점수를 지난주 같은 요일과 비교해 등락(%)이 표시돼요. 점수는 [📷 캡처에서 읽기]로 결과 화면을 붙여넣으면 자동으로 채워져요. 커트라인은 [커트라인] 메뉴의 요일별 기준표를 따르고, 이하 점수는 미달로 표시돼요. 명단은 [길드원] 메뉴 등록자가 자동으로 들어옵니다.',
     metric: '점수',
     field: 'siegeRounds',
     byDay: true,
@@ -40,7 +40,7 @@ const CFG: Record<
   },
   destroyer: {
     title: '파괴신 통계',
-    desc: '시즌별로 [편집]을 눌러 중간집계·최종 딜량과 커트라인을 입력하고 [저장]하면 잠겨요. 딜량은 [📷 캡처에서 읽기]로 결과 화면을 붙여넣으면 자동으로 채워지는데, 중간집계와 최종 집계 중 어디에 넣을지 고를 수 있어요. 전 시즌 / 이번 시즌 중간집계 / 이번 시즌 집계를 나란히 비교하고, 커트라인 이하는 미달로 표시돼요. 명단은 [길드원] 메뉴 등록자가 자동으로 들어옵니다.',
+    desc: '시즌별로 [편집]을 눌러 중간집계·최종 딜량을 입력하고 [저장]하면 잠겨요. 딜량은 [📷 캡처에서 읽기]로 결과 화면을 붙여넣으면 자동으로 채워지는데, 중간집계와 최종 집계 중 어디에 넣을지 고를 수 있어요. 전 시즌 / 이번 시즌 중간집계 / 이번 시즌 집계를 나란히 비교하고, [커트라인] 메뉴의 파이 초월 단계별 기준 이하는 미달로 표시돼요. 명단은 [길드원] 메뉴 등록자가 자동으로 들어옵니다.',
     metric: '딜량',
     field: 'destroyerRounds',
     byDay: false,
@@ -177,25 +177,17 @@ export function StatsPage({ kind }: { kind: Kind }) {
   }
 
   /** [저장] — 현재 회차/요일의 기록을 통째로 교체 (편집 모드 결과 한 번에 커밋) */
-  const saveAll = (list: StatEntry[], cutline?: number, tierCuts?: Record<string, number>) => {
+  const saveAll = (list: StatEntry[]) => {
     if (!current) return
     patchRound(current.id, (r) => {
-      // 파괴신: 등급별 커트라인 저장 (빈 값은 제거)
-      if (!cfg.byDay && cfg.hasCutline) {
-        if (tierCuts && Object.keys(tierCuts).length) r.tierCutlines = tierCuts
-        else delete r.tierCutlines
-      }
+      // ★ 커트라인(cutline·dayCutlines·tierCutlines)은 건드리지 않는다.
+      //   통계 화면에서 더 이상 편집하지 않으므로 저장할 값도 없고, 예전처럼
+      //   빈 값을 받아 delete 하면 지난 회차에 박혀 있던 기준이 통째로 날아간다.
+      //   앞으로의 기준은 [커트라인] 메뉴의 기준표가 담당한다.
       if (cfg.byDay) {
-        // 공성전: 커트라인을 요일별로 저장
-        if (cfg.hasCutline) {
-          if (!r.dayCutlines) r.dayCutlines = {}
-          if (typeof cutline === 'number') r.dayCutlines[day] = cutline
-          else delete r.dayCutlines[day]
-        }
         if (!r.days) r.days = {}
         r.days[day] = list
       } else {
-        if (cfg.hasCutline) r.cutline = cutline
         r.entries = list
       }
     })
@@ -295,7 +287,8 @@ export function StatsPage({ kind }: { kind: Kind }) {
             showJoined={cfg.showJoined}
             hasCutline={cfg.hasCutline}
             cutline={curCutline}
-            cutlineLabel={cfg.byDay ? `커트라인 (${day}요일 ${cfg.metric})` : `기본 커트라인 (${cfg.metric})`}
+            guide={data.cutlineGuide}
+            dayKey={cfg.byDay ? day : undefined}
             tierOf={cfg.byDay ? undefined : tierOf}
             tierList={cfg.byDay ? undefined : tierList}
             tierCutlines={tierCutlines}
@@ -312,7 +305,7 @@ export function StatsPage({ kind }: { kind: Kind }) {
       )}
 
       {current && createPortal(
-        <PrintContent kind={kind} cfg={cfg} current={current} prevRound={prevRound} roster={roster} day={day} tierOf={cfg.byDay ? undefined : tierOf} />,
+        <PrintContent kind={kind} cfg={cfg} current={current} prevRound={prevRound} roster={roster} day={day} tierOf={cfg.byDay ? undefined : tierOf} guide={data.cutlineGuide} />,
         document.body,
       )}
         </>
@@ -357,6 +350,7 @@ function PrintContent({
   roster,
   day,
   tierOf,
+  guide,
 }: {
   kind: Kind
   cfg: (typeof CFG)[Kind]
@@ -367,6 +361,8 @@ function PrintContent({
   day?: string
   /** 파괴신: 길드원 이름 → 등급 */
   tierOf?: Map<string, string>
+  /** [커트라인] 메뉴의 기준표 — 화면 표와 같은 판정을 쓰도록 함께 넘긴다 */
+  guide?: CutlineGuide
 }) {
   const printedAt = todayLocal()
 
@@ -378,8 +374,8 @@ function PrintContent({
       (prevRound?.days?.[d] ?? []).filter((e) => typeof e.value === 'number').map((e) => [e.name, e.value as number]),
     )
     const total = ranked.reduce((s, e) => s + (e.value as number), 0)
-    // 요일별 커트라인 (없으면 주차 공통값)
-    const dayCut = current.dayCutlines?.[d] ?? current.cutline
+    // 요일별 커트라인 — 회차 저장값 → [커트라인] 기준표 → 주차 공통값
+    const dayCut = current.dayCutlines?.[d] ?? guide?.siegeByDay?.[d] ?? current.cutline
     const isFail = (e: StatEntry) => typeof dayCut === 'number' && typeof e.value === 'number' && e.value <= dayCut
     return (
       <div className="print-root">
@@ -422,12 +418,15 @@ function PrintContent({
   )
   const curTotal = curRanked.reduce((s, e) => s + (effValue(e) as number), 0)
   const hasMid = curRanked.some((e) => typeof e.mid === 'number')
-  // 커트라인 이하 미달자 — 등급별 커트라인 우선, 없으면 시즌 기본값
+  // 커트라인 이하 미달자 — 회차에 저장된 값 → [커트라인] 기준표 → 시즌 기본값
   const tierCuts = current.tierCutlines ?? {}
   const cutFor = (name: string) => {
     const t = tierOf?.get(name)
     const tc = t !== undefined ? tierCuts[t] : undefined
-    return typeof tc === 'number' ? tc : current.cutline
+    if (typeof tc === 'number') return tc
+    const gt = t !== undefined ? guide?.destroyerByTier?.[t] : undefined
+    if (typeof gt === 'number') return gt
+    return current.cutline
   }
   const isFail = (e: StatEntry) => {
     const c = cutFor(e.name)
@@ -482,7 +481,8 @@ function EntryTable({
   showJoined,
   hasCutline,
   cutline,
-  cutlineLabel,
+  guide,
+  dayKey,
   tierOf,
   tierList,
   tierCutlines,
@@ -504,7 +504,10 @@ function EntryTable({
   showJoined: boolean
   hasCutline: boolean
   cutline?: number
-  cutlineLabel?: string
+  /** [커트라인] 메뉴의 기준표 — 회차에 저장된 값이 없을 때 여기서 가져온다 */
+  guide?: CutlineGuide
+  /** 공성전: 지금 보고 있는 요일 (기준표의 요일별 커트라인을 찾는 키) */
+  dayKey?: string
   /** 길드원 이름 → 등급 (파괴신) */
   tierOf?: Map<string, string>
   /** 등급 목록 (파괴신) */
@@ -518,12 +521,10 @@ function EntryTable({
   prevLabel: string
   finalLabel: string
   prevRoundLabel?: string
-  onSaveAll: (list: StatEntry[], cutline?: number, tierCuts?: Record<string, number>) => void
+  onSaveAll: (list: StatEntry[]) => void
 }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState<Record<string, Partial<StatEntry>>>({})
-  const [draftCutline, setDraftCutline] = useState<number | undefined>(undefined)
-  const [draftTierCuts, setDraftTierCuts] = useState<Record<string, number>>({})
   const [localExtra, setLocalExtra] = useState<string[]>([])
   /** 편집 중 표에 쓸 이름 순서 (점수순으로 얼려 둔 값) */
   const [editOrder, setEditOrder] = useState<string[]>([])
@@ -576,15 +577,36 @@ function EntryTable({
     : rows
   const displayRows = editing ? editRows : ranked
 
-  const effCutline = editing ? draftCutline : cutline
-  const effTierCuts = editing ? draftTierCuts : (tierCutlines ?? {})
-  /** 이 사람에게 적용되는 커트라인 — 등급별 값이 있으면 그것, 없으면 기본값 */
+  // 커트라인은 회차에 저장된 값 → [커트라인] 기준표 → 회차 기본값 순으로 찾는다.
+  // (통계 화면에서는 더 이상 편집하지 않으므로 편집/보기 상태를 구분하지 않는다)
+  const effCutline = cutline
+  const effTierCuts = tierCutlines ?? {}
+  /** 이 사람에게 적용되는 커트라인 */
   const cutFor = (name: string): number | undefined => {
     const t = tierOf?.get(name)
     const tc = t !== undefined ? effTierCuts[t] : undefined
-    return typeof tc === 'number' ? tc : effCutline
+    if (typeof tc === 'number') return tc
+    const gt = t !== undefined ? guide?.destroyerByTier?.[t] : undefined
+    if (typeof gt === 'number') return gt
+    if (dayKey) {
+      const gd = guide?.siegeByDay?.[dayKey]
+      if (typeof gd === 'number') return gd
+    }
+    return effCutline
   }
-  const showVerdict = hasCutline && (typeof effCutline === 'number' || Object.values(effTierCuts).some((v) => typeof v === 'number'))
+  /** 등급 하나에 적용되는 커트라인 (표시용) */
+  const cutForTier = (t: string): number | undefined => {
+    const tc = effTierCuts[t]
+    if (typeof tc === 'number') return tc
+    const gt = guide?.destroyerByTier?.[t]
+    return typeof gt === 'number' ? gt : undefined
+  }
+  /** 등급이 없는 사람에게 적용되는 값 (표시용) */
+  const baseCut = dayKey
+    ? (effCutline ?? guide?.siegeByDay?.[dayKey])
+    : effCutline
+  // 실제로 적용되는 커트라인이 한 명이라도 있으면 판정을 보여 준다
+  const showVerdict = hasCutline && rows.some((e) => typeof cutFor(e.name) === 'number')
   const isFail = (e: StatEntry) => {
     if (!showVerdict) return false
     const c = cutFor(e.name)
@@ -607,8 +629,6 @@ function EntryTable({
     const d: Record<string, Partial<StatEntry>> = {}
     for (const name of baseNames) { const e = storedMap.get(name); if (e) d[name] = { value: e.value, mid: e.mid, joined: e.joined, memo: e.memo } }
     setDraft(d)
-    setDraftCutline(cutline)
-    setDraftTierCuts({ ...(tierCutlines ?? {}) })
     setLocalExtra([])
     setRemovedExtra([])
     setEditOrder(rankedNames(d, baseNames))
@@ -619,7 +639,7 @@ function EntryTable({
     const list = baseNames
       .map((name) => ({ name, ...(draft[name] ?? {}) } as StatEntry))
       .filter((e) => typeof e.value === 'number' || typeof e.mid === 'number' || e.joined || (e.memo ?? '').trim())
-    onSaveAll(list, hasCutline ? draftCutline : undefined, hasCutline && useTiers ? draftTierCuts : undefined)
+    onSaveAll(list)
     setEditing(false)
     setLocalExtra([])
     setRemovedExtra([])
@@ -675,45 +695,27 @@ function EntryTable({
         />
       )}
 
+      {/* 커트라인 입력칸은 없앴다 — [커트라인] 메뉴의 기준표 한 곳에서만 관리한다.
+          등급이 늘면서 편집할 때마다 입력칸이 10칸 넘게 쌓여 점수 입력을 밀어냈다. */}
       {hasCutline && editing && (
-        <div style={{ marginBottom: 10 }}>
-          {/* 등급별 커트라인 (파괴신) — 길드원 등급마다 기준점이 달라 개별 설정 */}
-          {useTiers && tierList!.map((t) => (
-            <div className="row" key={t} style={{ marginBottom: 6 }}>
-              <label style={{ fontWeight: 600, fontSize: '0.85rem', minWidth: 120 }}>{t}</label>
-              <input type="number" className="num-tab" value={draftTierCuts[t] ?? ''} placeholder="비우면 기본값 적용"
-                onChange={(ev) => setDraftTierCuts((prev) => {
-                  const next = { ...prev }
-                  if (ev.target.value === '') delete next[t]
-                  else next[t] = Number(ev.target.value)
-                  return next
-                })}
-                style={{ width: 170, textAlign: 'right' }} />
-              <span className="muted" style={{ fontSize: '0.8rem' }}>등급 커트라인</span>
-            </div>
-          ))}
-          <div className="row">
-            <label style={{ fontWeight: 600, fontSize: '0.85rem', minWidth: useTiers ? 120 : undefined }}>{cutlineLabel ?? `커트라인 (${metric})`}</label>
-            <input type="number" className="num-tab" value={draftCutline ?? ''} placeholder="예: 8000000"
-              onChange={(ev) => setDraftCutline(ev.target.value === '' ? undefined : Number(ev.target.value))}
-              style={{ width: 170, textAlign: 'right' }} />
-            <span className="muted" style={{ fontSize: '0.8rem' }}>
-              {useTiers ? '등급이 없거나 등급 값이 빈 사람에게 적용' : '이 값 이하는 미달로 표시돼요'}
-            </span>
-          </div>
-        </div>
+        <p className="cutline-note">
+          커트라인은 <b>[커트라인]</b> 메뉴의 기준표를 따릅니다.
+          {' '}지난 회차에 따로 저장된 값이 있으면 그 회차는 그 값을 그대로 씁니다.
+        </p>
       )}
+      {/* 실제로 적용 중인 커트라인을 보여 준다 — 회차 저장값이든 기준표에서 온 값이든
+          사람이 보기엔 '지금 이 표에 적용된 값'이 중요하다 */}
       {hasCutline && !editing && showVerdict && (
         <div className="muted" style={{ marginBottom: 10 }}>
           커트라인{' '}
-          {useTiers && tierList!.filter((t) => typeof effTierCuts[t] === 'number').map((t) => (
+          {useTiers && tierList!.filter((t) => typeof cutForTier(t) === 'number').map((t) => (
             <span key={t}>
-              {t} <b className="num-tab" style={{ color: 'var(--text)' }}>{fmt(effTierCuts[t])}</b>
+              {t} <b className="num-tab" style={{ color: 'var(--text)' }}>{fmt(cutForTier(t))}</b>
               {' / '}
             </span>
           ))}
-          {typeof cutline === 'number' && (
-            <span>{useTiers ? '기본 ' : ''}<b className="num-tab" style={{ color: 'var(--text)' }}>{fmt(cutline)}</b></span>
+          {typeof baseCut === 'number' && (
+            <span>{useTiers ? '기본 ' : ''}<b className="num-tab" style={{ color: 'var(--text)' }}>{fmt(baseCut)}</b></span>
           )}
           {' '}{metric} 이하는 <span className="badge lose">미달</span>
         </div>

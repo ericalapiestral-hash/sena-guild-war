@@ -1,6 +1,6 @@
 // 공성전·파괴신 통계에서 공통으로 쓰는 것들.
 // 통계 페이지와 홈의 요약표가 같은 규칙(숫자 표기·등락·커트라인 판정)을 쓰도록 한곳에 모았다.
-import type { Member, StatEntry, StatRound } from '../types'
+import type { CutlineGuide, Member, StatEntry, StatRound } from '../types'
 
 export const WEEKDAYS = ['월', '화', '수', '목', '금', '토', '일']
 export const todayWeekday = (): string => WEEKDAYS[(new Date().getDay() + 6) % 7]
@@ -23,21 +23,34 @@ export const effOf = (e: StatEntry, useMid: boolean): number | undefined =>
 
 /**
  * 이 사람에게 적용되는 커트라인.
- * 파괴신은 길드원 등급(초월 단계)별 값이 있으면 그것, 없으면 회차 기본값.
- * 공성전은 요일별 값이 있으면 그것, 없으면 회차 기본값.
+ *
+ * 순서: 회차에 저장된 값 → [커트라인] 메뉴의 기준표 → 회차 기본값.
+ *
+ * 커트라인은 이제 [커트라인] 메뉴의 기준표 한 곳에서만 관리한다. 통계 화면의
+ * 입력칸은 없앴다(등급이 늘면서 편집할 때마다 10칸 넘게 쌓였다).
+ *
+ * ★ 그래도 회차에 저장된 값을 먼저 본다. 지난 회차에는 그때 실제로 적용했던
+ *   기준이 박혀 있는데, 지금 기준표로 덮으면 과거 미달 판정이 소급해서 바뀐다.
+ *   기준표는 값이 없는 회차(=앞으로 만드는 회차)를 채우는 용도다.
  */
 export function cutlineFor(
   round: StatRound,
   name: string,
-  opts: { day?: string; tierOf?: Map<string, string> },
+  opts: { day?: string; tierOf?: Map<string, string>; guide?: CutlineGuide },
 ): number | undefined {
   if (opts.day) {
     const dc = round.dayCutlines?.[opts.day]
-    return typeof dc === 'number' ? dc : round.cutline
+    if (typeof dc === 'number') return dc
+    const gd = opts.guide?.siegeByDay?.[opts.day]
+    if (typeof gd === 'number') return gd
+    return round.cutline
   }
   const t = opts.tierOf?.get(name)
   const tc = t !== undefined ? round.tierCutlines?.[t] : undefined
-  return typeof tc === 'number' ? tc : round.cutline
+  if (typeof tc === 'number') return tc
+  const gt = t !== undefined ? opts.guide?.destroyerByTier?.[t] : undefined
+  if (typeof gt === 'number') return gt
+  return round.cutline
 }
 
 /** 마지막에 기록된 회차 (배열 끝) */
