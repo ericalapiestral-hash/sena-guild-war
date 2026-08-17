@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import type { StatEntry, StatRound } from '../types'
+import type { CutlineGuide, StatEntry, StatRound } from '../types'
 import { counterHeroNames, getAllArena, getAllCounters, getAllHeroes, useUserData } from '../store'
 import { navigate } from '../router'
 import { DeckNames } from '../components/HeroSelect'
@@ -46,8 +46,8 @@ export function HomePage() {
 
       {/* 공성전·파괴신은 운영진만 입력하므로, 길드원에겐 최근 기록을 표로 바로 보여준다 */}
       <div className="stat-preview-row">
-        <SiegePreview rounds={userData.siegeRounds} />
-        <DestroyerPreview rounds={userData.destroyerRounds} members={userData.members} />
+        <SiegePreview rounds={userData.siegeRounds} guide={userData.cutlineGuide} />
+        <DestroyerPreview rounds={userData.destroyerRounds} members={userData.members} guide={userData.cutlineGuide} />
       </div>
 
       <section className="panel">
@@ -164,7 +164,7 @@ function PreviewTable({
   )
 }
 
-function SiegePreview({ rounds }: { rounds: StatRound[] }) {
+function SiegePreview({ rounds, guide }: { rounds: StatRound[]; guide?: CutlineGuide }) {
   const { round, index } = lastFilled(rounds, true)
   const day = latestDayWithData(round)
   const prevRound = index > 0 ? rounds[index - 1] : undefined
@@ -180,7 +180,7 @@ function SiegePreview({ rounds }: { rounds: StatRound[] }) {
     .filter((e) => typeof e.value === 'number')
     .sort((a, b) => (b.value as number) - (a.value as number))
     .map((e) => {
-      const cut = round ? cutlineFor(round, e.name, { day }) : undefined
+      const cut = round ? cutlineFor(round, e.name, { day, guide }) : undefined
       return {
         name: e.name,
         value: e.value,
@@ -201,7 +201,7 @@ function SiegePreview({ rounds }: { rounds: StatRound[] }) {
   )
 }
 
-function DestroyerPreview({ rounds, members }: { rounds: StatRound[]; members: { name: string; tier?: string }[] }) {
+function DestroyerPreview({ rounds, members, guide }: { rounds: StatRound[]; members: { name: string; tier?: string }[]; guide?: CutlineGuide }) {
   const { round, index } = lastFilled(rounds, false)
   const prevRound = index > 0 ? rounds[index - 1] : undefined
   const tierOf = tierMap(members as never)
@@ -218,7 +218,7 @@ function DestroyerPreview({ rounds, members }: { rounds: StatRound[]; members: {
     .filter((x) => typeof x.v === 'number')
     .sort((a, b) => (b.v as number) - (a.v as number))
     .map(({ e, v }) => {
-      const cut = round ? cutlineFor(round, e.name, { tierOf }) : undefined
+      const cut = round ? cutlineFor(round, e.name, { tierOf, guide }) : undefined
       return { name: e.name, value: v, prev: prevValues.get(e.name), fail: typeof cut === 'number' && (v as number) <= cut }
     })
 
