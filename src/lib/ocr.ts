@@ -49,15 +49,21 @@ const MAX_GUILD_RANK = 60
  * 프롬프트로도 빼라고 지시하지만 모델이 자주 무시한다 — 실측 확인(2026-08-17,
  * 파괴신 실캡처)에서 지시를 넣고 배포해도 그대로 딸려 왔다. 그래서 여기서 확정적으로 건다.
  *
- * 순위가 이어지는 경우(…12 다음 13)는 건드리지 않는다. 그때는 그 행이 목록의
- * 실제 다음 행일 수도 있고, 중복이라면 이름 기준 병합이 알아서 처리한다.
+ * 판정: **마지막 행은 순위가 딱 이어질 때만 남긴다.** 앞 행들의 최대 순위를 보고
+ * `최대+1`이 아니면 고정행으로 본다. 앞 행 하나만 보면 안 되는 이유가 실캡처에 다 있었다:
+ *   · 1,2,3,4,5 다음 13     → 뛰어넘음
+ *   · 11,12,13,14,15 다음 13 → 되돌아감 (목록에 이미 13위가 있는데 고정행도 13위)
+ *   · 26,27,28,-,- 다음 13   → 직전 행이 '0회 도전'이라 순위가 아예 없음
+ * 마지막 셋은 '직전 행과만 비교' 방식으로는 하나도 안 걸렸다.
  */
 function dropPinnedSelfRow(rows: OcrRow[]): OcrRow[] {
   if (rows.length < 2) return rows
   const last = rows[rows.length - 1]
-  const prev = rows[rows.length - 2]
-  if (last.rank === undefined || prev.rank === undefined) return rows
-  return last.rank > prev.rank + 1 ? rows.slice(0, -1) : rows
+  if (last.rank === undefined) return rows
+  const prevRanks = rows.slice(0, -1).map((r) => r.rank).filter((r): r is number => r !== undefined)
+  if (!prevRanks.length) return rows
+  const maxPrev = Math.max(...prevRanks)
+  return last.rank === maxPrev + 1 ? rows : rows.slice(0, -1)
 }
 
 /** 비교용 정규화 — 공백·특수문자 제거, 영문 소문자화 */
@@ -419,8 +425,16 @@ function cropToList(c: HTMLCanvasElement): HTMLCanvasElement {
       bottom = y
     }
   }
-  // 밝은 띠를 못 찾았거나(전부 어두운 화면) 이미 목록만 있는 이미지면 그대로 둔다
-  if (top < 0 || bottom - top < 40 || (top < 8 && c.height - bottom < 8)) return c
+  // 밝은 띠를 못 찾았거나(전부 어두운 화면) 이미 목록만 있는 이미지면 그대로 둔다.
+  //
+  // ★ 띠가 화면 높이의 일부에 불과하면 그건 목록이 아니라 다른 UI다 — 자르지 않는다.
+  //   파괴신 화면에서 실제로 터졌던 버그: 목록 행이 어두운 색이라 밝기로 안 잡히고,
+  //   대신 하단 버튼 줄(720px 중 46px)만 밝은 띠로 잡혀서 목록이 한 줄도 없는
+  //   조각을 서버로 보냈다. 서버는 표를 못 찾고, 그러면 tesseract 폴백이 그 조각에서
+  //   엉뚱한 숫자를 읽어 온다. 40px이라는 절대값 기준으로는 이게 안 걸렸다.
+  //   못 자르는 건 손해가 적다 — 전체 화면을 보내도 모델이 잘 읽는다(실측).
+  const minBand = Math.round(c.height * 0.35)
+  if (top < 0 || bottom - top < minBand || (top < 8 && c.height - bottom < 8)) return c
   const pad = 14
   const cy = Math.max(0, top - pad)
   const ch = Math.min(c.height, bottom + pad) - cy
