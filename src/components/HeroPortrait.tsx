@@ -42,14 +42,12 @@ export function HeroPortrait({
   const art = artFailed ? url(`heroes/${file}.png`) : url(`heroes/${file}.card.webp`)
   const [dead, setDead] = useState(false)
 
-  if (plain || dead) {
+  const initial = (hero?.name ?? name).replace(/^각성\s*/, '').slice(0, 1)
+
+  if (plain) {
     const style = { width: size, height: size } as const
     if (dead) {
-      return (
-        <span className="hero-portrait fallback" style={style} aria-hidden>
-          {(hero?.name ?? name).replace(/^각성\s*/, '').slice(0, 1)}
-        </span>
-      )
+      return <span className="hero-portrait fallback" style={style} aria-hidden>{initial}</span>
     }
     return (
       <img
@@ -71,13 +69,18 @@ export function HeroPortrait({
   return (
     <span className="hero-card" style={{ width: size }} aria-hidden>
       <img className="hc-bg" src={url(`hero-card/grade_GradeBG${bg}.webp`)} alt="" decoding="async" />
-      <img
-        className="hc-art"
-        src={art}
-        alt=""
-        decoding="async"
-        onError={() => (artFailed ? setDead(true) : setArtFailed(true))}
-      />
+      {dead ? (
+        // 그림이 없어도 프레임은 유지한다 — 카드 하나만 모양이 달라지면 더 튄다
+        <span className="hc-art none">{initial}</span>
+      ) : (
+        <img
+          className="hc-art"
+          src={art}
+          alt=""
+          decoding="async"
+          onError={() => (artFailed ? setDead(true) : setArtFailed(true))}
+        />
+      )}
       {badge && <img className="hc-badge" src={url(`hero-card/badge_SPBG${badge}.webp`)} alt="" decoding="async" />}
       {roleIcon && <img className="hc-role" src={url(`hero-card/role_RoleIcon_${roleIcon}.webp`)} alt="" decoding="async" />}
       {star && <img className="hc-star" src={url(`hero-card/stars_Star_M${star}.webp`)} alt="" decoding="async" />}
