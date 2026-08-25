@@ -48,8 +48,6 @@ export const RAID_STAGES = [
 export const RAID_SLOTS = 10
 /** 길드전은 3v3 */
 export const WAR_DECK_SIZE = 3
-/** 방어덱 하나를 맡는 인원 상한 */
-export const DEFENSE_ASSIGN_MAX = 3
 /** 공성전 편성 인원 */
 export const SIEGE_DECK_SIZE = 5
 

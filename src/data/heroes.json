@@ -1215,5 +1215,13 @@
     "tags": [
       "신비의 숲"
     ]
+  },
+  {
+    "id": "윤건",
+    "name": "윤건",
+    "grade": "전설",
+    "position": "마법형",
+    "pvpRelevant": true,
+    "tags": []
   }
 ]

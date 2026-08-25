@@ -1995,11 +1995,6 @@ button.ghost:hover { background: var(--surface-2); color: var(--text); }
 /* ---- 길드전 방어 세팅 ---- */
 .def-label { font-weight: 600; font-size: 0.85rem; min-width: 92px; color: var(--text-2); }
 .def-stars { font-size: 0.85rem; color: var(--accent-strong); letter-spacing: -1px; }
-.def-assign {
-  font-size: 0.78rem; font-weight: 600; color: var(--accent-strong);
-  background: var(--accent-soft); border: 1px solid var(--accent-dim);
-  border-radius: 999px; padding: 2px 9px; white-space: nowrap;
-}
 .def-slot {
   margin-top: 10px; padding: 10px 12px;
   border: 1px solid var(--border); border-radius: var(--radius-sm, 8px); background: var(--surface);
@@ -2015,4 +2010,3 @@ button.ghost:hover { background: var(--surface-2); color: var(--text); }
 }
 .chip:hover { border-color: var(--accent-dim); }
 .chip.on { background: var(--accent-soft); border-color: var(--accent-dim); color: var(--accent-strong); font-weight: 700; }
-.def-members { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }

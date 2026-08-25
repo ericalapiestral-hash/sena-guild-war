@@ -1,23 +1,21 @@
 import { useMemo, useState } from 'react'
 import type { DefenseSetup, Hero, LoadoutSlot } from '../types'
-import { getAllHeroes, newId, rosterNames, todayLocal, update, useUserData } from '../store'
+import { getAllHeroes, newId, todayLocal, update, useUserData } from '../store'
 import { HeroName, HeroPickerModal, SlotRow } from '../components/HeroSelect'
 import {
-  ACCESSORIES, ARMOR_OPTIONS, DEFENSE_ASSIGN_MAX, DEFENSE_STYLES,
+  ACCESSORIES, ARMOR_OPTIONS, DEFENSE_STYLES,
   GEAR_SETS, WAR_DECK_SIZE, WEAPON_OPTIONS,
 } from '../data/gear'
 
 /**
  * 길드전 방어 — 우리가 걸어 둘 3v3 방어덱과 그 세팅.
  *
- * 카운터덱(상대 방덱 → 우리 카운터)과 방향이 반대다. 여기 있는 건 '우리가 거는 덱'이라,
- * 누가 어느 덱을 걸지(담당)까지 같이 정해 둔다. 지금까지는 길드원 메모에 손으로 적어 왔다.
+ * 카운터덱(상대 방덱 → 우리 카운터)과 방향이 반대다. 여기 있는 건 '우리가 거는 덱'이다.
  */
 export function WarDefensePage() {
   const data = useUserData()
   const heroes = getAllHeroes()
   const heroMap = useMemo(() => new Map(heroes.map((h) => [h.id, h])), [heroes])
-  const roster = rosterNames(data.members)
   const [editing, setEditing] = useState<string | null>(null)
   const [open, setOpen] = useState<string | null>(null)
 
@@ -27,7 +25,7 @@ export function WarDefensePage() {
     const id = newId('def')
     update((d) => {
       d.defenseSetups.push({
-        id, name: '새 방어덱', heroes: [], assigned: [], updatedAt: todayLocal(),
+        id, name: '새 방어덱', heroes: [], updatedAt: todayLocal(),
       })
     })
     setEditing(id)
@@ -38,8 +36,7 @@ export function WarDefensePage() {
     <div>
       <h1>길드전 방어</h1>
       <p className="page-desc">
-        우리가 걸어 둘 <b>3v3 방어덱</b>과 세팅을 정리합니다. 덱마다 <b>누가 걸지</b>를 최대 {DEFENSE_ASSIGN_MAX}명까지 정해 둘 수 있어요.
-        추천도(★)가 높은 순으로 정렬됩니다.
+        우리가 걸어 둘 <b>3v3 방어덱</b>과 세팅을 정리합니다. 추천도(★)가 높은 순으로 정렬됩니다.
       </p>
 
       <div className="row" style={{ marginBottom: 12 }}>
@@ -58,7 +55,6 @@ export function WarDefensePage() {
           setup={s}
           heroes={heroes}
           heroMap={heroMap}
-          roster={roster}
           editing={editing === s.id}
           open={open === s.id}
           onToggle={() => setOpen(open === s.id ? null : s.id)}
@@ -76,12 +72,11 @@ const Stars = ({ n }: { n?: number }) => (
 )
 
 function DefenseCard({
-  setup, heroes, heroMap, roster, editing, open, onToggle, onEdit,
+  setup, heroes, heroMap, editing, open, onToggle, onEdit,
 }: {
   setup: DefenseSetup
   heroes: Hero[]
   heroMap: Map<string, Hero>
-  roster: string[]
   editing: boolean
   open: boolean
   onToggle: () => void
@@ -99,14 +94,6 @@ function DefenseCard({
   const slotPatch = (i: number, p: Partial<LoadoutSlot>) =>
     patch((s) => { if (s.heroes[i]) Object.assign(s.heroes[i], p) })
 
-  const toggleMember = (n: string) =>
-    patch((s) => {
-      const cur = s.assigned ?? []
-      s.assigned = cur.includes(n)
-        ? cur.filter((x) => x !== n)
-        : cur.length >= DEFENSE_ASSIGN_MAX ? cur : [...cur, n]
-    })
-
   return (
     <div className="card">
       <div className="row between" style={{ cursor: 'pointer' }} onClick={onToggle}>
@@ -116,9 +103,6 @@ function DefenseCard({
           {setup.style && <span className={`badge ${setup.style === '속공' ? 'alt' : 'tier'}`}>{setup.style}</span>}
           {names.length > 0 && (
             <span className="muted">{names.map((n) => <HeroName key={n} hero={heroMap.get(n)} name={n} />)}</span>
-          )}
-          {(setup.assigned ?? []).length > 0 && (
-            <span className="def-assign">담당 {setup.assigned!.join(', ')}</span>
           )}
         </div>
         <div className="row">
@@ -191,19 +175,6 @@ function DefenseCard({
               <Line label="부옵 우선순위" value={setup.subStats} onChange={(v) => patch((s) => { s.subStats = v })} placeholder="예: 막기 &gt; 생명 &gt; 방어" />
               <Line label="장신구 요약" value={setup.accessoryNote} onChange={(v) => patch((s) => { s.accessoryNote = v })} placeholder="예: 6부6권" />
               <Line label="기타" value={setup.notes} onChange={(v) => patch((s) => { s.notes = v })} placeholder="주의점·상성 등" />
-
-              <div className="cc-sec" style={{ marginTop: 12 }}>
-                담당 길드원 ({(setup.assigned ?? []).length}/{DEFENSE_ASSIGN_MAX})
-              </div>
-              <div className="def-members">
-                {roster.map((n) => {
-                  const on = (setup.assigned ?? []).includes(n)
-                  return (
-                    <button key={n} className={`small ${on ? 'primary' : ''}`} onClick={() => toggleMember(n)}>{n}</button>
-                  )
-                })}
-                {roster.length === 0 && <span className="muted">[길드원] 메뉴에 등록된 사람이 없어요.</span>}
-              </div>
             </>
           ) : (
             <DefenseView setup={setup} heroMap={heroMap} />

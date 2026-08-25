@@ -259,8 +259,6 @@ export interface DefenseSetup {
   accessoryNote?: string
   /** 기타 디테일 */
   notes?: string
-  /** 이 방덱을 거는 길드원 (최대 3) */
-  assigned?: string[]
   updatedAt: string
 }
 
