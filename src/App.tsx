@@ -11,6 +11,7 @@ import { GuidePage } from './pages/Guide'
 import { StatsPage } from './pages/Stats'
 import { MembersPage } from './pages/Members'
 import { SettingsPage } from './pages/Settings'
+import { WarDefensePage } from './pages/WarDefense'
 import { AdminLogin } from './pages/AdminLogin'
 import { ADMIN_ROUTES, isAdmin, logout } from './auth'
 
@@ -29,6 +30,10 @@ const MENU: MenuItem[] = [
   { route: 'arena', label: '결투장', icon: 'arena' },
   { route: 'heroes', label: '영웅 · 덱', icon: 'shield' },
   { route: 'guide', label: '가이드', icon: 'book' },
+  { route: 'warattack', label: '길드전 공격', icon: 'target', group: '길드전 세팅' },
+  { route: 'wardefense', label: '길드전 방어', icon: 'shield' },
+  { route: 'siegeguide', label: '공성전 공략', icon: 'siege' },
+  { route: 'raid', label: '원정대 배치', icon: 'destroyer' },
   { route: 'siege', label: '공성전', icon: 'siege', group: '길드 기록' },
   { route: 'destroyer', label: '파괴신', icon: 'destroyer' },
   { route: 'cutlines', label: '커트라인', icon: 'cutline' },
@@ -38,10 +43,10 @@ const MENU: MenuItem[] = [
 
 // 모바일 하단 탭은 5칸(4 + 더보기) — 자주 쓰는 대전 콘텐츠를 앞에 두고 나머지는 '더보기'로
 const PRIMARY = ['home', 'counters', 'arena', 'heroes']
-const SECONDARY = ['guide', 'siege', 'destroyer', 'cutlines']
+const SECONDARY = ['guide', 'warattack', 'wardefense', 'siegeguide', 'raid', 'siege', 'destroyer', 'cutlines']
 const ADMIN_ITEMS = MENU.filter((m) => m.admin)
 const fullLabel = (label: string) =>
-  ({ 데이터: '데이터 관리', 길드원: '길드원 관리', 공성전: '공성전 통계', 파괴신: '파괴신 통계', 커트라인: '커트라인 기준' } as Record<string, string>)[label] ?? label
+  ({ 데이터: '데이터 관리', 길드원: '길드원 관리', 공성전: '공성전 통계', 파괴신: '파괴신 통계', 커트라인: '커트라인 기준', '원정대 배치': '강림 원정대 배치' } as Record<string, string>)[label] ?? label
 const ROUTES = [...MENU.map((m) => m.route), 'admin']
 
 const Brand = () => (
@@ -379,6 +384,7 @@ export default function App() {
                 {base === 'siege' && <StatsPage kind="siege" />}
                 {base === 'destroyer' && <StatsPage kind="destroyer" />}
                 {base === 'cutlines' && <CutlinesPage />}
+                {base === 'wardefense' && <WarDefensePage />}
                 {base === 'members' && <MembersPage />}
                 {base === 'settings' && <SettingsPage />}
                 {base === 'admin' && admin && <AdminHome onLogout={doLogout} />}

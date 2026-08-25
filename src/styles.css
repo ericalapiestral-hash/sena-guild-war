@@ -1991,3 +1991,28 @@ button.ghost:hover { background: var(--surface-2); color: var(--text); }
     scroll-behavior: auto !important;
   }
 }
+
+/* ---- 길드전 방어 세팅 ---- */
+.def-label { font-weight: 600; font-size: 0.85rem; min-width: 92px; color: var(--text-2); }
+.def-stars { font-size: 0.85rem; color: var(--accent-strong); letter-spacing: -1px; }
+.def-assign {
+  font-size: 0.78rem; font-weight: 600; color: var(--accent-strong);
+  background: var(--accent-soft); border: 1px solid var(--accent-dim);
+  border-radius: 999px; padding: 2px 9px; white-space: nowrap;
+}
+.def-slot {
+  margin-top: 10px; padding: 10px 12px;
+  border: 1px solid var(--border); border-radius: var(--radius-sm, 8px); background: var(--surface);
+}
+.def-slot-head { font-weight: 700; margin-bottom: 6px; }
+.def-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 8px; }
+.def-pick { display: flex; flex-direction: column; gap: 4px; }
+.def-pick-l { font-size: 0.76rem; font-weight: 700; color: var(--text-3); }
+.def-pick-o { display: flex; flex-wrap: wrap; gap: 4px; }
+.chip {
+  font-size: 0.76rem; padding: 3px 9px; border-radius: 999px;
+  border: 1px solid var(--border); background: var(--surface-2); color: var(--text-2); cursor: pointer;
+}
+.chip:hover { border-color: var(--accent-dim); }
+.chip.on { background: var(--accent-soft); border-color: var(--accent-dim); color: var(--accent-strong); font-weight: 700; }
+.def-members { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }

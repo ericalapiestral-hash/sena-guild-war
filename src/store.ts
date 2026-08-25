@@ -23,6 +23,10 @@ const EMPTY: UserData = {
   hiddenArenaIds: [],
   siegeRounds: [],
   destroyerRounds: [],
+  defenseSetups: [],
+  attackTargets: [],
+  siegeGuides: [],
+  raidPlans: [],
 }
 
 const ARRAY_FIELDS = Object.keys(EMPTY) as (keyof UserData)[]

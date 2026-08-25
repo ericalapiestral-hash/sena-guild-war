@@ -212,6 +212,107 @@ export interface CutlineGuide {
   memo?: string
 }
 
+// ---- 길드전·공성전 세팅 (세나링크 허브 구조 참고, 2026-08-25) ----
+// 네 화면(길드전 공격·방어, 공성전 공략, 원정대 배치)이 '영웅 1인 세팅'을 공유한다.
+
+/** 영웅 1인의 장비 세팅 — 기존 CounterHeroSlot보다 항목이 잘게 나뉜다 */
+export interface LoadoutSlot {
+  /** 영웅 이름 (heroes.json과 매칭되면 유형 표시) */
+  name: string
+  /** 장비 세트 (GEAR_SETS) */
+  set?: string
+  /** 무기1 주옵 (WEAPON_OPTIONS) */
+  weapon1?: string
+  /** 방어구1 주옵 (ARMOR_OPTIONS) */
+  armor1?: string
+  /** 무기2 주옵 */
+  weapon2?: string
+  /** 방어구2 주옵 */
+  armor2?: string
+  /** 장신구 (ACCESSORIES) */
+  accessory?: string
+  /** 그 외 한 줄 (속공 수치·전용장비 등) */
+  stat?: string
+}
+
+/** 길드전 방어 세팅 (3v3) */
+export interface DefenseSetup {
+  id: string
+  /** 방어 덱 이름 */
+  name: string
+  /** 추천도 ★1~5 */
+  tier?: number
+  /** 속공 세팅 / 내실 세팅 */
+  style?: string
+  /** 최대 3인 */
+  heroes: LoadoutSlot[]
+  formation?: string
+  pet?: string
+  /** 스킬 예약 순서 */
+  skillOrder?: string
+  /** 속공 수치 조건 — 이상 ~ 이하 */
+  speedMin?: number
+  speedMax?: number
+  /** 부옵·장비 우선순위 요약 */
+  subStats?: string
+  /** 장신구 요약 */
+  accessoryNote?: string
+  /** 기타 디테일 */
+  notes?: string
+  /** 이 방덱을 거는 길드원 (최대 3) */
+  assigned?: string[]
+  updatedAt: string
+}
+
+/** 길드전 공격 — 상대 덱 하나와 그에 대한 우리 공략들 */
+export interface AttackDeck {
+  name?: string
+  heroes: LoadoutSlot[]
+  formation?: string
+  pet?: string
+  speedOrder?: string
+  skillOrder?: string
+  notes?: string
+}
+export interface AttackTarget {
+  id: string
+  /** 상대 덱 제목 */
+  name: string
+  /** 상대 3인 */
+  enemy: string[]
+  /** 특이사항 */
+  note?: string
+  /** 우리 공략 */
+  decks: AttackDeck[]
+  updatedAt: string
+}
+
+/** 공성전 요일 보스 공략 (5인) */
+export interface SiegeGuide {
+  id: string
+  /** 월~일 — 보스는 SIEGE_BOSSES에서 찾는다 */
+  day: string
+  name: string
+  heroes: LoadoutSlot[]
+  speedOrder?: string
+  skillOrder?: string
+  notes?: string
+  updatedAt: string
+}
+
+/** 강림 원정대 단계별 계획 — 배치와 공략을 같이 둔다 */
+export interface RaidPlan {
+  id: string
+  /** RAID_STAGES 중 하나 */
+  stage: string
+  /** 배치된 길드원 (최대 RAID_SLOTS) */
+  assigned: string[]
+  /** 이 단계 공략 */
+  decks: AttackDeck[]
+  memo?: string
+  updatedAt: string
+}
+
 export interface UserData {
   customHeroes: Hero[]
   /** 초기 데이터 위에 덮어쓰는 카운터 엔트리 (id 충돌 시 사용자 버전 우선) */
@@ -231,4 +332,12 @@ export interface UserData {
   destroyerRounds: StatRound[]
   /** 커트라인 기준표 */
   cutlineGuide?: CutlineGuide
+  /** 길드전 방어 세팅 */
+  defenseSetups: DefenseSetup[]
+  /** 길드전 공격 — 상대 덱별 공략 */
+  attackTargets: AttackTarget[]
+  /** 공성전 요일 보스 공략 */
+  siegeGuides: SiegeGuide[]
+  /** 강림 원정대 단계별 배치·공략 */
+  raidPlans: RaidPlan[]
 }

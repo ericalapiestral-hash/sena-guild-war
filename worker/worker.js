@@ -32,6 +32,16 @@ const ARRAY_FIELDS = [
   'customHeroes', 'counters', 'hiddenCounterIds', 'savedDecks',
   'members', 'customGuides', 'arenaEntries', 'hiddenArenaIds',
   'siegeRounds', 'destroyerRounds',
+  'defenseSetups', 'attackTargets', 'siegeGuides', 'raidPlans',
+]
+
+/**
+ * 나중에 생긴 필드들 — 이 필드를 모르는 구버전 빌드가 저장하면 통째로 사라진다.
+ * 브라우저가 옛 번들을 캐시하고 있으면 실제로 일어나므로, 요청에 없으면 직전 값을 이월한다.
+ * ★ 새 최상위 필드를 추가할 때마다 여기에도 넣을 것.
+ */
+const CARRY_OVER_FIELDS = [
+  'cutlineGuide', 'defenseSetups', 'attackTargets', 'siegeGuides', 'raidPlans',
 ]
 
 // 백업 시각 (isolate 메모리 — 재시작 시 초기화돼도 무해, 몇 번 더 백업될 뿐)
@@ -1121,12 +1131,16 @@ export default {
 
         const prevRaw = await env.GUILD_KV.get('guild-data')
 
-        // 구버전 클라이언트 보호 — cutlineGuide(커트라인 기준표)를 모르는 빌드가
-        // 저장해도 이미 적어 둔 기준표가 지워지지 않게 이월한다.
-        if (prevRaw && !('cutlineGuide' in data)) {
+        // 구버전 클라이언트 보호 — 요청에 없는 '나중에 생긴 필드'는 직전 값을 이월한다.
+        // 예전엔 cutlineGuide 하나만 막았는데, 필드가 늘 때마다 같은 사고가 나서 목록으로 뺐다.
+        if (prevRaw) {
           try {
             const prevData = JSON.parse(prevRaw)
-            if (prevData && prevData.cutlineGuide) data.cutlineGuide = prevData.cutlineGuide
+            if (prevData && typeof prevData === 'object' && !Array.isArray(prevData)) {
+              for (const k of CARRY_OVER_FIELDS) {
+                if (!(k in data) && k in prevData) data[k] = prevData[k]
+              }
+            }
           } catch { /* 이월 실패해도 저장은 진행 */ }
         }
 
