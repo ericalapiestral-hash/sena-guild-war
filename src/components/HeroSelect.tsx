@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import type { Grade, Hero, Position } from '../types'
 import { Modal } from './Modal'
+import { HeroPortrait } from './HeroPortrait'
 
 const POSITIONS: Position[] = ['공격형', '마법형', '방어형', '지원형', '만능형']
 const GRADES: Grade[] = ['전설', '희귀', '고급', '일반']
@@ -166,6 +167,7 @@ export function SlotRow({
         return (
           <div key={i} className="slot slot-filled">
             <button className="slot-main" onClick={() => onPick(i)} title="다른 영웅으로 바꾸기">
+              <HeroPortrait hero={heroMap.get(name)} name={name} size={40} />
               <HeroName hero={heroMap.get(name)} name={name} />
             </button>
             <button className="slot-x" onClick={() => onClear(i)} aria-label="빼기">✕</button>
@@ -255,6 +257,7 @@ export function HeroPickerModal({
               title={off ? '이미 이 덱에 있는 영웅이에요' : undefined}
               onClick={() => onPick(h.id)}
             >
+              <HeroPortrait hero={h} name={h.name} size={30} />
               <HeroName hero={h} name={h.name} />
               {h.grade === '전설' && <em className="pick-star">★</em>}
             </button>

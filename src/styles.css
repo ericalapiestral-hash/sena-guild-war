@@ -2010,3 +2010,19 @@ button.ghost:hover { background: var(--surface-2); color: var(--text); }
 }
 .chip:hover { border-color: var(--accent-dim); }
 .chip.on { background: var(--accent-soft); border-color: var(--accent-dim); color: var(--accent-strong); font-weight: 700; }
+
+/* ---- 영웅 초상화 ---- */
+.hero-portrait {
+  flex: 0 0 auto;
+  border-radius: 8px;
+  object-fit: cover;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+.hero-portrait.fallback {
+  display: inline-flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 0.9rem; color: var(--text-3);
+}
+/* 슬롯·선택 항목은 그림과 이름을 가로로 */
+.slot-main { display: flex; align-items: center; gap: 8px; }
+.pick-item { display: flex; align-items: center; gap: 7px; }
