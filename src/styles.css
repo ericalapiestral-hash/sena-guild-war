@@ -1934,6 +1934,16 @@ button.ghost:hover { background: var(--surface-2); color: var(--text); }
 .sp-facts b { font-size: 1.05rem; letter-spacing: -0.02em; }
 .sp-facts em { font-style: normal; font-size: 0.78rem; color: var(--text-3); font-weight: 600; }
 .sp-fail b { color: var(--danger); }
+/* 홈 요약표 · 인쇄표에서 이름 옆에 붙는 파이 초월 단계 — 이름을 가리지 않게 작고 흐리게 */
+.sp-tier {
+  margin-left: 5px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+.row-fail .sp-tier, .cell-fail .sp-tier { color: var(--danger); opacity: 0.75; }
+.print-tier { margin-left: 5px; font-size: 0.72rem; color: #666; white-space: nowrap; }
 
 /* 30명이 넘어도 홈이 길어지지 않게 표 안에서만 스크롤 */
 .sp-scroll { max-height: 268px; overflow-y: auto; border-top: 1px solid var(--border); }

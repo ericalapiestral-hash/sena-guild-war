@@ -432,7 +432,14 @@ function PrintContent({
     const c = cutFor(e.name)
     return typeof c === 'number' && typeof effValue(e) === 'number' && (effValue(e) as number) <= c
   }
-  const usedTiers = [...new Set(curRanked.map((e) => tierOf?.get(e.name)).filter((t): t is string => !!t && typeof tierCuts[t] === 'number'))].sort()
+  /** 인쇄용 등급 커트라인 — 화면과 같은 순서(회차 저장값 → 기준표) */
+  const tierCutOf = (t: string): number | undefined => {
+    const tc = tierCuts[t]
+    if (typeof tc === 'number') return tc
+    const gt = guide?.destroyerByTier?.[t]
+    return typeof gt === 'number' ? gt : undefined
+  }
+  const usedTiers = [...new Set(curRanked.map((e) => tierOf?.get(e.name)).filter((t): t is string => !!t && typeof tierCutOf(t) === 'number'))].sort()
   return (
     <div className="print-root">
       <div className="print-head">
@@ -445,17 +452,20 @@ function PrintContent({
           {curRanked.length}명 · 합계 {fmt(curTotal)}
           {prevRound && <> · 전 시즌: {prevRound.label}</>}
           {(usedTiers.length > 0 || typeof current.cutline === 'number') && (
-            <> · 커트라인 {usedTiers.map((t) => `${t} ${fmt(tierCuts[t])}`).join(' / ')}
+            <> · 커트라인 {usedTiers.map((t) => `${t} ${fmt(tierCutOf(t))}`).join(' / ')}
               {typeof current.cutline === 'number' && `${usedTiers.length ? ' / ' : ''}${usedTiers.length ? '기본 ' : ''}${fmt(current.cutline)}`} 이하 미달</>
           )}
         </div>
         <table className="print-table">
-          <thead><tr><th>순위</th><th>길드원</th>{usedTiers.length > 0 && <th>등급</th>}<th>전 시즌</th>{hasMid && <th>중간집계</th>}<th>이번 시즌 집계</th><th>전 시즌 대비</th>{hasMid && <th>중간집계 대비</th>}</tr></thead>
+          <thead><tr><th>순위</th><th>길드원</th><th>전 시즌</th>{hasMid && <th>중간집계</th>}<th>이번 시즌 집계</th><th>전 시즌 대비</th>{hasMid && <th>중간집계 대비</th>}</tr></thead>
           <tbody>
             {curRanked.map((e, i) => (
               <tr key={e.name}>
-                <td>{i + 1}</td><td className={isFail(e) ? 'cell-fail' : ''}>{e.name}</td>
-                {usedTiers.length > 0 && <td style={{ textAlign: 'left' }}>{tierOf?.get(e.name) ?? '-'}</td>}
+                <td>{i + 1}</td>
+                <td className={isFail(e) ? 'cell-fail' : ''}>
+                  {e.name}
+                  {tierOf?.get(e.name) && <span className="print-tier">{tierOf.get(e.name)}</span>}
+                </td>
                 <td className="num-tab">{fmt(prevMap.get(e.name))}</td>
                 {hasMid && <td className="num-tab">{fmt(e.mid)}</td>}
                 <td className="num-tab">{fmt(e.value)}</td>

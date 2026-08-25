@@ -109,7 +109,7 @@ function PreviewTable({
   title: string
   subtitle?: string
   metric: string
-  rows: Array<{ name: string; value?: number; prev?: number; fail: boolean }>
+  rows: Array<{ name: string; tier?: string; value?: number; prev?: number; fail: boolean }>
   empty: string
 }) {
   const scored = rows.filter((r) => typeof r.value === 'number')
@@ -150,7 +150,10 @@ function PreviewTable({
                 {rows.map((r, i) => (
                   <tr key={r.name} className={r.fail ? 'row-fail' : ''}>
                     <td><b>{typeof r.value === 'number' ? i + 1 : '-'}</b></td>
-                    <td className={r.fail ? 'cell-fail' : ''}>{r.name}</td>
+                    <td className={r.fail ? 'cell-fail' : ''}>
+                      {r.name}
+                      {r.tier && <span className="sp-tier">{r.tier}</span>}
+                    </td>
                     <td style={{ textAlign: 'right' }} className="num-tab"><b>{fmt(r.value)}</b></td>
                     <td><Delta prev={r.prev} cur={r.value} /></td>
                   </tr>
@@ -219,7 +222,7 @@ function DestroyerPreview({ rounds, members, guide }: { rounds: StatRound[]; mem
     .sort((a, b) => (b.v as number) - (a.v as number))
     .map(({ e, v }) => {
       const cut = round ? cutlineFor(round, e.name, { tierOf, guide }) : undefined
-      return { name: e.name, value: v, prev: prevValues.get(e.name), fail: typeof cut === 'number' && (v as number) <= cut }
+      return { name: e.name, tier: tierOf.get(e.name), value: v, prev: prevValues.get(e.name), fail: typeof cut === 'number' && (v as number) <= cut }
     })
 
   const midOnly = !!round?.entries.length && round.entries.every((e) => typeof e.value !== 'number')
