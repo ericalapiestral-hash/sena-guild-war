@@ -6,7 +6,7 @@ import { activeMembers, excludedMembers, newId, rosterNames, todayLocal, update,
 import { isAdmin } from '../auth'
 import { Markdown } from '../components/Markdown'
 import { DESTROYER_GUIDES } from '../data/destroyerGuide'
-import { Delta, WEEKDAYS, fmt, todayWeekday } from '../lib/stat'
+import { Delta, WEEKDAYS, fmt, tierShort, todayWeekday } from '../lib/stat'
 import { ScoreImport } from '../components/ScoreImport'
 
 type Kind = 'siege' | 'destroyer'
@@ -464,7 +464,7 @@ function PrintContent({
                 <td>{i + 1}</td>
                 <td className={isFail(e) ? 'cell-fail' : ''}>
                   {e.name}
-                  {tierOf?.get(e.name) && <span className="print-tier">{tierOf.get(e.name)}</span>}
+                  {tierOf?.get(e.name) && <span className="print-tier">{tierShort(tierOf.get(e.name))}</span>}
                 </td>
                 <td className="num-tab">{fmt(prevMap.get(e.name))}</td>
                 {hasMid && <td className="num-tab">{fmt(e.mid)}</td>}
@@ -772,7 +772,7 @@ function EntryTable({
                 <td><b>{rankOf(e) ?? '-'}</b></td>
                 <td className={isFail(e) ? 'cell-fail' : ''}>
                   <b>{e.name}</b>
-                  {tierOf?.get(e.name) && <span className="muted" style={{ marginLeft: 4, fontSize: '0.72rem' }}>{tierOf.get(e.name)}</span>}
+                  {tierOf?.get(e.name) && <span className="muted" style={{ marginLeft: 4, fontSize: '0.72rem' }}>{tierShort(tierOf.get(e.name))}</span>}
                   {!rosterSet.has(e.name) && <span className="muted" style={{ marginLeft: 4, fontSize: '0.75rem' }}>(외부)</span>}
                 </td>
                 {showMid && <td style={{ textAlign: 'right' }} className="num-tab muted">{fmt(prevValues.get(e.name))}</td>}

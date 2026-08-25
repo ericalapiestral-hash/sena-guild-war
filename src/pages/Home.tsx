@@ -3,7 +3,7 @@ import type { CutlineGuide, StatEntry, StatRound } from '../types'
 import { counterHeroNames, getAllArena, getAllCounters, getAllHeroes, useUserData } from '../store'
 import { navigate } from '../router'
 import { DeckNames } from '../components/HeroSelect'
-import { Delta, cutlineFor, effOf, fmt, lastFilled, latestDayWithData, tierMap } from '../lib/stat'
+import { Delta, cutlineFor, effOf, fmt, lastFilled, latestDayWithData, tierMap, tierShort } from '../lib/stat'
 
 const LINKS: Array<{ route: string; label: string; desc: string }> = [
   { route: 'counters', label: '카운터덱', desc: '상대 방덱을 뚫는 조합 찾기' },
@@ -152,7 +152,7 @@ function PreviewTable({
                     <td><b>{typeof r.value === 'number' ? i + 1 : '-'}</b></td>
                     <td className={r.fail ? 'cell-fail' : ''}>
                       {r.name}
-                      {r.tier && <span className="sp-tier">{r.tier}</span>}
+                      {r.tier && <span className="sp-tier">{tierShort(r.tier)}</span>}
                     </td>
                     <td style={{ textAlign: 'right' }} className="num-tab"><b>{fmt(r.value)}</b></td>
                     <td><Delta prev={r.prev} cur={r.value} /></td>

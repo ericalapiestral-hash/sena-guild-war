@@ -85,6 +85,18 @@ export function latestDayWithData(round?: StatRound): string | undefined {
   return undefined
 }
 
+/**
+ * 표에서 이름 옆에 붙일 짧은 등급 표기 — '파이 11초' → '11초'.
+ *
+ * ★ 표시용으로만 쓴다. 저장값(Member.tier)과 커트라인 기준표(destroyerByTier)의
+ *   키는 '파이 …' 그대로여야 한다. 여기서 자른 문자열로 기준표를 찾으면 안 된다.
+ *   '파이'로 시작하지 않는 값은 건드리지 않고 그대로 둔다.
+ */
+export const tierShort = (t?: string): string => {
+  const s = (t ?? '').trim()
+  return s.startsWith('파이') ? s.slice(2).trim() : s
+}
+
 /** 길드원 이름 → 등급 (파괴신 등급별 커트라인용) */
 export const tierMap = (members: Member[]): Map<string, string> =>
   new Map(members.filter((m) => m.tier).map((m) => [m.name, m.tier as string]))
