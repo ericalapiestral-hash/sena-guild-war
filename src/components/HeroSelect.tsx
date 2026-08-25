@@ -257,11 +257,8 @@ export function HeroPickerModal({
               title={off ? '이미 이 덱에 있는 영웅이에요' : undefined}
               onClick={() => onPick(h.id)}
             >
-              <span className="pick-face">
-                <HeroPortrait hero={h} name={h.name} size={72} />
-                {h.grade === '전설' && <em className="pick-star" title="전설">★</em>}
-                <i className={`pos-dot ${h.position ? `pos-${h.position}` : 'pos-none'}`} title={h.position ?? '유형 미상'} />
-              </span>
+              {/* 카드 자체가 등급·역할·별을 다 담고 있어 따로 배지를 얹지 않는다 */}
+              <HeroPortrait hero={h} name={h.name} size={78} />
               <span className="pick-name">{h.name}</span>
             </button>
           )

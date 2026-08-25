@@ -1472,19 +1472,7 @@ button.ghost:hover { background: var(--surface-2); color: var(--text); }
   font-weight: 600;
   font-size: 0.8rem;
 }
-/* 초상화 + 그 위에 얹는 등급별·유형 표시 */
-.pick-face { position: relative; display: block; line-height: 0; }
-.pick-face .hero-portrait { width: 100%; height: auto; aspect-ratio: 1; border-radius: 10px; }
-.pick-star {
-  position: absolute; top: -3px; right: -3px;
-  font-style: normal; color: #fff; font-size: 0.62rem; line-height: 1;
-  background: var(--accent); border-radius: 999px; padding: 3px 4px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
-}
-.pick-face .pos-dot {
-  position: absolute; bottom: 3px; left: 3px;
-  box-shadow: 0 0 0 2px var(--surface);
-}
+.pick-item .hero-card { width: 100%; }
 /* 아주 긴 영웅 이름이 칸을 밀어내지 않게 — 두 줄까지 보여주고 자른다 */
 .pick-name {
   width: 100%; line-height: 1.25; word-break: keep-all;
@@ -2043,3 +2031,19 @@ button.ghost:hover { background: var(--surface-2); color: var(--text); }
 }
 /* 슬롯은 그림과 이름을 가로로 (선택 모달 타일은 위쪽 .pick-item 규칙이 담당) */
 .slot-main { display: flex; align-items: center; gap: 8px; }
+
+/* ---- 영웅 카드 (게임 카드와 같은 5겹 구성) ----
+   겹치는 위치는 실제 게임 UI 비율 그대로. 카드 세로 = 가로 × 1.242 */
+.hero-card {
+  position: relative;
+  display: block;
+  flex: 0 0 auto;
+  aspect-ratio: 62 / 77;
+  line-height: 0;
+}
+.hero-card img { position: absolute; display: block; }
+.hc-bg   { left: 0;     top: 0;     width: 100%;   height: 100%; }
+.hc-art  { left: 4.7%;  top: 3.7%;  width: 90.5%;  height: 72.7%; object-fit: cover; }
+.hc-badge{ left: 25%;   top: 0;     width: 75%;    height: 53.1%; }
+.hc-role { left: 5%;    top: 45.4%; width: 22%;    height: 17.6%; z-index: 3; }
+.hc-star { left: 5.3%;  top: 58.5%; width: 89.4%;  height: 15%;   z-index: 3; }

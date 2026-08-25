@@ -18,6 +18,12 @@ export interface Hero {
    * 이름과 종류만 담는다(설명·수치는 안 넣는다). 게임 화면에서 보이는 순서 그대로.
    */
   skills?: HeroSkill[]
+  /** 별 등급 — 각성 가능 영웅이 7성, 나머지 6성 */
+  star?: number
+  /** 카드 등급 배경 번호 ('03' 일반 / '04' 그 외) */
+  cardBg?: string
+  /** 특수 배지 번호 ('01' 스페셜 / '03' 구 세븐나이츠). 없으면 배지 없음 */
+  cardBadge?: string
   /** 사용자가 직접 추가한 영웅 여부 */
   custom?: boolean
 }
