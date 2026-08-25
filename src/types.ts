@@ -13,8 +13,19 @@ export interface Hero {
   pvpRelevant?: boolean | null
   /** 소속 그룹·특이사항 (세븐나이츠/사황/펜타곤/각성 형태 등) */
   tags?: string[]
+  /**
+   * 스킬 이름 목록 — 스킬 예약 순서를 고를 때 쓴다.
+   * 이름과 종류만 담는다(설명·수치는 안 넣는다). 게임 화면에서 보이는 순서 그대로.
+   */
+  skills?: HeroSkill[]
   /** 사용자가 직접 추가한 영웅 여부 */
   custom?: boolean
+}
+
+export interface HeroSkill {
+  name: string
+  /** 기본 | 액티브 | 패시브 | 각성 */
+  type: string
 }
 
 /** 길드전 파티는 3인. 영웅 id 배열 (작성 중엔 미만 허용) */
