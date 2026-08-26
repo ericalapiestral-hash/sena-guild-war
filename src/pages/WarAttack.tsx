@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react'
 import type { AttackDeck, AttackTarget, Hero, LoadoutSlot } from '../types'
 import { getAllHeroes, newId, todayLocal, update, useUserData } from '../store'
 import { HeroName, HeroPickerModal, SlotRow } from '../components/HeroSelect'
-import { HeroPortrait } from '../components/HeroPortrait'
 import { Line, LoadoutEditor, LoadoutView, ReserveView, SkillReserve } from '../components/Loadout'
 import { WAR_DECK_SIZE } from '../data/gear'
 
@@ -58,7 +57,7 @@ export function WarAttackPage() {
                 <span className="atk-faces">
                   {t.enemy.length === 0
                     ? <em className="muted">영웅 없음</em>
-                    : t.enemy.map((n) => <HeroPortrait key={n} hero={heroMap.get(n)} name={n} size={34} />)}
+                    : t.enemy.map((n) => <HeroName key={n} hero={heroMap.get(n)} name={n} />)}
                 </span>
                 <em className="muted">공략 {t.decks.length}개</em>
               </button>
@@ -140,8 +139,8 @@ function TargetPanel({ target, heroes, heroMap, onDeleted }: {
               ? <span className="muted">상대 영웅이 아직 없어요. [상대 덱 편집]에서 채워 주세요.</span>
               : target.enemy.map((n) => (
                 <span className="atk-enemy" key={n}>
-                  <HeroPortrait hero={heroMap.get(n)} name={n} size={52} />
-                  <em>{heroMap.get(n)?.name ?? n}</em>
+                  <i className={`pos-dot ${heroMap.get(n)?.position ? `pos-${heroMap.get(n)!.position}` : 'pos-none'}`} />
+                  {heroMap.get(n)?.name ?? n}
                 </span>
               ))}
           </div>

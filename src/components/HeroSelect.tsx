@@ -1,7 +1,8 @@
 import { useMemo, useRef, useState } from 'react'
 import type { Grade, Hero, Position } from '../types'
 import { Modal } from './Modal'
-import { HeroPortrait } from './HeroPortrait'
+// 영웅 카드(HeroPortrait)는 잠시 빼 두었다 — 글자 위주로 크게 보는 쪽이 읽기 편한지
+// 먼저 보기로 해서. 컴포넌트와 이미지는 그대로 있으니 되돌리기 쉽다.
 
 const POSITIONS: Position[] = ['공격형', '마법형', '방어형', '지원형', '만능형']
 const GRADES: Grade[] = ['전설', '희귀', '고급', '일반']
@@ -167,7 +168,6 @@ export function SlotRow({
         return (
           <div key={i} className="slot slot-filled">
             <button className="slot-main" onClick={() => onPick(i)} title="다른 영웅으로 바꾸기">
-              <HeroPortrait hero={heroMap.get(name)} name={name} size={40} />
               <HeroName hero={heroMap.get(name)} name={name} />
             </button>
             <button className="slot-x" onClick={() => onClear(i)} aria-label="빼기">✕</button>
@@ -257,8 +257,7 @@ export function HeroPickerModal({
               title={off ? '이미 이 덱에 있는 영웅이에요' : undefined}
               onClick={() => onPick(h.id)}
             >
-              {/* 카드 자체가 등급·역할·별을 다 담고 있어 따로 배지를 얹지 않는다 */}
-              <HeroPortrait hero={h} name={h.name} size={78} />
+              <i className={`pos-dot ${h.position ? `pos-${h.position}` : 'pos-none'}`} title={h.position ?? '유형 미상'} />
               <span className="pick-name">{h.name}</span>
             </button>
           )
