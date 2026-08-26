@@ -252,6 +252,20 @@ export interface LoadoutSlot {
   stat?: string
 }
 
+/**
+ * 스킬 예약 한 칸 — 어느 영웅의 어느 스킬을 몇 번째로 쓸지.
+ * 영웅 데이터에 스킬 이름이 있어서 자유 입력 대신 골라 담는다.
+ */
+export interface SkillPick {
+  /** 영웅 id */
+  hero: string
+  /** 스킬 이름 */
+  skill: string
+}
+
+/** 스킬 예약 최대 칸 수 (게임 제한) */
+export const SKILL_RESERVE_MAX = 3
+
 /** 길드전 방어 세팅 (3v3) */
 export interface DefenseSetup {
   id: string
@@ -265,8 +279,8 @@ export interface DefenseSetup {
   heroes: LoadoutSlot[]
   formation?: string
   pet?: string
-  /** 스킬 예약 순서 */
-  skillOrder?: string
+  /** 스킬 예약 — 순서대로 최대 3칸 */
+  reserve?: SkillPick[]
   /** 속공 수치 조건 — 이상 ~ 이하 */
   speedMin?: number
   speedMax?: number
@@ -279,22 +293,34 @@ export interface DefenseSetup {
   updatedAt: string
 }
 
-/** 길드전 공격 — 상대 덱 하나와 그에 대한 우리 공략들 */
+/** 길드전 공격 — 상대 덱 하나를 뚫는 우리 공략 한 벌 */
 export interface AttackDeck {
+  id: string
+  /** 공략 이름 (예: 여포덱) */
   name?: string
+  /** 우리 3인 */
   heroes: LoadoutSlot[]
   formation?: string
   pet?: string
-  speedOrder?: string
-  skillOrder?: string
+  /** 스킬 예약 — 순서대로 최대 3칸 */
+  reserve?: SkillPick[]
+  /** 속공 수치 조건 */
+  speedMin?: number
+  speedMax?: number
+  /** 공략 포인트 */
   notes?: string
 }
+
+/** 길드전 공격 — 상대 덱 하나와 그에 대한 우리 공략들 */
 export interface AttackTarget {
   id: string
   /** 상대 덱 제목 */
   name: string
-  /** 상대 3인 */
+  /** 상대 3인 (영웅 id) */
   enemy: string[]
+  /** 상대 진형·펫 — 덱 카드에서 지정 */
+  enemyFormation?: string
+  enemyPet?: string
   /** 특이사항 */
   note?: string
   /** 우리 공략 */

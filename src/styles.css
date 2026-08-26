@@ -2054,3 +2054,40 @@ button.ghost:hover { background: var(--surface-2); color: var(--text); }
 .hc-badge{ left: 25%;   top: 0;     width: 75%;    height: 53.1%; }
 .hc-role { left: 5%;    top: 45.4%; width: 22%;    height: 17.6%; z-index: 3; }
 .hc-star { left: 5.3%;  top: 58.5%; width: 89.4%;  height: 15%;   z-index: 3; }
+
+/* ---- 길드전 공격 ---- */
+.atk-layout { display: grid; grid-template-columns: minmax(200px, 260px) 1fr; gap: 12px; align-items: start; }
+@media (max-width: 720px) { .atk-layout { grid-template-columns: 1fr; } }
+.atk-list { display: flex; flex-direction: column; gap: 6px; }
+.atk-target {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 5px;
+  padding: 9px 11px; text-align: left; width: 100%;
+  border: 1px solid var(--border); border-radius: var(--radius-sm, 8px);
+  background: var(--surface); cursor: pointer;
+}
+.atk-target:hover { border-color: var(--accent-dim); }
+.atk-target.on { border-color: var(--accent); background: var(--accent-soft); }
+.atk-target-name { font-weight: 700; font-size: 0.92rem; }
+.atk-faces { display: flex; gap: 3px; }
+.atk-enemy { display: flex; flex-direction: column; align-items: center; gap: 3px; width: 52px; }
+.atk-enemy em { font-style: normal; font-size: 0.72rem; color: var(--text-2); text-align: center; word-break: keep-all; line-height: 1.2; }
+.atk-note {
+  margin: 8px 0 0; padding: 7px 11px; font-size: 0.84rem; color: var(--text-2);
+  background: var(--surface-2); border: 1px solid var(--border-2); border-radius: var(--radius-sm, 8px);
+  word-break: keep-all;
+}
+.atk-deck {
+  margin-top: 8px; padding: 10px 12px;
+  border: 1px solid var(--border); border-radius: var(--radius-sm, 8px); background: var(--surface);
+}
+
+/* ---- 스킬 예약 ---- */
+.reserve { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.reserve-row { gap: 6px; width: 100%; }
+.reserve-n {
+  flex: 0 0 auto; width: 20px; height: 20px; border-radius: 999px;
+  background: var(--accent-soft); color: var(--accent-strong);
+  font-size: 0.72rem; font-weight: 800;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.reserve-view { display: inline-flex; flex-wrap: wrap; gap: 4px; align-items: baseline; font-size: 0.88rem; }
