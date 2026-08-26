@@ -51,5 +51,11 @@ export const WAR_DECK_SIZE = 3
 /** 공성전 편성 인원 */
 export const SIEGE_DECK_SIZE = 5
 
+/**
+ * 턴 타임라인에서 고를 수 있는 턴.
+ * 스킬 쿨이 4턴이라 0·4·8…68 로 끊어 쓴다 (전 턴을 다 늘어놓으면 고르기만 힘들다).
+ */
+export const SIEGE_TURNS = Array.from({ length: 18 }, (_, i) => i * 4)
+
 /** 방어 세팅 타입 */
 export const DEFENSE_STYLES = ['속공', '내실'] as const

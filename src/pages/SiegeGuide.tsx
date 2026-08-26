@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import type { Hero, LoadoutSlot, SiegeGuide } from '../types'
 import { getAllHeroes, newId, todayLocal, update, useUserData } from '../store'
 import { HeroName, HeroPickerModal, SlotRow } from '../components/HeroSelect'
-import { Line, LoadoutEditor, LoadoutView, ReserveView, SkillReserve } from '../components/Loadout'
+import { Line, LoadoutEditor, LoadoutView, SkillTimeline, TimelineView } from '../components/Loadout'
 import { SIEGE_BOSSES, SIEGE_DECK_SIZE, bossOf } from '../data/gear'
 import { todayWeekday } from '../lib/stat'
 
@@ -144,7 +144,7 @@ function GuideCard({ guide, heroes, heroMap, open, onToggle }: {
                 onClear={(i) => patch((g) => {
                   const gone = g.heroes[i]?.name
                   g.heroes.splice(i, 1)
-                  if (gone) g.reserve = (g.reserve ?? []).filter((r) => r.hero !== gone)
+                  if (gone) g.timeline = (g.timeline ?? []).filter((s) => s.hero !== gone)
                 })}
               />
 
@@ -152,12 +152,12 @@ function GuideCard({ guide, heroes, heroMap, open, onToggle }: {
                 <LoadoutEditor key={i} slot={h} hero={heroMap.get(h.name)} onChange={(p) => slotPatch(i, p)} />
               ))}
 
-              <div className="cc-sec" style={{ marginTop: 12 }}>스킬 예약</div>
-              <SkillReserve
+              <div className="cc-sec" style={{ marginTop: 12 }}>스킬 시전 순서</div>
+              <SkillTimeline
                 slots={guide.heroes}
                 heroMap={heroMap}
-                reserve={guide.reserve}
-                onChange={(r) => patch((g) => { g.reserve = r })}
+                timeline={guide.timeline}
+                onChange={(t) => patch((g) => { g.timeline = t })}
               />
 
               <Line label="속공 순서" value={guide.speedOrder} onChange={(v) => patch((g) => { g.speedOrder = v })} placeholder="예: 미호 > 나타 > 리나" />
@@ -167,10 +167,10 @@ function GuideCard({ guide, heroes, heroMap, open, onToggle }: {
             <>
               {guide.heroes.length === 0 && <p className="muted">영웅이 아직 없어요. [편집]에서 채워 주세요.</p>}
               {guide.heroes.map((h, i) => <LoadoutView key={i} slot={h} hero={heroMap.get(h.name)} />)}
-              {(guide.reserve ?? []).some((r) => r.skill) && (
-                <div className="row" style={{ marginTop: 8 }}>
-                  <span className="def-label">스킬 예약</span>
-                  <ReserveView reserve={guide.reserve} heroMap={heroMap} />
+              {(guide.timeline ?? []).some((s) => s.skill) && (
+                <div style={{ marginTop: 10 }}>
+                  <span className="def-label">스킬 시전 순서</span>
+                  <TimelineView timeline={guide.timeline} heroMap={heroMap} />
                 </div>
               )}
               {rows.filter(([, v]) => v && String(v).trim()).map(([k, v]) => (

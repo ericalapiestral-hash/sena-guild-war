@@ -266,6 +266,22 @@ export interface SkillPick {
 /** 스킬 예약 최대 칸 수 (게임 제한) */
 export const SKILL_RESERVE_MAX = 3
 
+/**
+ * 턴 타임라인 한 단계 — 몇 턴에 누가 무슨 스킬을 쓰는지.
+ *
+ * 공성전·원정대처럼 보스를 상대로 순서를 맞추는 곳에서 쓴다. 길드전(PvP)은
+ * 몇 턴에 끝날지 모르니 순서만 예약(SkillPick)하고, 여기는 턴을 못 박는다.
+ */
+export interface TimelineStep {
+  /** 턴 (SIEGE_TURNS 중 하나) */
+  turn: number
+  /** 영웅 id */
+  hero: string
+  /** 스킬 이름 */
+  skill: string
+  memo?: string
+}
+
 /** 길드전 방어 세팅 (3v3) */
 export interface DefenseSetup {
   id: string
@@ -302,8 +318,10 @@ export interface AttackDeck {
   heroes: LoadoutSlot[]
   formation?: string
   pet?: string
-  /** 스킬 예약 — 순서대로 최대 3칸 */
+  /** 스킬 예약 — 순서대로 최대 3칸 (길드전용) */
   reserve?: SkillPick[]
+  /** 턴 타임라인 (공성전·원정대처럼 보스를 상대할 때) */
+  timeline?: TimelineStep[]
   /** 속공 수치 조건 */
   speedMin?: number
   speedMax?: number
@@ -335,8 +353,8 @@ export interface SiegeGuide {
   day: string
   name: string
   heroes: LoadoutSlot[]
-  /** 스킬 예약 — 순서대로 최대 3칸 */
-  reserve?: SkillPick[]
+  /** 턴 타임라인 — 몇 턴에 누가 뭘 쓰는지 */
+  timeline?: TimelineStep[]
   /** 속공 순서 (자유 입력 — 순위만 적는 경우가 많다) */
   speedOrder?: string
   notes?: string

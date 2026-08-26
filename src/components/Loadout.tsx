@@ -1,7 +1,7 @@
-import type { Hero, LoadoutSlot, SkillPick } from '../types'
+import type { Hero, LoadoutSlot, SkillPick, TimelineStep } from '../types'
 import { SKILL_RESERVE_MAX } from '../types'
 import { HeroName } from './HeroSelect'
-import { ACCESSORIES, ARMOR_OPTIONS, GEAR_SETS, WEAPON_OPTIONS } from '../data/gear'
+import { ACCESSORIES, ARMOR_OPTIONS, GEAR_SETS, SIEGE_TURNS, WEAPON_OPTIONS } from '../data/gear'
 
 /**
  * 길드전 방어·공격이 같이 쓰는 입력 부품들.
@@ -145,5 +145,86 @@ export function ReserveView({ reserve, heroMap }: { reserve?: SkillPick[]; heroM
         </span>
       ))}
     </span>
+  )
+}
+
+/**
+ * 턴 타임라인 — 몇 턴에 누가 무슨 스킬을 쓰는지.
+ *
+ * 보스를 상대하는 공성전·원정대용. 길드전(PvP)은 몇 턴에 끝날지 몰라 순서만
+ * 예약하지만, 보스전은 턴이 정해져 있어 '0턴 미호 → 4턴 나타' 식으로 못 박는다.
+ * 턴은 4턴 간격(0·4·8…68)만 고른다 — 스킬 쿨이 4턴이라 그 사이 턴은 쓸 일이 없다.
+ */
+export function SkillTimeline({ slots, heroMap, timeline, onChange }: {
+  slots: LoadoutSlot[]
+  heroMap: Map<string, Hero>
+  timeline?: TimelineStep[]
+  onChange: (t: TimelineStep[]) => void
+}) {
+  const list = timeline ?? []
+  const set = (i: number, p: Partial<TimelineStep>) =>
+    onChange(list.map((x, j) => (j === i ? { ...x, ...p } : x)))
+  const add = () => {
+    const first = slots[0]
+    if (!first) return
+    // 마지막 단계 다음 턴을 기본값으로 — 보통 순서대로 쌓는다
+    const last = list[list.length - 1]
+    const next = last ? SIEGE_TURNS.find((t) => t > last.turn) ?? last.turn : SIEGE_TURNS[0]
+    onChange([...list, { turn: next, hero: first.name, skill: '' }])
+  }
+
+  if (slots.length === 0) {
+    return <p className="muted" style={{ margin: '8px 0 0' }}>영웅을 먼저 배치하면 스킬을 고를 수 있어요.</p>
+  }
+
+  // 턴 순서대로 보여 준다 — 입력 순서와 실제 순서가 달라도 헷갈리지 않게
+  const order = list.map((s, i) => ({ s, i })).sort((a, b) => a.s.turn - b.s.turn)
+
+  return (
+    <div className="timeline">
+      {order.map(({ s, i }) => {
+        const hero = heroMap.get(s.hero)
+        return (
+          <div className="timeline-row" key={i}>
+            <select className="tl-turn" value={s.turn} onChange={(e) => set(i, { turn: Number(e.target.value) })}>
+              {SIEGE_TURNS.map((t) => <option key={t} value={t}>{t}턴</option>)}
+            </select>
+            <select value={s.hero} onChange={(e) => set(i, { hero: e.target.value, skill: '' })}>
+              {slots.map((x) => (
+                <option key={x.name} value={x.name}>{heroMap.get(x.name)?.name ?? x.name}</option>
+              ))}
+            </select>
+            <select value={s.skill} onChange={(e) => set(i, { skill: e.target.value })} style={{ minWidth: 130 }}>
+              <option value="">— 스킬 —</option>
+              {(hero?.skills ?? []).map((k) => (
+                <option key={k.name} value={k.name}>{k.name} ({k.type})</option>
+              ))}
+            </select>
+            <input placeholder="메모 (선택)" value={s.memo ?? ''}
+              onChange={(e) => set(i, { memo: e.target.value || undefined })} style={{ flex: 1, minWidth: 100 }} />
+            <button className="small danger" onClick={() => onChange(list.filter((_, j) => j !== i))}>✕</button>
+          </div>
+        )
+      })}
+      <button className="small" onClick={add}>＋ 타임라인 단계 추가 ({list.length}단계)</button>
+    </div>
+  )
+}
+
+/** 보기 상태의 타임라인 */
+export function TimelineView({ timeline, heroMap }: { timeline?: TimelineStep[]; heroMap: Map<string, Hero> }) {
+  const list = (timeline ?? []).filter((s) => s.skill).sort((a, b) => a.turn - b.turn)
+  if (!list.length) return null
+  return (
+    <div className="timeline-view">
+      {list.map((s, i) => (
+        <div className="tl-item" key={i}>
+          <em className="tl-badge">{s.turn}턴</em>
+          <b>{heroMap.get(s.hero)?.name ?? s.hero}</b>
+          <span>{s.skill}</span>
+          {s.memo && <span className="muted">— {s.memo}</span>}
+        </div>
+      ))}
+    </div>
   )
 }

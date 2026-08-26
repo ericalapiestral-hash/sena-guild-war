@@ -2173,3 +2173,17 @@ button.ghost:hover { background: var(--surface-2); color: var(--text); }
 /* 다른 단계에 이미 들어간 사람 — 한 명이 두 곳을 못 뛰니 미리 표시 */
 .raid-member.taken { opacity: 0.55; }
 .raid-member em { font-style: normal; font-size: 0.72rem; margin-left: 4px; color: var(--text-3); }
+
+/* ---- 턴 타임라인 (공성전·원정대) ---- */
+.timeline { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.timeline-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; width: 100%; }
+.timeline-row select { font-size: 0.95rem; padding: 7px 9px; }
+.tl-turn { font-weight: 800; color: var(--accent-strong); }
+.timeline-view { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+.tl-item { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; font-size: 0.95rem; }
+.tl-badge {
+  flex: 0 0 auto; font-style: normal; font-size: 0.76rem; font-weight: 800;
+  color: var(--accent-strong); background: var(--accent-soft);
+  border: 1px solid var(--accent-dim); border-radius: 999px; padding: 1px 8px;
+}
+@media (max-width: 560px) { .timeline-row input { width: 100%; } }
