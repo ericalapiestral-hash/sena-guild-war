@@ -13,6 +13,8 @@ import { MembersPage } from './pages/Members'
 import { SettingsPage } from './pages/Settings'
 import { WarDefensePage } from './pages/WarDefense'
 import { WarAttackPage } from './pages/WarAttack'
+import { SiegeGuidePage } from './pages/SiegeGuide'
+import { RaidPlanPage } from './pages/RaidPlan'
 import { AdminLogin } from './pages/AdminLogin'
 import { ADMIN_ROUTES, isAdmin, logout } from './auth'
 
@@ -387,6 +389,8 @@ export default function App() {
                 {base === 'cutlines' && <CutlinesPage />}
                 {base === 'wardefense' && <WarDefensePage />}
                 {base === 'warattack' && <WarAttackPage />}
+                {base === 'siegeguide' && <SiegeGuidePage />}
+                {base === 'raid' && <RaidPlanPage />}
                 {base === 'members' && <MembersPage />}
                 {base === 'settings' && <SettingsPage />}
                 {base === 'admin' && admin && <AdminHome onLogout={doLogout} />}

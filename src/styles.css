@@ -2126,3 +2126,50 @@ button.ghost:hover { background: var(--surface-2); color: var(--text); }
 .reserve-row select { font-size: 0.95rem; padding: 7px 9px; }
 .reserve-n { width: 24px; height: 24px; font-size: 0.8rem; }
 .reserve-view { font-size: 0.95rem; }
+
+/* ---- 공성전 공략: 요일=보스 탭 ---- */
+.boss-tabs { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+@media (max-width: 640px) { .boss-tabs { grid-template-columns: repeat(4, 1fr); } }
+.boss-tab {
+  position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 10px 6px; cursor: pointer;
+  border: 1px solid var(--border); border-radius: var(--radius-sm, 8px); background: var(--surface);
+}
+.boss-tab:hover { border-color: var(--accent-dim); }
+.boss-tab.on { border-color: var(--accent); background: var(--accent-soft); }
+.boss-day { font-size: 1.05rem; font-weight: 800; }
+.boss-name { font-size: 0.9rem; font-weight: 700; color: var(--text-2); word-break: keep-all; }
+.boss-type { font-size: 0.72rem; font-weight: 700; padding: 1px 7px; border-radius: 999px; }
+.boss-type.t-마법 { background: var(--purple-soft); color: var(--purple); }
+.boss-type.t-물리 { background: var(--danger-soft); color: var(--danger); }
+.boss-type.t-단일 { background: var(--info-soft); color: var(--info); }
+.boss-n {
+  position: absolute; top: 4px; right: 5px; font-style: normal;
+  font-size: 0.68rem; font-weight: 800; color: var(--accent-strong);
+  background: var(--surface); border: 1px solid var(--accent-dim);
+  border-radius: 999px; padding: 0 5px;
+}
+
+/* ---- 원정대 배치: 단계 탭 · 길드원 칩 ---- */
+.stage-tabs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+@media (max-width: 760px) { .stage-tabs { grid-template-columns: repeat(2, 1fr); } }
+.stage-tab {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 3px;
+  padding: 11px 13px; text-align: left; cursor: pointer;
+  border: 1px solid var(--border); border-radius: var(--radius-sm, 8px); background: var(--surface);
+}
+.stage-tab:hover { border-color: var(--accent-dim); }
+.stage-tab.on { border-color: var(--accent); background: var(--accent-soft); }
+.stage-name { font-size: 0.95rem; font-weight: 800; word-break: keep-all; line-height: 1.25; }
+.stage-tab em { font-size: 0.78rem; font-style: normal; }
+
+.raid-members { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.raid-member {
+  padding: 8px 14px; font-size: 0.95rem; font-weight: 700; cursor: pointer;
+  border: 1px solid var(--border); border-radius: 999px; background: var(--surface-2); color: var(--text-2);
+}
+.raid-member:hover { border-color: var(--accent-dim); }
+.raid-member.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-strong); }
+/* 다른 단계에 이미 들어간 사람 — 한 명이 두 곳을 못 뛰니 미리 표시 */
+.raid-member.taken { opacity: 0.55; }
+.raid-member em { font-style: normal; font-size: 0.72rem; margin-left: 4px; color: var(--text-3); }

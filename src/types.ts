@@ -335,8 +335,10 @@ export interface SiegeGuide {
   day: string
   name: string
   heroes: LoadoutSlot[]
+  /** 스킬 예약 — 순서대로 최대 3칸 */
+  reserve?: SkillPick[]
+  /** 속공 순서 (자유 입력 — 순위만 적는 경우가 많다) */
   speedOrder?: string
-  skillOrder?: string
   notes?: string
   updatedAt: string
 }
