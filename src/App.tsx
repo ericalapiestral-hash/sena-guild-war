@@ -17,6 +17,7 @@ import { SiegeGuidePage } from './pages/SiegeGuide'
 import { RaidPlanPage } from './pages/RaidPlan'
 import { AdminLogin } from './pages/AdminLogin'
 import { ADMIN_ROUTES, isAdmin, logout } from './auth'
+import { useGuildName } from './store'
 
 interface MenuItem {
   route: string
@@ -55,7 +56,7 @@ const ROUTES = [...MENU.map((m) => m.route), 'admin']
 const Brand = () => (
   <span className="logo">
     <span className="em" aria-hidden>⚔️</span>
-    <span className="logo-t">낭만주의</span>
+    <span className="logo-t">{useGuildName()}</span>
   </span>
 )
 
@@ -329,6 +330,10 @@ export default function App() {
   const [admin, setAdmin] = useState(isAdmin())
   const [sideMode, toggleSide] = useSidebarMode()
   const [theme, toggleTheme] = useTheme()
+  const guildName = useGuildName()
+
+  // 브라우저 탭 제목 — index.html에 박힌 기본 제목을 길드 이름으로 덮는다
+  useEffect(() => { document.title = `${guildName} · 세나 리버스 길드` }, [guildName])
 
   const visible = MENU.filter((m) => !m.admin || admin)
   const adminActive = ADMIN_ITEMS.some((m) => m.route === base) || base === 'admin'
@@ -402,7 +407,7 @@ export default function App() {
       </main>
 
       <div className="footer-note">
-        낭만주의 · 세븐나이츠 리버스 길드 사이트 — 길드전 · 결투장 · 공성전 · 파괴신을 한곳에서.
+        {guildName} · 세븐나이츠 리버스 길드 사이트 — 길드전 · 결투장 · 공성전 · 파괴신을 한곳에서.
       </div>
 
       {/* 모바일 하단 탭바 */}

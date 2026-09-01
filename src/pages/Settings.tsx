@@ -1,11 +1,23 @@
-import { useRef, useState } from 'react'
-import { exportJson, importJson, resetAll, todayLocal, useUserData } from '../store'
+import { useEffect, useRef, useState } from 'react'
+import { DEFAULT_GUILD_NAME, exportJson, importJson, resetAll, setGuildName, todayLocal, useGuildName, useUserData } from '../store'
 import { LearnBriefing } from '../components/LearnBriefing'
 
 export function SettingsPage() {
   useUserData()
   const fileRef = useRef<HTMLInputElement>(null)
   const [msg, setMsg] = useState('')
+
+  const guildName = useGuildName()
+  const [nameDraft, setNameDraft] = useState(guildName)
+  // 저장 후, 또는 다른 운영진이 바꿔 공유 데이터가 갱신되면 입력칸을 맞춘다
+  useEffect(() => { setNameDraft(guildName) }, [guildName])
+
+  function saveName() {
+    const v = nameDraft.trim()
+    if (v === guildName) return
+    setGuildName(v)
+    setMsg(v ? `길드 이름을 '${v}'로 바꿨어요.` : `길드 이름을 기본값(${DEFAULT_GUILD_NAME})으로 되돌렸어요.`)
+  }
 
   function download() {
     const blob = new Blob([exportJson()], { type: 'application/json' })
@@ -34,6 +46,30 @@ export function SettingsPage() {
         직접 입력한 데이터(카운터, 덱, 길드원, 가이드)는 길드 공유 저장소에 보관되고,
         연결이 없으면 이 브라우저에만 남습니다. 백업하거나 배포본 기본값으로 올릴 때 여기를 사용하세요.
       </p>
+
+      <div className="card">
+        <strong>길드 이름</strong>
+        <p className="muted">
+          왼쪽 위 로고, 홈 제목, 화면 아래 문구, 통계 인쇄표, 브라우저 탭에 함께 나옵니다.
+          비워두면 기본값(<b>{DEFAULT_GUILD_NAME}</b>)으로 돌아가요.
+        </p>
+        <div className="row">
+          <input
+            value={nameDraft}
+            maxLength={16}
+            placeholder={DEFAULT_GUILD_NAME}
+            onChange={(e) => setNameDraft(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') saveName() }}
+            style={{ flex: 1, minWidth: 140, maxWidth: 260 }}
+          />
+          <button className="primary" disabled={nameDraft.trim() === guildName} onClick={saveName}>변경</button>
+          {guildName !== DEFAULT_GUILD_NAME && (
+            <button className="small" onClick={() => { setNameDraft(''); setGuildName(''); setMsg(`길드 이름을 기본값(${DEFAULT_GUILD_NAME})으로 되돌렸어요.`) }}>
+              기본값으로
+            </button>
+          )}
+        </div>
+      </div>
 
       <LearnBriefing />
 

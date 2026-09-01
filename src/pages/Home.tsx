@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import type { CutlineGuide, StatEntry, StatRound } from '../types'
-import { counterHeroNames, getAllArena, getAllCounters, getAllHeroes, useUserData } from '../store'
+import { counterHeroNames, getAllArena, getAllCounters, getAllHeroes, useGuildName, useUserData } from '../store'
 import { navigate } from '../router'
 import { DeckNames } from '../components/HeroSelect'
 import { Delta, cutlineFor, effOf, fmt, lastFilled, latestDayWithData, tierMap, tierShort } from '../lib/stat'
@@ -31,7 +31,7 @@ export function HomePage() {
     <div>
       <header className="hero-head">
         <div className="sec-label">세븐나이츠 리버스</div>
-        <h1>낭만주의</h1>
+        <h1>{useGuildName()}</h1>
         <p>길드전 카운터덱부터 공성전·파괴신 기록까지, 길드에 필요한 걸 한곳에.</p>
       </header>
 

@@ -31,6 +31,11 @@ const EMPTY: UserData = {
 
 const ARRAY_FIELDS = Object.keys(EMPTY) as (keyof UserData)[]
 
+/** 길드 이름 기본값 — 설정 전이거나 비워두면 이 이름으로 나온다 */
+export const DEFAULT_GUILD_NAME = '낭만주의'
+/** 길드 이름 최대 길이 — 로고 한 줄에 들어가는 선 */
+const GUILD_NAME_MAX = 16
+
 /** 외부에서 온 데이터(공유 pull·localStorage·가져오기)를 안전한 형태로 정규화.
  *  배열이어야 할 필드가 다른 타입이면 버림 — 오염된 공유 데이터 하나로
  *  전 길드원 화면이 깨지는 것 방지. (워커도 같은 검증을 하지만 이중 방어) */
@@ -58,6 +63,12 @@ function normalize(raw: unknown): UserData {
       siegeByDay: nums(cg.siegeByDay),
       ...(typeof cg.memo === 'string' && cg.memo.trim() ? { memo: String(cg.memo).slice(0, 2000) } : {}),
     }
+  }
+  // 길드 이름(문자열 필드) — 배열이 아니라 위 루프를 안 타므로 여기서 따로 받는다
+  // 빈 문자열도 살려둔다 — 필드를 아예 지우면 워커의 이월 규칙(CARRY_OVER_FIELDS)이
+  // 직전 이름을 되살려서 '기본값으로 되돌리기'가 영영 안 먹는다.
+  if (typeof src.guildName === 'string') {
+    base.guildName = src.guildName.trim().slice(0, GUILD_NAME_MAX)
   }
   return base
 }
@@ -244,6 +255,21 @@ export function getUserData(): UserData {
 /** React 훅: 사용자/공유 데이터 구독 */
 export function useUserData(): UserData {
   return useSyncExternalStore(subscribe, getUserData)
+}
+
+/** 길드 이름 — 안 정했으면 기본값. 로고·홈 제목·푸터·인쇄표가 이걸 같이 본다 */
+export function useGuildName(): string {
+  return useUserData().guildName?.trim() || DEFAULT_GUILD_NAME
+}
+
+/**
+ * 길드 이름 저장 — 비우면 기본값으로 되돌아간다.
+ * 되돌릴 때 필드를 delete 하지 않고 빈 문자열을 남기는 게 중요하다.
+ * 워커는 '요청에 없는 필드'를 직전 값으로 이월하므로, 지워버리면 옛 이름이 되살아난다.
+ */
+export function setGuildName(next: string) {
+  const v = next.trim().slice(0, GUILD_NAME_MAX)
+  update((d) => { d.guildName = v === DEFAULT_GUILD_NAME ? '' : v })
 }
 
 export function update(mutator: (draft: UserData) => void) {

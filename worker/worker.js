@@ -42,6 +42,7 @@ const ARRAY_FIELDS = [
  */
 const CARRY_OVER_FIELDS = [
   'cutlineGuide', 'defenseSetups', 'attackTargets', 'siegeGuides', 'raidPlans',
+  'guildName',
 ]
 
 // 백업 시각 (isolate 메모리 — 재시작 시 초기화돼도 무해, 몇 번 더 백업될 뿐)
@@ -1128,6 +1129,11 @@ export default {
             return json({ error: `${k} 필드는 배열이어야 해요.` }, 400)
           }
         }
+        // 길드 이름은 화면 곳곳(로고·제목·탭)에 그대로 박히는 문자열이라 형식·길이를 여기서도 막는다
+        if ('guildName' in data && typeof data.guildName !== 'string') {
+          return json({ error: 'guildName 필드는 문자열이어야 해요.' }, 400)
+        }
+        if (typeof data.guildName === 'string') data.guildName = data.guildName.trim().slice(0, 16)
 
         const prevRaw = await env.GUILD_KV.get('guild-data')
 

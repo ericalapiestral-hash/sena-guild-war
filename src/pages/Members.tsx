@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import type { Member, MemberRole } from '../types'
-import { newId, todayLocal, update, useUserData } from '../store'
+import type { Member, MemberRole, StatRound } from '../types'
+import { getUserData, newId, todayLocal, update, useUserData } from '../store'
 
 const ROLES: MemberRole[] = ['길드마스터', '부길드마스터', '정예멤버', '멤버']
 const roleRank = (r?: MemberRole) => {
@@ -182,16 +182,51 @@ function MemberCard({
   const [oppo, setOppo] = useState('')
   const [recMemo, setRecMemo] = useState('')
 
-  /** 닉네임 변경 — 공성전·파괴신 기록과 부계정 주인 표기까지 함께 바꿔 과거 기록이 끊기지 않게 */
+  /**
+   * 닉네임 변경 — 게임에서 닉을 바꾸면 기록이 옛 이름에 묶여 끊긴다.
+   * 그래서 '이름으로 사람을 가리키는 곳'을 전부 같이 옮긴다:
+   *   공성전·파괴신 기록(entries/days) · 부계정 주인 표기 · 강림 원정대 배치
+   *
+   * ★ 이름으로 길드원을 가리키는 필드를 새로 만들면 여기에도 넣을 것.
+   *   (원정대 배치가 실제로 여기서 빠져 있어서 닉을 바꾸면 배치에서 조용히 사라졌다)
+   *
+   * 외부 처리(excluded)와는 규칙이 반대다. 저기는 '같은 이름의 다른 상황'이라 기록을
+   * 안 건드리지만, 닉 변경은 '같은 사람의 다른 이름'이라 기록이 따라와야 맞다.
+   */
   function renameMember(next: string) {
     const to = next.trim()
     const from = member.name
     if (!to || to === from) { setNick(from); return }
+
+    // 검사는 update() 밖에서 — 안에서 되돌리면 바뀐 게 없는데도 공유 저장소로 올라간다
+    const now = getUserData()
+    if (now.members.some((m) => m.id !== member.id && m.name === to)) {
+      alert(`'${to}' 이름을 가진 길드원이 이미 있어요.\n그대로 두면 두 사람 점수가 한 칸에 합쳐져서 막았어요.`)
+      setNick(from)
+      return
+    }
+
+    // 뭐가 같이 움직이는지 세어서 보여준다 — 칸을 빠져나가기만 해도(onBlur) 이름이 바뀌기 때문
+    const countIn = (rounds: StatRound[]) =>
+      rounds.reduce((n, r) => {
+        let c = r.entries.filter((e) => e.name === from).length
+        if (r.days) for (const day of Object.keys(r.days)) c += r.days[day].filter((e) => e.name === from).length
+        return n + c
+      }, 0)
+    const siege = countIn(now.siegeRounds)
+    const destroyer = countIn(now.destroyerRounds)
+    const raid = now.raidPlans.filter((p) => p.assigned.includes(from)).length
+    const moved = [
+      siege && `공성전 기록 ${siege}건`,
+      destroyer && `파괴신 기록 ${destroyer}건`,
+      raid && `원정대 배치 ${raid}곳`,
+    ].filter(Boolean).join(' · ')
+    if (moved && !confirm(`'${from}' → '${to}'\n\n${moved}도 함께 따라갑니다. 바꿀까요?`)) {
+      setNick(from)
+      return
+    }
+
     update((d) => {
-      if (d.members.some((m) => m.id !== member.id && m.name === to)) {
-        alert(`'${to}' 이름을 가진 길드원이 이미 있어요.`)
-        return
-      }
       const target = d.members.find((m) => m.id === member.id)
       if (!target) return
       target.name = to
@@ -201,6 +236,8 @@ function MemberCard({
         renameEntries(r.entries)
         if (r.days) for (const day of Object.keys(r.days)) renameEntries(r.days[day])
       }
+      // 원정대 배치는 이름 문자열 배열이라 위 루프에 안 걸린다 — 따로 옮긴다
+      for (const p of d.raidPlans) p.assigned = p.assigned.map((n) => (n === from ? to : n))
     })
   }
 
@@ -242,7 +279,13 @@ function MemberCard({
           <button className="small danger" title="길드원 삭제" onClick={(e) => {
             e.stopPropagation()
             if (confirm(`'${member.name}' 길드원을 삭제할까요? 기록도 함께 삭제됩니다.`)) {
-              update((d) => { d.members = d.members.filter((x) => x.id !== member.id) })
+              update((d) => {
+                d.members = d.members.filter((x) => x.id !== member.id)
+                // 원정대 배치에서도 뺀다 — 명단에 없는 이름은 화면에 안 그려지면서
+                // 'n/10명' 숫자에만 남아 자리가 없는 것처럼 보인다.
+                // (배치는 '지금 누가 뛰는가'라는 계획이라 명단을 따라간다. 점수 기록은 과거 사실이라 그대로 둔다)
+                for (const p of d.raidPlans) p.assigned = p.assigned.filter((n) => n !== member.name)
+              })
             }
           }}>✕</button>
         </div>
@@ -257,7 +300,7 @@ function MemberCard({
               onBlur={(e) => renameMember(e.target.value)}
               style={{ flex: 1, minWidth: 140 }} />
             <button className="small" onClick={() => renameMember(nick)}>이름 변경</button>
-            <span className="muted" style={{ fontSize: '0.78rem' }}>바꾸면 공성전·파괴신 기록도 같이 따라가요</span>
+            <span className="muted" style={{ fontSize: '0.78rem' }}>바꾸면 공성전·파괴신 기록과 원정대 배치도 같이 따라가요</span>
           </div>
           <div className="row" style={{ marginBottom: 10 }}>
             <label style={{ fontWeight: 600, fontSize: '0.85rem' }}>역할</label>

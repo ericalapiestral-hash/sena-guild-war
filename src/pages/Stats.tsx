@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import html2canvas from 'html2canvas'
 import type { CutlineGuide, StatEntry, StatRound, UserData } from '../types'
-import { activeMembers, excludedMembers, newId, rosterNames, todayLocal, update, useUserData } from '../store'
+import { activeMembers, excludedMembers, newId, rosterNames, todayLocal, update, useGuildName, useUserData } from '../store'
 import { isAdmin } from '../auth'
 import { Markdown } from '../components/Markdown'
 import { DESTROYER_GUIDES } from '../data/destroyerGuide'
@@ -365,6 +365,7 @@ function PrintContent({
   guide?: CutlineGuide
 }) {
   const printedAt = todayLocal()
+  const guildName = useGuildName()
 
   if (cfg.byDay) {
     // 공성전 — 화면에서 보고 있는 요일 하나만 인쇄 (지난주 같은 요일 대비 %)
@@ -381,7 +382,7 @@ function PrintContent({
       <div className="print-root">
         <div className="print-head">
           <h2>{cfg.title} — {current.label} · {d}요일</h2>
-          <span className="print-meta">출력일 {printedAt} · 낭만주의</span>
+          <span className="print-meta">출력일 {printedAt} · {guildName}</span>
         </div>
         {ranked.length === 0 ? (
           <p>{d}요일에 입력된 점수가 없어요.</p>
@@ -444,7 +445,7 @@ function PrintContent({
     <div className="print-root">
       <div className="print-head">
         <h2>{cfg.title}</h2>
-        <span className="print-meta">출력일 {printedAt} · 낭만주의</span>
+        <span className="print-meta">출력일 {printedAt} · {guildName}</span>
       </div>
       <div className="print-block">
         <h3>이번 시즌: {current.label}</h3>
