@@ -6,3 +6,6 @@ worker/node_modules/
 *.local
 .DS_Store
 .claude/settings.local.json
+
+# 공유 데이터 백업 내려받기용 — 길드원 실명·점수가 들어 있어 저장소에 올리지 않는다
+backup-*/
