@@ -246,12 +246,12 @@ export interface LoadoutSlot {
   armor1?: string
   /** 방어구2 주옵 */
   armor2?: string
-  /** 세공 1 (GEM_OPTIONS) — 게임에서 두 개까지 박는다 */
-  gem1?: string
-  /** 세공 2 */
-  gem2?: string
-  /** 장신구 (ACCESSORIES) */
+  /** 반지 (ACCESSORIES) */
   accessory?: string
+  /** 반지 부세공 */
+  ringSub?: string
+  /** 전장 조율 — 네 칸 */
+  attune?: string[]
   /**
    * 이 영웅의 부옵 우선순위.
    * 덱 전체로 한 줄만 적으면 딜러와 탱커가 같은 기준이 돼 버려서 영웅마다 따로 둔다.
@@ -300,6 +300,8 @@ export interface DefenseSetup {
   tier?: number
   /** 속공 세팅 / 내실 세팅 */
   style?: string
+  /** 덱 유형 (DECK_TYPES — 공덱·마덱·방덱·즉사덱·하이브리드) */
+  deckType?: string
   /** 최대 3인 */
   heroes: LoadoutSlot[]
   formation?: string
@@ -323,6 +325,8 @@ export interface AttackDeck {
   id: string
   /** 공략 이름 (예: 여포덱) */
   name?: string
+  /** 덱 유형 (DECK_TYPES) */
+  deckType?: string
   /** 우리 3인 */
   heroes: LoadoutSlot[]
   formation?: string

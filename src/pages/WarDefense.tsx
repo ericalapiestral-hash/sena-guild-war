@@ -2,8 +2,8 @@ import { useMemo, useState } from 'react'
 import type { DefenseSetup, Hero, LoadoutSlot } from '../types'
 import { getAllHeroes, newId, todayLocal, update, useUserData } from '../store'
 import { HeroName, HeroPickerModal, SlotRow } from '../components/HeroSelect'
-import { Line, LoadoutEditor, LoadoutView, ReserveView, SkillReserve } from '../components/Loadout'
-import { DEFENSE_STYLES, WAR_DECK_SIZE } from '../data/gear'
+import { GearTabs, Line, LoadoutView, PickLine, ReserveView, SkillReserve, Step } from '../components/Loadout'
+import { DECK_TYPES, DEFENSE_STYLES, FORMATIONS, WAR_DECK_SIZE } from '../data/gear'
 
 /**
  * 길드전 방어 — 우리가 걸어 둘 3v3 방어덱과 세팅.
@@ -98,6 +98,7 @@ function DefenseCard({
           <strong>{setup.name}</strong>
           <Stars n={setup.tier} />
           {setup.style && <span className={`badge ${setup.style === '속공' ? 'alt' : 'tier'}`}>{setup.style}</span>}
+          {setup.deckType && <span className="badge">{setup.deckType}</span>}
           {names.length > 0 && (
             <span className="muted">{names.map((n) => <HeroName key={n} hero={heroMap.get(n)} name={n} />)}</span>
           )}
@@ -116,63 +117,78 @@ function DefenseCard({
         <div style={{ marginTop: 12 }}>
           {editing ? (
             <>
-              <div className="row" style={{ marginBottom: 8 }}>
-                <label className="def-label">덱 이름</label>
-                <input value={setup.name} onChange={(e) => patch((s) => { s.name = e.target.value })} style={{ flex: 1, minWidth: 140 }} />
-              </div>
-              <div className="row" style={{ marginBottom: 8 }}>
-                <label className="def-label">추천도</label>
-                {[1, 2, 3, 4, 5].map((n) => (
-                  <button key={n} className={`small ${setup.tier === n ? 'primary' : ''}`}
-                    onClick={() => patch((s) => { s.tier = s.tier === n ? undefined : n })}>{n}★</button>
-                ))}
-                <label className="def-label" style={{ marginLeft: 10 }}>세팅</label>
-                {DEFENSE_STYLES.map((v) => (
-                  <button key={v} className={`small ${setup.style === v ? 'primary' : ''}`}
-                    onClick={() => patch((s) => { s.style = s.style === v ? undefined : v })}>{v}</button>
-                ))}
-              </div>
+              {/* 게임에서 하는 순서대로 끊는다 — 덱 → 진형·펫 → 영웅별 장비 → 마무리 */}
+              <Step n={1} title="덱 설정" desc="이름 · 추천도 · 유형과 3인 조합">
+                <div className="row">
+                  <label className="def-label">덱 이름</label>
+                  <input value={setup.name} onChange={(e) => patch((s) => { s.name = e.target.value })} style={{ flex: 1, minWidth: 140 }} />
+                </div>
+                <div className="row" style={{ marginTop: 8 }}>
+                  <label className="def-label">추천도</label>
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <button key={n} className={`small ${setup.tier === n ? 'primary' : ''}`}
+                      onClick={() => patch((s) => { s.tier = s.tier === n ? undefined : n })}>{n}★</button>
+                  ))}
+                  <label className="def-label" style={{ marginLeft: 10 }}>세팅</label>
+                  {DEFENSE_STYLES.map((v) => (
+                    <button key={v} className={`small ${setup.style === v ? 'primary' : ''}`}
+                      onClick={() => patch((s) => { s.style = s.style === v ? undefined : v })}>{v}</button>
+                  ))}
+                </div>
+                <div className="row" style={{ marginTop: 8 }}>
+                  <label className="def-label">덱 유형</label>
+                  <div className="def-pick-o">
+                    {DECK_TYPES.map((v) => (
+                      <button key={v} className={`chip ${setup.deckType === v ? 'on' : ''}`}
+                        onClick={() => patch((s) => { s.deckType = s.deckType === v ? undefined : v })}>{v}</button>
+                    ))}
+                  </div>
+                </div>
+                <div className="row" style={{ marginTop: 8 }}>
+                  <label className="def-label">속공 수치</label>
+                  <input type="number" className="num-tab" placeholder="이상" value={setup.speedMin ?? ''}
+                    onChange={(e) => patch((s) => { s.speedMin = e.target.value === '' ? undefined : Number(e.target.value) })} style={{ width: 110 }} />
+                  <span className="muted">~</span>
+                  <input type="number" className="num-tab" placeholder="이하" value={setup.speedMax ?? ''}
+                    onChange={(e) => patch((s) => { s.speedMax = e.target.value === '' ? undefined : Number(e.target.value) })} style={{ width: 110 }} />
+                </div>
 
-              <div className="cc-sec">방어 조합 (최대 {WAR_DECK_SIZE}인)</div>
-              <SlotRow
-                names={names}
-                heroMap={heroMap}
-                max={WAR_DECK_SIZE}
-                onPick={(i) => setPicking(i)}
-                onClear={(i) => patch((s) => {
-                  const gone = s.heroes[i]?.name
-                  s.heroes.splice(i, 1)
-                  // 빠진 영웅의 스킬 예약도 같이 지운다 — 안 그러면 없는 영웅이 남는다
-                  if (gone) s.reserve = (s.reserve ?? []).filter((r) => r.hero !== gone)
-                })}
-              />
+                <div className="cc-sec" style={{ marginTop: 12 }}>방어 조합 (최대 {WAR_DECK_SIZE}인)</div>
+                <SlotRow
+                  names={names}
+                  heroMap={heroMap}
+                  max={WAR_DECK_SIZE}
+                  onPick={(i) => setPicking(i)}
+                  onClear={(i) => patch((s) => {
+                    const gone = s.heroes[i]?.name
+                    s.heroes.splice(i, 1)
+                    // 빠진 영웅의 스킬 예약도 같이 지운다 — 안 그러면 없는 영웅이 남는다
+                    if (gone) s.reserve = (s.reserve ?? []).filter((r) => r.hero !== gone)
+                  })}
+                />
+              </Step>
 
-              {setup.heroes.map((h, i) => (
-                <LoadoutEditor key={i} slot={h} hero={heroMap.get(h.name)} onChange={(p) => slotPatch(i, p)} />
-              ))}
+              <Step n={2} title="진형 · 펫">
+                <PickLine label="진형" value={setup.formation} options={FORMATIONS}
+                  onChange={(v) => patch((s) => { s.formation = v })} placeholder="예: 보호진형(멜키르)" />
+                <Line label="펫" value={setup.pet} onChange={(v) => patch((s) => { s.pet = v })} placeholder="예: 루" />
+              </Step>
 
-              <div className="cc-sec" style={{ marginTop: 12 }}>스킬 예약</div>
-              <SkillReserve
-                slots={setup.heroes}
-                heroMap={heroMap}
-                reserve={setup.reserve}
-                onChange={(r) => patch((s) => { s.reserve = r })}
-              />
+              <Step n={3} title="영웅별 장비" desc="영웅을 골라 그 사람 것만 채웁니다">
+                <GearTabs slots={setup.heroes} heroMap={heroMap} onChange={slotPatch} />
+              </Step>
 
-              <div className="row" style={{ marginTop: 10 }}>
-                <label className="def-label">속공 수치</label>
-                <input type="number" className="num-tab" placeholder="이상" value={setup.speedMin ?? ''}
-                  onChange={(e) => patch((s) => { s.speedMin = e.target.value === '' ? undefined : Number(e.target.value) })} style={{ width: 110 }} />
-                <span className="muted">~</span>
-                <input type="number" className="num-tab" placeholder="이하" value={setup.speedMax ?? ''}
-                  onChange={(e) => patch((s) => { s.speedMax = e.target.value === '' ? undefined : Number(e.target.value) })} style={{ width: 110 }} />
-              </div>
-
-              <Line label="진형" value={setup.formation} onChange={(v) => patch((s) => { s.formation = v })} placeholder="예: 보호진형" />
-              <Line label="펫" value={setup.pet} onChange={(v) => patch((s) => { s.pet = v })} placeholder="예: 루" />
-              <Line label="덱 공통 부옵" value={setup.subStats} onChange={(v) => patch((s) => { s.subStats = v })} placeholder="영웅마다 따로 적었으면 비워두세요" />
-              <Line label="장신구 요약" value={setup.accessoryNote} onChange={(v) => patch((s) => { s.accessoryNote = v })} placeholder="예: 6부6권" />
-              <Line label="주의사항" value={setup.notes} onChange={(v) => patch((s) => { s.notes = v })} placeholder="주의점·상성 등" />
+              <Step n={4} title="스킬 예약 · 마무리">
+                <SkillReserve
+                  slots={setup.heroes}
+                  heroMap={heroMap}
+                  reserve={setup.reserve}
+                  onChange={(r) => patch((s) => { s.reserve = r })}
+                />
+                <Line label="덱 공통 부옵" value={setup.subStats} onChange={(v) => patch((s) => { s.subStats = v })} placeholder="영웅마다 따로 적었으면 비워두세요" />
+                <Line label="장신구 요약" value={setup.accessoryNote} onChange={(v) => patch((s) => { s.accessoryNote = v })} placeholder="예: 6부6권" />
+                <Line label="주의사항" value={setup.notes} onChange={(v) => patch((s) => { s.notes = v })} placeholder="주의점·상성 등" />
+              </Step>
             </>
           ) : (
             <DefenseView setup={setup} heroMap={heroMap} />
@@ -205,6 +221,7 @@ function DefenseView({ setup, heroMap }: { setup: DefenseSetup; heroMap: Map<str
     ? `${setup.speedMin ?? ''} ~ ${setup.speedMax ?? ''}`
     : undefined
   const rows: Array<[string, string | undefined]> = [
+    ['덱 유형', setup.deckType],
     ['속공 수치', speed],
     ['진형', setup.formation],
     ['펫', setup.pet],

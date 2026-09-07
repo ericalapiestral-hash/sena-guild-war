@@ -1,7 +1,8 @@
+import { useId, useState } from 'react'
 import type { Hero, LoadoutSlot, SkillPick, TimelineStep } from '../types'
 import { SKILL_RESERVE_MAX } from '../types'
 import { HeroName } from './HeroSelect'
-import { ACCESSORIES, ARMOR_OPTIONS, GEAR_SETS, GEM_OPTIONS, SIEGE_TURNS, WEAPON_OPTIONS } from '../data/gear'
+import { ACCESSORIES, ARMOR_OPTIONS, ATTUNE_SLOTS, GEAR_SETS, SIEGE_TURNS, STAT_HINTS, WEAPON_OPTIONS } from '../data/gear'
 
 /**
  * 길드전 방어·공격이 같이 쓰는 입력 부품들.
@@ -44,6 +45,103 @@ export function Line({ label, value, onChange, placeholder }: {
 }
 
 /**
+ * 칩으로 고르되 자유 입력도 받는 줄.
+ *
+ * 진형처럼 정해진 값이 있지만 '보호진형(멜키르)' 같이 덧붙여 적던 곳에 쓴다.
+ * 칩만 두면 예전에 손으로 적어둔 값이 화면에서 사라져 보인다.
+ */
+export function PickLine({ label, value, options, onChange, placeholder }: {
+  label: string
+  value?: string
+  options: readonly string[]
+  onChange: (v?: string) => void
+  placeholder?: string
+}) {
+  return (
+    <div className="pick-line">
+      <span className="def-label">{label}</span>
+      <div className="pick-line-b">
+        <div className="def-pick-o">
+          {options.map((o) => (
+            <button key={o} className={`chip ${value === o ? 'on' : ''}`}
+              onClick={() => onChange(value === o ? undefined : o)}>{o}</button>
+          ))}
+        </div>
+        <input value={value ?? ''} placeholder={placeholder}
+          onChange={(e) => onChange(e.target.value || undefined)} />
+      </div>
+    </div>
+  )
+}
+
+/**
+ * 세팅 단계 한 묶음.
+ *
+ * 예전엔 덱 정보·영웅 3인 장비·진형이 한 덩어리로 쭉 늘어서 있어서, 어디까지
+ * 채웠는지 스스로도 못 봤다. 게임에서 하는 순서(덱 → 진형·펫 → 영웅별 장비)
+ * 그대로 번호를 붙여 끊는다.
+ */
+export function Step({ n, title, desc, children }: {
+  n: number
+  title: string
+  desc?: string
+  children: React.ReactNode
+}) {
+  return (
+    <section className="wz-step">
+      <div className="wz-head">
+        <em className="wz-n">{n}</em>
+        <b>{title}</b>
+        {desc && <span className="muted">{desc}</span>}
+      </div>
+      <div className="wz-body">{children}</div>
+    </section>
+  )
+}
+
+/** 이 영웅 칸에 뭐라도 적혀 있나 — 탭에 표시해서 빠뜨린 영웅을 찾게 한다 */
+const slotFilled = (s: LoadoutSlot) =>
+  !!(s.set || s.weapon1 || s.weapon2 || s.armor1 || s.armor2 || s.accessory ||
+    s.ringSub || (s.attune ?? []).some((v) => v && v.trim()) || s.subStats || s.stat)
+
+/**
+ * 영웅별 장비 — 탭으로 한 명씩.
+ *
+ * 3인분을 한 화면에 다 펼치면 세로로 길어져서 위아래 비교가 안 된다.
+ * 게임 장비 세팅 창처럼 영웅을 골라 그 사람 것만 만진다.
+ */
+export function GearTabs({ slots, heroMap, onChange }: {
+  slots: LoadoutSlot[]
+  heroMap: Map<string, Hero>
+  onChange: (i: number, p: Partial<LoadoutSlot>) => void
+}) {
+  const [tab, setTab] = useState(0)
+  if (slots.length === 0) {
+    return <p className="muted" style={{ margin: '4px 0 0' }}>영웅을 먼저 배치하면 장비를 세팅할 수 있어요.</p>
+  }
+  // 영웅을 빼면 탭 번호가 명단 밖으로 나간다 — 마지막 칸으로 당겨 준다
+  const i = Math.min(tab, slots.length - 1)
+  const slot = slots[i]
+  return (
+    <div className="gear-tabs">
+      <div className="gear-tabbar">
+        {slots.map((s, j) => {
+          const h = heroMap.get(s.name)
+          return (
+            <button key={j} className={`gear-tab ${j === i ? 'on' : ''}`} onClick={() => setTab(j)}>
+              <i className={`pos-dot ${h?.position ? `pos-${h.position}` : 'pos-none'}`} />
+              {h?.name ?? s.name}
+              {slotFilled(s) && <em className="gear-done" title="세팅 입력됨">●</em>}
+            </button>
+          )
+        })}
+      </div>
+      <LoadoutEditor slot={slot} hero={heroMap.get(slot.name)} onChange={(p) => onChange(i, p)} />
+    </div>
+  )
+}
+
+/**
  * 영웅 1인의 장비 세팅.
  *
  * 무기·방어구는 각각 두 자리라 '무기 1 / 방어구 1 / 무기 2 / 방어구 2' 로 번갈아
@@ -54,13 +152,23 @@ export function LoadoutEditor({ slot, hero, onChange }: {
   hero?: Hero
   onChange: (p: Partial<LoadoutSlot>) => void
 }) {
+  // 편집기가 여러 개 겹치는 화면(공성전 5인)이 있어서 목록 id 를 겹치지 않게 만든다
+  const hintId = useId()
+  const attune = slot.attune ?? []
+  // 빈 칸만 남으면 필드째 없앤다 — 안 그러면 저장본에 ['','','',''] 가 쌓인다
+  const setAttune = (k: number, v: string) => {
+    const next = Array.from({ length: ATTUNE_SLOTS }, (_, j) => (j === k ? v : attune[j] ?? ''))
+    onChange({ attune: next.some((x) => x.trim()) ? next : undefined })
+  }
+
   return (
     <div className="def-slot">
       <div className="def-slot-head"><HeroName hero={hero} name={slot.name} /></div>
-      <div className="def-grid">
-        <Pick label="장비 세트" value={slot.set} options={GEAR_SETS} onPick={(v) => onChange({ set: v })} />
-        <Pick label="장신구" value={slot.accessory} options={ACCESSORIES} onPick={(v) => onChange({ accessory: v })} />
-      </div>
+
+      {/* 부세공·조율 목록은 게임에서 확인을 못 해 자유 입력이다. 자주 쓰는 이름만 거들어 준다 */}
+      <datalist id={hintId}>{STAT_HINTS.map((v) => <option key={v} value={v} />)}</datalist>
+
+      <Pick label="장비 세트" value={slot.set} options={GEAR_SETS} onPick={(v) => onChange({ set: v })} />
 
       <div className="gear-pair">
         <span className="gear-part">무기 주옵</span>
@@ -73,13 +181,26 @@ export function LoadoutEditor({ slot, hero, onChange }: {
         <Pick label="2" value={slot.armor2} options={ARMOR_OPTIONS} onPick={(v) => onChange({ armor2: v })} />
       </div>
       <div className="gear-pair">
-        <span className="gear-part">세공</span>
-        <Pick label="1" value={slot.gem1} options={GEM_OPTIONS} onPick={(v) => onChange({ gem1: v })} />
-        <Pick label="2" value={slot.gem2} options={GEM_OPTIONS} onPick={(v) => onChange({ gem2: v })} />
+        <span className="gear-part">반지</span>
+        <Pick label="계열" value={slot.accessory} options={ACCESSORIES} onPick={(v) => onChange({ accessory: v })} />
+        <div className="def-pick">
+          <span className="def-pick-l">부세공</span>
+          <input list={hintId} placeholder="예: 효과 저항" value={slot.ringSub ?? ''}
+            onChange={(e) => onChange({ ringSub: e.target.value || undefined })} />
+        </div>
+      </div>
+      <div className="gear-pair">
+        <span className="gear-part">전장 조율</span>
+        <div className="attune">
+          {Array.from({ length: ATTUNE_SLOTS }, (_, k) => (
+            <input key={k} list={hintId} placeholder={`${k + 1}칸`} value={attune[k] ?? ''}
+              onChange={(e) => setAttune(k, e.target.value)} />
+          ))}
+        </div>
       </div>
 
       <input placeholder="부옵 우선순위 (예: 막기 > 생명 > 방어)" value={slot.subStats ?? ''}
-        onChange={(e) => onChange({ subStats: e.target.value || undefined })} style={{ width: '100%', marginTop: 6 }} />
+        onChange={(e) => onChange({ subStats: e.target.value || undefined })} style={{ width: '100%', marginTop: 8 }} />
       <input placeholder="그 외 한 줄 (속공 수치·전용장비 등)" value={slot.stat ?? ''}
         onChange={(e) => onChange({ stat: e.target.value || undefined })} style={{ width: '100%', marginTop: 6 }} />
     </div>
@@ -93,11 +214,14 @@ export function LoadoutView({ slot, hero }: { slot: LoadoutSlot; hero?: Hero }) 
     const v = [a, b].filter(Boolean).join(' / ')
     return v ? `${label} ${v}` : ''
   }
+  const attune = (slot.attune ?? []).filter((v) => v && v.trim())
   const parts = [
-    slot.set, slot.accessory,
+    slot.set,
     pair(slot.weapon1, slot.weapon2, '무기'),
     pair(slot.armor1, slot.armor2, '갑바'),
-    pair(slot.gem1, slot.gem2, '세공'),
+    slot.accessory && `반지 ${slot.accessory}`,
+    slot.ringSub && `반지 부세공 ${slot.ringSub}`,
+    attune.length ? `조율 ${attune.join(' / ')}` : '',
     slot.subStats && `부옵 ${slot.subStats}`,
     slot.stat,
   ].filter(Boolean)

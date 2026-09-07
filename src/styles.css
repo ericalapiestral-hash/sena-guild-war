@@ -2332,3 +2332,55 @@ button.ghost:hover { background: var(--surface-2); color: var(--text); }
   flex: 0 0 auto; font-weight: 800; font-size: 0.82rem;
   color: var(--danger); padding-top: 1px;
 }
+
+
+/* ---- 세팅 마법사 — 게임에서 하는 순서대로 끊어 보여 준다 ---- */
+/* 덱 정보·영웅 3인 장비·진형이 한 덩어리로 늘어서 있어서 어디까지 채웠는지 안 보였다 */
+.wz-step {
+  margin-top: 14px;
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--surface); overflow: hidden;
+}
+.wz-step:first-of-type { margin-top: 4px; }
+.wz-head {
+  display: flex; align-items: center; gap: 9px; flex-wrap: wrap;
+  padding: 9px 13px; border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+}
+.wz-head b { font-size: 0.98rem; }
+.wz-head .muted { font-size: 0.82rem; }
+.wz-n {
+  flex: 0 0 auto; display: grid; place-items: center;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--accent); color: #fff;
+  font-size: 0.78rem; font-weight: 800; font-style: normal;
+}
+.wz-body { padding: 12px 13px 14px; }
+.wz-body > .row:first-child { margin-top: 0; }
+
+/* 칩으로 고르되 손으로 덧붙일 수도 있는 줄 (진형) */
+.pick-line { display: flex; align-items: flex-start; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.pick-line .def-label { padding-top: 5px; }
+.pick-line-b { flex: 1 1 220px; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.pick-line-b input { width: 100%; }
+
+/* 영웅별 장비 탭 — 3인분을 한 화면에 다 펼치면 위아래 비교가 안 된다 */
+.gear-tabbar { display: flex; gap: 6px; flex-wrap: wrap; }
+.gear-tab {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 13px; border-radius: 999px;
+  border: 1px solid var(--border-2); background: var(--surface-2);
+  color: var(--text-2); font-size: 0.92rem; font-weight: 600; cursor: pointer;
+}
+.gear-tab:hover { border-color: var(--accent-dim); }
+.gear-tab.on {
+  background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 800;
+}
+.gear-tab.on .pos-dot { box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.7); }
+.gear-done { font-size: 0.55rem; font-style: normal; opacity: 0.75; }
+.gear-tabs .def-slot { margin-top: 10px; }
+
+/* 전장 조율 네 칸 */
+.attune { flex: 1 1 0; min-width: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.attune input { width: 100%; min-width: 0; }
+@media (max-width: 560px) { .attune { grid-template-columns: repeat(2, 1fr); } }

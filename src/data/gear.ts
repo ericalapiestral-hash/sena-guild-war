@@ -17,11 +17,14 @@ export const WEAPON_OPTIONS = [
   '약점 공격 확률', '치명타 확률', '치명타 피해', '모든 공격력(%)', '효과 적중', '방어력(%)', '생명력(%)',
 ] as const
 
+/** 전장 조율 칸 수 */
+export const ATTUNE_SLOTS = 4
+
 /**
- * 세공 옵션 — 장비에 두 개까지 박는다(더블 세공).
- * 게임 능력치 창에 뜨는 항목과 같은 이름이라 그대로 쓴다.
+ * 부세공·조율에 적는 능력치 이름 — 고르는 게 아니라 직접 쓰되 자동완성으로만 돕는다.
+ * 게임의 정확한 옵션 목록을 확인하지 못해서 목록으로 묶어 강제하지 않는다.
  */
-export const GEM_OPTIONS = [
+export const STAT_HINTS = [
   '공격력', '방어력', '생명력', '속공',
   '치명타 확률', '치명타 피해', '약점 공격 확률', '막기 확률',
   '받는 피해 감소', '효과 적중', '효과 저항',
@@ -69,3 +72,9 @@ export const SIEGE_TURNS = Array.from({ length: 18 }, (_, i) => i * 4)
 
 /** 방어 세팅 타입 */
 export const DEFENSE_STYLES = ['속공', '내실'] as const
+
+/** 진형 — 게임에 정해진 네 가지. 자유 입력도 같이 받는다('보호진형(멜키르)' 같은 메모) */
+export const FORMATIONS = ['기본진형', '공격진형', '밸런스진형', '보호진형'] as const
+
+/** 덱 유형 — 이 덱이 뭘로 이기는 덱인지 */
+export const DECK_TYPES = ['공덱', '마덱', '방덱', '즉사덱', '하이브리드'] as const

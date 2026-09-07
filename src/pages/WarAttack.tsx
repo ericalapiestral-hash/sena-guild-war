@@ -2,8 +2,8 @@ import { useMemo, useState } from 'react'
 import type { AttackDeck, AttackTarget, Hero, LoadoutSlot } from '../types'
 import { getAllHeroes, newId, todayLocal, update, useUserData } from '../store'
 import { HeroName, HeroPickerModal, SlotRow } from '../components/HeroSelect'
-import { Line, LoadoutEditor, LoadoutView, ReserveView, SkillReserve } from '../components/Loadout'
-import { WAR_DECK_SIZE } from '../data/gear'
+import { GearTabs, Line, LoadoutView, PickLine, ReserveView, SkillReserve, Step } from '../components/Loadout'
+import { DECK_TYPES, FORMATIONS, WAR_DECK_SIZE } from '../data/gear'
 
 /**
  * 길드전 공격 — 상대 방어덱을 등록해 두고, 그걸 뚫는 우리 공략을 붙인다.
@@ -128,7 +128,8 @@ function TargetPanel({ target, heroes, heroMap, onDeleted }: {
             onPick={(i) => setPicking(i)}
             onClear={(i) => patch((t) => { t.enemy.splice(i, 1) })}
           />
-          <Line label="상대 진형" value={target.enemyFormation} onChange={(v) => patch((t) => { t.enemyFormation = v })} placeholder="예: 보호진형" />
+          <PickLine label="상대 진형" value={target.enemyFormation} options={FORMATIONS}
+            onChange={(v) => patch((t) => { t.enemyFormation = v })} placeholder="예: 보호진형(멜키르)" />
           <Line label="상대 펫" value={target.enemyPet} onChange={(v) => patch((t) => { t.enemyPet = v })} placeholder="예: 루" />
           <Line label="특이사항" value={target.note} onChange={(v) => patch((t) => { t.note = v })} placeholder="예: 겔리두스 부활 주의" />
         </div>
@@ -211,6 +212,7 @@ function AttackDeckCard({ targetId, deck, heroes, heroMap, open, onToggle }: {
     ? `${deck.speedMin ?? ''} ~ ${deck.speedMax ?? ''}`
     : undefined
   const rows: Array<[string, string | undefined]> = [
+    ['덱 유형', deck.deckType],
     ['속공 수치', speed],
     ['진형', deck.formation],
     ['펫', deck.pet],
@@ -221,6 +223,7 @@ function AttackDeckCard({ targetId, deck, heroes, heroMap, open, onToggle }: {
       <div className="row between" style={{ cursor: 'pointer' }} onClick={onToggle}>
         <div className="row" style={{ flexWrap: 'wrap', gap: 8 }}>
           <strong>{deck.name || '이름 없는 공략'}</strong>
+          {deck.deckType && <span className="badge">{deck.deckType}</span>}
           {names.length > 0 && (
             <span className="muted">{names.map((n) => <HeroName key={n} hero={heroMap.get(n)} name={n} />)}</span>
           )}
@@ -246,49 +249,64 @@ function AttackDeckCard({ targetId, deck, heroes, heroMap, open, onToggle }: {
         <div style={{ marginTop: 10 }}>
           {editing ? (
             <>
-              <div className="row" style={{ marginBottom: 8 }}>
-                <label className="def-label">공략 이름</label>
-                <input value={deck.name ?? ''} onChange={(e) => patch((k) => { k.name = e.target.value })}
-                  placeholder="예: 여포덱" style={{ flex: 1, minWidth: 140 }} />
-              </div>
+              {/* 방어 쪽과 같은 순서 — 덱 → 진형·펫 → 영웅별 장비 → 마무리 */}
+              <Step n={1} title="덱 설정" desc="이름 · 유형과 3인 조합">
+                <div className="row">
+                  <label className="def-label">공략 이름</label>
+                  <input value={deck.name ?? ''} onChange={(e) => patch((k) => { k.name = e.target.value })}
+                    placeholder="예: 여포덱" style={{ flex: 1, minWidth: 140 }} />
+                </div>
+                <div className="row" style={{ marginTop: 8 }}>
+                  <label className="def-label">덱 유형</label>
+                  <div className="def-pick-o">
+                    {DECK_TYPES.map((v) => (
+                      <button key={v} className={`chip ${deck.deckType === v ? 'on' : ''}`}
+                        onClick={() => patch((k) => { k.deckType = k.deckType === v ? undefined : v })}>{v}</button>
+                    ))}
+                  </div>
+                </div>
+                <div className="row" style={{ marginTop: 8 }}>
+                  <label className="def-label">속공 수치</label>
+                  <input type="number" className="num-tab" placeholder="이상" value={deck.speedMin ?? ''}
+                    onChange={(e) => patch((k) => { k.speedMin = e.target.value === '' ? undefined : Number(e.target.value) })} style={{ width: 110 }} />
+                  <span className="muted">~</span>
+                  <input type="number" className="num-tab" placeholder="이하" value={deck.speedMax ?? ''}
+                    onChange={(e) => patch((k) => { k.speedMax = e.target.value === '' ? undefined : Number(e.target.value) })} style={{ width: 110 }} />
+                </div>
 
-              <div className="cc-sec">우리 조합 (최대 {WAR_DECK_SIZE}인)</div>
-              <SlotRow
-                names={names}
-                heroMap={heroMap}
-                max={WAR_DECK_SIZE}
-                onPick={(i) => setPicking(i)}
-                onClear={(i) => patch((k) => {
-                  const gone = k.heroes[i]?.name
-                  k.heroes.splice(i, 1)
-                  if (gone) k.reserve = (k.reserve ?? []).filter((r) => r.hero !== gone)
-                })}
-              />
+                <div className="cc-sec" style={{ marginTop: 12 }}>우리 조합 (최대 {WAR_DECK_SIZE}인)</div>
+                <SlotRow
+                  names={names}
+                  heroMap={heroMap}
+                  max={WAR_DECK_SIZE}
+                  onPick={(i) => setPicking(i)}
+                  onClear={(i) => patch((k) => {
+                    const gone = k.heroes[i]?.name
+                    k.heroes.splice(i, 1)
+                    if (gone) k.reserve = (k.reserve ?? []).filter((r) => r.hero !== gone)
+                  })}
+                />
+              </Step>
 
-              {deck.heroes.map((h, i) => (
-                <LoadoutEditor key={i} slot={h} hero={heroMap.get(h.name)} onChange={(p) => slotPatch(i, p)} />
-              ))}
+              <Step n={2} title="진형 · 펫">
+                <PickLine label="진형" value={deck.formation} options={FORMATIONS}
+                  onChange={(v) => patch((k) => { k.formation = v })} placeholder="예: 공격진형" />
+                <Line label="펫" value={deck.pet} onChange={(v) => patch((k) => { k.pet = v })} placeholder="예: 카람" />
+              </Step>
 
-              <div className="cc-sec" style={{ marginTop: 12 }}>스킬 예약</div>
-              <SkillReserve
-                slots={deck.heroes}
-                heroMap={heroMap}
-                reserve={deck.reserve}
-                onChange={(r) => patch((k) => { k.reserve = r })}
-              />
+              <Step n={3} title="영웅별 장비" desc="영웅을 골라 그 사람 것만 채웁니다">
+                <GearTabs slots={deck.heroes} heroMap={heroMap} onChange={slotPatch} />
+              </Step>
 
-              <div className="row" style={{ marginTop: 10 }}>
-                <label className="def-label">속공 수치</label>
-                <input type="number" className="num-tab" placeholder="이상" value={deck.speedMin ?? ''}
-                  onChange={(e) => patch((k) => { k.speedMin = e.target.value === '' ? undefined : Number(e.target.value) })} style={{ width: 110 }} />
-                <span className="muted">~</span>
-                <input type="number" className="num-tab" placeholder="이하" value={deck.speedMax ?? ''}
-                  onChange={(e) => patch((k) => { k.speedMax = e.target.value === '' ? undefined : Number(e.target.value) })} style={{ width: 110 }} />
-              </div>
-
-              <Line label="진형" value={deck.formation} onChange={(v) => patch((k) => { k.formation = v })} placeholder="예: 공격진형" />
-              <Line label="펫" value={deck.pet} onChange={(v) => patch((k) => { k.pet = v })} placeholder="예: 카람" />
-              <Line label="주의사항" value={deck.notes} onChange={(v) => patch((k) => { k.notes = v })} placeholder="주의점·순서 등" />
+              <Step n={4} title="스킬 예약 · 마무리">
+                <SkillReserve
+                  slots={deck.heroes}
+                  heroMap={heroMap}
+                  reserve={deck.reserve}
+                  onChange={(r) => patch((k) => { k.reserve = r })}
+                />
+                <Line label="주의사항" value={deck.notes} onChange={(v) => patch((k) => { k.notes = v })} placeholder="주의점·순서 등" />
+              </Step>
             </>
           ) : (
             <>
