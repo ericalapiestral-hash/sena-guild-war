@@ -191,7 +191,30 @@ const hasStaffRole = (m) => !!m && STAFF_ROLES.includes(m.role || '')
 const readAdmins = async (env) => {
   try { return JSON.parse((await env.GUILD_KV.get('site-admins')) || '[]') } catch { return [] }
 }
-const isSiteAdmin = async (env, name) => !!name && (await readAdmins(env)).includes(name)
+
+/**
+ * 영구 최고권한 — 화면에서 해제할 수 없는 관리자 한 명.
+ *
+ * 관리자를 서로 해제하다 아무도 못 들어가는 상황을 막는 마지막 고리다.
+ * (워커 시크릿으로도 복구할 수 있지만, 그건 비번을 아는 사람이 있어야 한다)
+ *
+ * 값은 길드원 고유 id 다. 다만 id 는 명단을 만들 때 정해져서 코드에 미리 적을 수가
+ * 없으므로, 처음 한 번만 아래 이름으로 찾아 id 를 KV(owner-id)에 박아둔다.
+ * 그 뒤로는 id 만 보므로 닉을 바꿔도 그대로 간다. 이름은 이때만 쓰인다.
+ */
+const OWNER_BOOTSTRAP_NAME = '작업하는고양이'
+
+async function ownerId(env) {
+  const saved = await env.GUILD_KV.get('owner-id')
+  if (saved) return saved
+  const m = (await roster(env)).find((x) => x && x.name === OWNER_BOOTSTRAP_NAME)
+  if (!m) return null                       // 명단에 아직 없으면 다음 요청에 다시 본다
+  await env.GUILD_KV.put('owner-id', m.id)
+  return m.id
+}
+
+const isSiteAdmin = async (env, id) =>
+  !!id && (id === (await ownerId(env)) || (await readAdmins(env)).includes(id))
 
 /**
  * 일반 길드원에게 안 보내는 칸 — 점수 기록과 그 기준, 그리고 운영진 메모.
@@ -325,13 +348,16 @@ async function handleAuth(request, env, path) {
     const all = await readAuth(env)
     const members = await roster(env)
     const admins = await readAdmins(env)
+    const owner = await ownerId(env)
     return json({
       on: await authOn(env),
+      owner,
       admins,
       members: members.map((m) => ({
         id: m.id, name: m.name, excluded: !!m.excluded, role: m.role || '멤버',
-        admin: admins.includes(m.id),
-        staff: admins.includes(m.id) || hasStaffRole(m),
+        admin: m.id === owner || admins.includes(m.id),
+        owner: m.id === owner,
+        staff: m.id === owner || admins.includes(m.id) || hasStaffRole(m),
         hasId: !!all[m.id], tmp: !!all[m.id]?.tmp, at: all[m.id]?.at || null,
       })),
       // 명단에 없는데 아이디만 남은 것 — 나간 사람의 찌꺼기
@@ -353,7 +379,12 @@ async function handleAuth(request, env, path) {
 
   if (path.endsWith('/auth/revoke')) {
     const all = await readAuth(env)
-    for (const k of [].concat(body.ids || body.id || [])) delete all[String(k)]
+    const owner = await ownerId(env)
+    for (const k of [].concat(body.ids || body.id || [])) {
+      // 영구 관리자의 아이디를 지우면 본인도 못 들어온다 — 화면에서는 막는다
+      if (k && String(k) === owner && !bySecret) continue
+      delete all[String(k)]
+    }
     await writeAuth(env, all)
     return json({ ok: true, left: Object.keys(all).length })
   }
@@ -361,6 +392,9 @@ async function handleAuth(request, env, path) {
   // 사이트 관리자 지정 — 마지막 한 명까지 지우면 워커 시크릿으로만 들어올 수 있게 되므로 막는다
   if (path.endsWith('/auth/admins')) {
     const ids = [...new Set([].concat(body.ids || []).map((n) => String(n).trim()).filter(Boolean))]
+    // 영구 관리자는 목록에서 빠져도 권한이 유지된다. 목록에도 도로 넣어 화면과 어긋나지 않게 한다.
+    const owner = await ownerId(env)
+    if (owner && !ids.includes(owner)) ids.push(owner)
     if (!ids.length && !bySecret) {
       return json({ error: '관리자를 전부 지우면 아무도 못 들어와요. 최소 한 명은 남겨주세요.' }, 400)
     }

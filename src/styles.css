@@ -2298,3 +2298,6 @@ button.ghost:hover { background: var(--surface-2); color: var(--text); }
   width: 100%; resize: vertical; min-height: 46px;
   font: inherit; font-size: 0.88rem; line-height: 1.6;
 }
+
+/* 영구 최고권한 표식 — 해제 못 하는 자리라 눈에 띄게 */
+.id-tag.owner { background: var(--accent-soft); color: var(--accent-strong); }

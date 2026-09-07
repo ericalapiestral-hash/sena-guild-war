@@ -49,7 +49,9 @@ export function MemberIds() {
         명단에서 빼거나 외부 처리하는 순간 바로 막혀요.
       </p>
       <p className="muted">
-        <b>사이트 관리자</b>는 게임 직책과 별개입니다. 길드마스터가 바뀌어도 그대로 남고,
+        <b>영구 관리자</b> 한 명은 해제할 수 없게 못 박아 뒀습니다 — 서로 해제하다 아무도
+        못 들어가는 일을 막는 마지막 고리예요.
+        <b> 사이트 관리자</b>는 게임 직책과 별개입니다. 길드마스터가 바뀌어도 그대로 남고,
         아이디 발급과 검사 켜기를 할 수 있어요. 길드마스터·부길드마스터는 직책만으로
         <b>운영진</b>(통계·명단 편집)이 되지만, 여기 관리는 못 합니다.
       </p>
@@ -114,11 +116,13 @@ export function MemberIds() {
                 </span>
                 <span className={`id-mark ${m.tmp ? 'tmp' : ''}`}>
                   {!m.hasId ? '아이디 없음' : m.tmp ? '임시 비번 (아직 안 바꿈)' : '사용 중'}
+                  {m.owner && <span className="id-tag owner">영구 관리자</span>}
                   {m.staff && !m.admin && <span className="id-tag">운영진</span>}
                 </span>
                 <span className="row" style={{ gap: 5 }}>
-                  <label className="id-admin" title="사이트 관리자 — 게임 직책과 별개">
-                    <input type="checkbox" checked={m.admin} disabled={busy}
+                  <label className="id-admin"
+                    title={m.owner ? '영구 최고권한 — 해제할 수 없습니다' : '사이트 관리자 — 게임 직책과 별개'}>
+                    <input type="checkbox" checked={m.admin} disabled={busy || m.owner}
                       onChange={(e) => {
                         const next = e.target.checked
                           ? [...data.admins, m.id]
@@ -132,7 +136,7 @@ export function MemberIds() {
                     onClick={() => void act(async () => { setIssued({ name: m.name, pw: await issueId(m.id) }) })}>
                     {m.hasId ? '비번 재발급' : '아이디 만들기'}
                   </button>
-                  {m.hasId && (
+                  {m.hasId && !m.owner && (
                     <button className="small danger" disabled={busy}
                       onClick={() => { if (confirm(`'${m.name}' 아이디를 없앨까요? 다시 못 들어옵니다.`)) void act(() => revokeIds([m.id])) }}>
                       ✕

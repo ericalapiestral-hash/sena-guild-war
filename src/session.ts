@@ -129,9 +129,11 @@ export type IdRow = {
   id: string
   name: string; excluded: boolean; role: string
   admin: boolean; staff: boolean
+  /** 영구 최고권한 — 화면에서 해제할 수 없다 */
+  owner: boolean
   hasId: boolean; tmp: boolean; at: number | null
 }
-export type IdList = { on: boolean; admins: string[]; members: IdRow[]; orphans: string[] }
+export type IdList = { on: boolean; owner: string | null; admins: string[]; members: IdRow[]; orphans: string[] }
 
 export async function listIds(): Promise<IdList> {
   const r = await fetch(`${base()}/auth/list`, { method: 'POST', headers: adminHeaders() })
