@@ -31,9 +31,18 @@ export function authHeaders(): Record<string, string> {
   const t = getToken()
   return t ? { authorization: `Bearer ${t}` } : {}
 }
+/**
+ * 운영진 비번은 base64로 싸서 보낸다.
+ *
+ * HTTP 헤더에는 Latin-1 글자만 담을 수 있어서, 비번에 한글이 한 자라도 있으면
+ * fetch가 요청을 만들다 그대로 터진다("String contains non ISO-8859-1 code point").
+ * 서버에 닿지도 못하고 브라우저에는 'Failed to fetch' 로만 보여서 원인을 찾기 어렵다.
+ */
 export function adminHeaders(): Record<string, string> {
   const p = getAdminPw()
-  return p ? { 'x-admin-pw': p } : {}
+  if (!p) return {}
+  const bytes = new TextEncoder().encode(p)
+  return { 'x-admin-pw': btoa(String.fromCharCode(...bytes)) }
 }
 
 // 워커가 로그인을 요구하면(401/403) 화면을 로그인으로 돌리기 위한 알림

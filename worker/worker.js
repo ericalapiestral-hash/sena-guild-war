@@ -140,10 +140,20 @@ async function guard(request, env) {
   return { ok: true, name }
 }
 
-/** 운영진 확인 — 사이트 코드에 있는 해시가 아니라 워커 시크릿과 맞춰본다 */
+/**
+ * 운영진 확인 — 사이트 코드에 있는 해시가 아니라 워커 시크릿과 맞춰본다.
+ *
+ * 비번은 base64로 싸여서 온다. 헤더에 Latin-1 밖 글자(한글 등)를 넣으면
+ * 브라우저가 요청을 아예 못 만들기 때문이다. 혹시 그냥 온 값도 받아준다.
+ */
 function isAdminReq(request, env) {
-  const pw = request.headers.get('x-admin-pw') || ''
-  return !!env.ADMIN_PW && safeEqual(pw, env.ADMIN_PW)
+  const raw = request.headers.get('x-admin-pw') || ''
+  if (!env.ADMIN_PW || !raw) return false
+  let pw = raw
+  try {
+    pw = new TextDecoder().decode(Uint8Array.from(atob(raw), (c) => c.charCodeAt(0)))
+  } catch { /* base64가 아니면 온 그대로 본다 */ }
+  return safeEqual(pw, env.ADMIN_PW) || safeEqual(raw, env.ADMIN_PW)
 }
 
 const readAuth = async (env) => JSON.parse((await env.GUILD_KV.get('member-auth')) || '{}')
