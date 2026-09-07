@@ -71,6 +71,15 @@ function normalize(raw: unknown): UserData {
   if (typeof src.guildName === 'string') {
     base.guildName = src.guildName.trim().slice(0, GUILD_NAME_MAX)
   }
+  // 운영진 메모(이름 → 글). 일반 길드원에게는 워커가 아예 안 내려보내므로 보통 비어 있다
+  const sn = src.staffNotes
+  if (sn && typeof sn === 'object' && !Array.isArray(sn)) {
+    const out: Record<string, string> = {}
+    for (const [k, v] of Object.entries(sn as Record<string, unknown>)) {
+      if (typeof v === 'string' && v.trim()) out[k] = v.slice(0, 2000)
+    }
+    if (Object.keys(out).length) base.staffNotes = out
+  }
   return base
 }
 

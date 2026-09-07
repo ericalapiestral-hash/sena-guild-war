@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { Member, MemberRole, StatRound } from '../types'
-import { getUserData, newId, todayLocal, update, useUserData } from '../store'
+import { canEditStaff, getUserData, newId, todayLocal, update, useUserData } from '../store'
 import { MemberIds } from '../components/MemberIds'
 
 const ROLES: MemberRole[] = ['길드마스터', '부길드마스터', '정예멤버', '멤버']
@@ -12,13 +12,13 @@ const roleRank = (r?: MemberRole) => {
 type Filter = '전체' | '활동' | '외부'
 
 export function MembersPage() {
+  // 아이디 관리는 따로 연다 — 목록 위에 붙여 두니 정작 길드원 목록이 안 보였다
+  const [showIds, setShowIds] = useState(false)
   const { members } = useUserData()
   const [newName, setNewName] = useState('')
   const [q, setQ] = useState('')
   const [expanded, setExpanded] = useState<string | null>(null)
   const [filter, setFilter] = useState<Filter>('전체')
-  /** 일괄 처리용 선택 (길드원 id) — 자리 때문에 여러 계정을 한 번에 넣고 빼는 일이 잦다 */
-  const [sel, setSel] = useState<Set<string>>(new Set())
   // 이미 쓰고 있는 등급 목록 (입력 자동완성용)
   const tiers = [...new Set(members.map((m) => m.tier).filter((t): t is string => !!t))].sort()
 
@@ -35,31 +35,12 @@ export function MembersPage() {
     if (filter === '활동' && m.excluded) return false
     if (filter === '외부' && !m.excluded) return false
     if (!query) return true
-    return m.name.includes(query) || (m.owner ?? '').includes(query) || (m.note ?? '').includes(query) || (m.tier ?? '').includes(query)
+    return m.name.includes(query) || (m.owner ?? '').includes(query) || (m.tier ?? '').includes(query)
   })
   const roleCount = (r: MemberRole) => members.filter((m) => !m.excluded && (m.role ?? '멤버') === r).length
 
-  const toggleSel = (id: string) =>
-    setSel((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
 
-  /** 선택한 계정을 한 번에 외부 처리하거나 길드로 되돌린다 */
-  function setExcluded(ids: Set<string>, value: boolean) {
-    if (!ids.size) return
-    update((d) => {
-      for (const m of d.members) {
-        if (ids.has(m.id)) m.excluded = value || undefined
-      }
-    })
-    setSel(new Set())
-  }
 
-  const selectedNames = members.filter((m) => sel.has(m.id)).map((m) => m.name)
-  const allShownSelected = shown.length > 0 && shown.every((m) => sel.has(m.id))
 
   /** 쉼표·줄바꿈으로 여러 명 한 번에 추가 (이미 있는 이름은 건너뜀) */
   function addMember() {
@@ -76,11 +57,24 @@ export function MembersPage() {
     setNewName('')
   }
 
+  // 아이디 관리는 화면을 통째로 갈아 끼운다 — 목록과 섞어 두면 둘 다 보기 나쁘다
+  if (showIds) {
+    return (
+      <div>
+        <div className="row" style={{ marginBottom: 12 }}>
+          <button className="small" onClick={() => setShowIds(false)}>← 길드원 목록</button>
+        </div>
+        <h1>길드원 아이디</h1>
+        <MemberIds />
+      </div>
+    )
+  }
+
   return (
     <div>
       <h1>길드원 관리</h1>
       <p className="page-desc">
-        길드원별 역할·담당·메모와 길드전 승패 기록을 관리합니다. 여러 명은 쉼표로 한 번에 추가하고, 삭제는 각 줄의 ✕를 누르세요.
+        길드원별 역할과 승패 기록을 관리합니다. 여러 명은 쉼표로 한 번에 추가하고, 삭제는 각 줄의 ✕를 누르세요.
         <br />
         자리 때문에 잠시 나가 있는 계정은 <b>삭제하지 말고 [외부로 제외]</b>를 쓰세요 — 기록은 남고 통계 명단에서만 빠집니다.
       </p>
@@ -93,7 +87,7 @@ export function MembersPage() {
           <button className="primary" disabled={!newName.trim()} onClick={addMember}>+ 추가</button>
         </div>
         <div className="row" style={{ marginTop: 8 }}>
-          <input placeholder="🔍 이름·주인·메모·등급 검색" value={q} onChange={(e) => setQ(e.target.value)} style={{ flex: 1, minWidth: 180 }} />
+          <input placeholder="🔍 이름·주인·등급 검색" value={q} onChange={(e) => setQ(e.target.value)} style={{ flex: 1, minWidth: 180 }} />
           <span className="muted">
             {query ? `${shown.length}명 표시 / ` : ''}활동 {activeCount}명
             {excludedCount > 0 && <> · 외부 {excludedCount}명</>}
@@ -108,38 +102,10 @@ export function MembersPage() {
             </button>
           ))}
           <span className="spacer" />
-          {shown.length > 0 && (
-            <button
-              className="small"
-              onClick={() => setSel(allShownSelected ? new Set() : new Set(shown.map((m) => m.id)))}
-            >
-              {allShownSelected ? '선택 해제' : `${shown.length}명 전체 선택`}
-            </button>
-          )}
+          <button className="small" onClick={() => setShowIds(true)}>아이디 관리</button>
         </div>
       </div>
 
-      <MemberIds />
-
-      {/* 선택한 계정 일괄 처리 — 자리 정리할 때 한 명씩 누르지 않게 */}
-      {sel.size > 0 && (
-        <div className="card member-bulk">
-          <div className="row between">
-            <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-              <strong>{sel.size}명 선택</strong>
-              <span className="muted" style={{ fontSize: '0.82rem' }}>
-                {selectedNames.slice(0, 6).join(', ')}
-                {selectedNames.length > 6 && ` 외 ${selectedNames.length - 6}명`}
-              </span>
-            </div>
-            <div className="row" style={{ gap: 6 }}>
-              <button className="small" onClick={() => setExcluded(sel, true)}>외부로 제외</button>
-              <button className="small" onClick={() => setExcluded(sel, false)}>길드로 복귀</button>
-              <button className="small ghost" onClick={() => setSel(new Set())}>해제</button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* 등급 입력 자동완성 (이미 쓰고 있는 등급) */}
       <datalist id="member-tiers">{tiers.map((t) => <option key={t} value={t} />)}</datalist>
@@ -147,8 +113,6 @@ export function MembersPage() {
       {shown.map((m) => (
         <MemberCard key={m.id} member={m}
           expanded={expanded === m.id}
-          selected={sel.has(m.id)}
-          onSelect={() => toggleSel(m.id)}
           onToggle={() => setExpanded(expanded === m.id ? null : m.id)} />
       ))}
       {members.length === 0 && (
@@ -163,27 +127,17 @@ export function MembersPage() {
   )
 }
 
-function MemberCard({
-  member,
-  expanded,
-  selected,
-  onSelect,
-  onToggle,
-}: {
+function MemberCard({ member, expanded, onToggle }: {
   member: Member
   expanded: boolean
-  selected: boolean
-  onSelect: () => void
   onToggle: () => void
 }) {
   const wins = member.records.filter((r) => r.result === '승').length
   const losses = member.records.length - wins
-  const [memo, setMemo] = useState(member.note ?? '')
+  const [memo, setMemo] = useState(() => getUserData().staffNotes?.[member.name] ?? '')
   const [owner, setOwner] = useState(member.owner ?? '')
   const [nick, setNick] = useState(member.name)
   const [tier, setTier] = useState(member.tier ?? '')
-  const [oppo, setOppo] = useState('')
-  const [recMemo, setRecMemo] = useState('')
 
   /**
    * 닉네임 변경 — 게임에서 닉을 바꾸면 기록이 옛 이름에 묶여 끊긴다.
@@ -248,32 +202,20 @@ function MemberCard({
     update((d) => {
       const target = d.members.find((x) => x.id === member.id)
       if (!target) return
-      target.records.unshift({
-        id: newId('rec'),
-        date: todayLocal(),
-        opponent: oppo.trim() || undefined,
-        result,
-        memo: recMemo.trim() || undefined,
-      })
+      target.records.unshift({ id: newId('rec'), date: todayLocal(), result })
     })
-    setOppo(''); setRecMemo('')
   }
 
   return (
-    <div className={`card member-card${member.excluded ? ' is-excluded' : ''}${selected ? ' is-selected' : ''}`}>
+    <div className={`card member-card${member.excluded ? ' is-excluded' : ''}`}>
       <div className="row between" style={{ cursor: 'pointer' }} onClick={onToggle}>
         <div className="row">
-          {/* 라벨로 감싸 체크박스 주변까지 눌리게 — 카드 펼침과 겹치지 않도록 클릭을 여기서 멈춘다 */}
-          <label className="member-pick" onClick={(e) => e.stopPropagation()} title="일괄 처리용 선택">
-            <input type="checkbox" checked={selected} onChange={onSelect} />
-          </label>
           <strong>{member.name}</strong>
           {member.excluded && <span className="badge excluded">외부</span>}
           {member.role && member.role !== '멤버' && <span className={`badge role-${member.role}`}>{member.role}</span>}
           {member.isAlt && <span className="badge alt">부계정</span>}
           {member.tier && <span className="badge tier">{member.tier}</span>}
           {member.owner && <span className="muted">· 주인 {member.owner}</span>}
-          {member.note && <span className="muted">— {member.note}</span>}
         </div>
         <div className="row">
           <span className="badge win">{wins}승</span>
@@ -349,20 +291,28 @@ function MemberCard({
               style={{ flex: 1 }} />
             <span className="muted" style={{ fontSize: '0.78rem' }}>파괴신 커트라인이 등급별로 적용돼요</span>
           </div>
-          <div className="row">
-            <input placeholder="담당/메모 (예: 1번 방덱 담당, 주력: 연희 카르마 린)" value={memo}
-              onChange={(e) => setMemo(e.target.value)} style={{ flex: 1 }} />
-            <button className="small" onClick={() => {
-              update((d) => {
-                const t = d.members.find((x) => x.id === member.id)
-                if (t) t.note = memo.trim() || undefined
-              })
-            }}>메모 저장</button>
-          </div>
+          {/* 운영진 메모 — 명단이 아니라 staffNotes 에 따로 담긴다.
+              워커가 일반 길드원에게는 이 칸을 아예 안 내려보내므로 본인도 못 본다. */}
+          {canEditStaff() && (
+            <div className="staff-note">
+              <label className="def-label">
+                운영진 메모
+                <span className="muted"> — 길드원에게는 안 보입니다</span>
+              </label>
+              <textarea rows={2} value={memo} placeholder="이 사람에 대해 운영진끼리만 볼 메모"
+                onChange={(e) => setMemo(e.target.value)}
+                onBlur={() => update((d) => {
+                  const v = memo.trim()
+                  const notes = { ...(d.staffNotes ?? {}) }
+                  if (v) notes[member.name] = v.slice(0, 2000)
+                  else delete notes[member.name]
+                  d.staffNotes = Object.keys(notes).length ? notes : undefined
+                })} />
+            </div>
+          )}
 
           <div className="row" style={{ marginTop: 10 }}>
-            <input placeholder="상대 (선택)" value={oppo} onChange={(e) => setOppo(e.target.value)} style={{ width: 140 }} />
-            <input placeholder="전투 메모 (선택)" value={recMemo} onChange={(e) => setRecMemo(e.target.value)} style={{ flex: 1 }} />
+            <span className="def-label">길드전 전적</span>
             <button className="small" style={{ color: 'var(--ok)' }} onClick={() => addRecord('승')}>+ 승</button>
             <button className="small" style={{ color: 'var(--danger)' }} onClick={() => addRecord('패')}>+ 패</button>
           </div>
@@ -370,14 +320,12 @@ function MemberCard({
           {member.records.length > 0 && (
             <div className="table-wrap">
               <table style={{ marginTop: 10 }}>
-                <thead><tr><th>날짜</th><th>결과</th><th>상대</th><th>메모</th><th /></tr></thead>
+                <thead><tr><th>날짜</th><th>결과</th><th /></tr></thead>
                 <tbody>
                   {member.records.map((r) => (
                     <tr key={r.id}>
                       <td>{r.date}</td>
                       <td><span className={`badge ${r.result === '승' ? 'win' : 'lose'}`}>{r.result}</span></td>
-                      <td>{r.opponent ?? '—'}</td>
-                      <td className="muted">{r.memo ?? ''}</td>
                       <td>
                         <button className="small danger" onClick={() => {
                           update((d) => {

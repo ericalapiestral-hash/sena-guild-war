@@ -42,7 +42,7 @@ const ARRAY_FIELDS = [
  */
 const CARRY_OVER_FIELDS = [
   'cutlineGuide', 'defenseSetups', 'attackTargets', 'siegeGuides', 'raidPlans',
-  'guildName',
+  'guildName', 'staffNotes',
 ]
 
 // 백업 시각 (isolate 메모리 — 재시작 시 초기화돼도 무해, 몇 번 더 백업될 뿐)
@@ -147,8 +147,11 @@ const readAdmins = async (env) => {
 }
 const isSiteAdmin = async (env, name) => !!name && (await readAdmins(env)).includes(name)
 
-/** 일반 길드원에게 안 보내는 칸 — 점수 기록과 그 기준 */
-const STAFF_ONLY_FIELDS = ['siegeRounds', 'destroyerRounds', 'cutlineGuide']
+/**
+ * 일반 길드원에게 안 보내는 칸 — 점수 기록과 그 기준, 그리고 운영진 메모.
+ * staffNotes 는 길드원 이름별 메모라 명단(members)에 넣으면 다 보인다. 그래서 따로 뺐다.
+ */
+const STAFF_ONLY_FIELDS = ['siegeRounds', 'destroyerRounds', 'cutlineGuide', 'staffNotes']
 
 /** 일반 길드원이 고칠 수 있는 칸 — 길드전 관련 메뉴가 쓰는 것들 */
 const MEMBER_WRITE_FIELDS = [

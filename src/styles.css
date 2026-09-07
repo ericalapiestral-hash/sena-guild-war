@@ -2286,3 +2286,15 @@ button.ghost:hover { background: var(--surface-2); color: var(--text); }
   font-size: 0.78rem; color: var(--text-2); cursor: pointer; white-space: nowrap;
 }
 .id-admin input { margin: 0; }
+
+/* 운영진 메모 — 길드원에게는 워커가 아예 안 내려보내는 칸이라, 화면에서도 구분되게 둔다 */
+.staff-note {
+  margin-top: 10px; padding: 11px 13px;
+  border: 1px solid var(--accent-dim, var(--border)); border-radius: var(--radius-sm, 8px);
+  background: var(--accent-soft, var(--surface-2));
+}
+.staff-note .def-label { display: block; margin-bottom: 6px; }
+.staff-note textarea {
+  width: 100%; resize: vertical; min-height: 46px;
+  font: inherit; font-size: 0.88rem; line-height: 1.6;
+}

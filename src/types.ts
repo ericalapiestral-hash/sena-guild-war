@@ -407,4 +407,11 @@ export interface UserData {
   siegeGuides: SiegeGuide[]
   /** 강림 원정대 단계별 배치·공략 */
   raidPlans: RaidPlan[]
+  /**
+   * 길드원별 운영진 메모 — 키는 길드원 이름.
+   *
+   * 명단(Member)에 넣으면 일반 길드원에게도 그대로 보인다. 워커가 통계와 함께
+   * 통째로 빼고 내려보내도록 최상위 칸으로 따로 뒀다.
+   */
+  staffNotes?: Record<string, string>
 }
