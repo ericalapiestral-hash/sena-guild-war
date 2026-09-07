@@ -2257,3 +2257,20 @@ button.ghost:hover { background: var(--surface-2); color: var(--text); }
   .id-row { grid-template-columns: 1fr auto; }
   .id-row .id-mark { grid-column: 1 / -1; }
 }
+
+/* ---- 비밀번호 칸 (눈 아이콘) ----
+   칸 안 오른쪽에 버튼을 얹는다. 글자가 버튼 밑으로 흘러 들어가지 않게
+   오른쪽 여백을 버튼 폭만큼 준다. */
+.pw-field { position: relative; display: block; width: 100%; }
+.pw-field input { width: 100%; padding-right: 40px; }
+.pw-eye {
+  position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+  width: 32px; height: 32px; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: none; border: none; border-radius: 7px;
+  color: var(--text-3); cursor: pointer;
+}
+.pw-eye:hover { color: var(--text); background: var(--surface-2); }
+.pw-eye:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.pw-eye svg { width: 18px; height: 18px; display: block; }
+.pw-eye[aria-pressed="true"] { color: var(--accent-strong); }

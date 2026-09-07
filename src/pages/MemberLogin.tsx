@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { PasswordInput } from '../components/PasswordInput'
 import { changePassword, login } from '../session'
 import { useGuildName } from '../store'
 
@@ -72,11 +73,9 @@ export function MemberLoginPage({ reason, onDone }: {
             </p>
             <form onSubmit={doChange}>
               <label className="login-label">새 비밀번호 (6자 이상)</label>
-              <input type="password" value={next} autoFocus autoComplete="new-password"
-                onChange={(e) => setNext(e.target.value)} />
+              <PasswordInput value={next} onChange={setNext} autoFocus autoComplete="new-password" />
               <label className="login-label">한 번 더</label>
-              <input type="password" value={next2} autoComplete="new-password"
-                onChange={(e) => setNext2(e.target.value)} />
+              <PasswordInput value={next2} onChange={setNext2} autoComplete="new-password" />
               {err && <p className="login-err">{err}</p>}
               <button className="primary login-go" disabled={busy}>
                 {busy ? '바꾸는 중…' : '바꾸고 들어가기'}
@@ -96,8 +95,8 @@ export function MemberLoginPage({ reason, onDone }: {
               <input value={name} autoFocus autoComplete="username"
                 onChange={(e) => setName(e.target.value)} placeholder="게임에서 쓰는 닉네임" />
               <label className="login-label">비밀번호</label>
-              <input type="password" value={pw} autoComplete="current-password"
-                onChange={(e) => setPw(e.target.value)} />
+              <PasswordInput value={pw} onChange={setPw} autoComplete="current-password"
+                placeholder="운영진에게 받은 비밀번호" />
               {err && <p className="login-err">{err}</p>}
               <button className="primary login-go" disabled={busy}>
                 {busy ? '확인 중…' : '들어가기'}
