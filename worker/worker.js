@@ -10,7 +10,7 @@ function corsHeaders() {
   return {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'content-type',
+    'Access-Control-Allow-Headers': 'content-type, authorization, x-admin-pw',
   }
 }
 
@@ -48,6 +48,196 @@ const CARRY_OVER_FIELDS = [
 // 백업 시각 (isolate 메모리 — 재시작 시 초기화돼도 무해, 몇 번 더 백업될 뿐)
 let lastBackupAt = 0
 let lastDailyDay = ''
+
+// ===== 길드원 로그인 =====
+//
+// 사이트는 GitHub Pages에 올라간 정적 파일이라 코드가 전부 공개된다.
+// 그래서 "누가 길드원인가"는 여기서만 판정한다. 사이트 쪽 검사는 UI 편의일 뿐이다.
+//
+// 나간 사람을 막는 게 목적이라, 토큰이 살아 있어도 요청마다 명단을 다시 본다.
+// 명단에서 빠졌거나 외부 처리되면 그 즉시 끊긴다. (명단은 어차피 KV에서 읽는다)
+//
+// KV
+//   auth-key     토큰 서명 키 (처음 쓸 때 한 번 만든다 — wrangler secret 없이 굴리려고)
+//   member-auth  { 닉네임: { h: 해시, s: 솔트, tmp: 임시비번여부, at: 발급시각 } }
+//   auth-on      '1'이면 검사한다. 아이디를 다 나눠준 뒤에 켠다(그전에 켜면 전원이 잠긴다)
+const TOKEN_DAYS = 30
+
+const enc = (s) => new TextEncoder().encode(s)
+const hex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('')
+const b64url = (s) => btoa(unescape(encodeURIComponent(s))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+const unb64url = (s) => decodeURIComponent(escape(atob(s.replace(/-/g, '+').replace(/_/g, '/'))))
+
+/** 타이밍 차이로 값을 알아내지 못하게 — 길이가 달라도 끝까지 돈다 */
+function safeEqual(a, b) {
+  const x = enc(String(a)), y = enc(String(b))
+  let diff = x.length ^ y.length
+  for (let i = 0; i < Math.max(x.length, y.length); i++) diff |= (x[i] ?? 0) ^ (y[i] ?? 0)
+  return diff === 0
+}
+
+/** 비번 해시 — 솔트를 붙여 15만 번 늘린다(PBKDF2). 무차별 대입을 느리게 만든다 */
+async function hashPw(pw, salt) {
+  const key = await crypto.subtle.importKey('raw', enc(pw), 'PBKDF2', false, ['deriveBits'])
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', salt: enc(salt), iterations: 150000, hash: 'SHA-256' }, key, 256)
+  return hex(bits)
+}
+
+async function signKey(env) {
+  let k = await env.GUILD_KV.get('auth-key')
+  if (!k) {
+    k = hex(crypto.getRandomValues(new Uint8Array(32)))
+    await env.GUILD_KV.put('auth-key', k)
+  }
+  return crypto.subtle.importKey('raw', enc(k), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify'])
+}
+
+async function makeToken(env, name) {
+  const body = b64url(JSON.stringify({ n: name, e: Date.now() + TOKEN_DAYS * 864e5 }))
+  const sig = hex(await crypto.subtle.sign('HMAC', await signKey(env), enc(body)))
+  return body + '.' + sig
+}
+
+/** 토큰 → 닉네임. 서명·만료가 맞아야 하고, 그 다음 명단 대조는 호출한 쪽에서 한다 */
+async function readToken(env, token) {
+  const [body, sig] = String(token || '').split('.')
+  if (!body || !sig) return null
+  const ok = await crypto.subtle.verify('HMAC', await signKey(env),
+    Uint8Array.from(sig.match(/../g)?.map((h) => parseInt(h, 16)) ?? []), enc(body))
+  if (!ok) return null
+  try {
+    const p = JSON.parse(unb64url(body))
+    return p.e > Date.now() ? p.n : null
+  } catch { return null }
+}
+
+/** 지금도 길드원인가 — 명단에 있고 외부 처리가 아니어야 한다 */
+async function stillMember(env, name) {
+  const raw = await env.GUILD_KV.get('guild-data')
+  if (!raw) return false
+  try {
+    const members = (JSON.parse(raw).members) || []
+    const m = members.find((x) => x && x.name === name)
+    return !!m && !m.excluded
+  } catch { return false }
+}
+
+const authOn = async (env) => (await env.GUILD_KV.get('auth-on')) === '1'
+const bearer = (request) => (request.headers.get('authorization') || '').replace(/^Bearer\s+/i, '')
+
+/**
+ * 이 요청을 받아줘도 되는가.
+ * 검사를 안 켠 동안(auth-on 없음)은 전부 통과 — 아이디를 나눠주는 기간이다.
+ */
+async function guard(request, env) {
+  if (!(await authOn(env))) return { ok: true, name: null }
+  const name = await readToken(env, bearer(request))
+  if (!name) return { ok: false, res: json({ error: '로그인이 필요해요.', code: 'login' }, 401) }
+  if (!(await stillMember(env, name))) {
+    return { ok: false, res: json({ error: '길드원 명단에 없어요.', code: 'gone' }, 403) }
+  }
+  return { ok: true, name }
+}
+
+/** 운영진 확인 — 사이트 코드에 있는 해시가 아니라 워커 시크릿과 맞춰본다 */
+function isAdminReq(request, env) {
+  const pw = request.headers.get('x-admin-pw') || ''
+  return !!env.ADMIN_PW && safeEqual(pw, env.ADMIN_PW)
+}
+
+const readAuth = async (env) => JSON.parse((await env.GUILD_KV.get('member-auth')) || '{}')
+const writeAuth = (env, obj) => env.GUILD_KV.put('member-auth', JSON.stringify(obj))
+
+/** 사람이 옮겨 적기 쉬운 임시 비번 — 헷갈리는 0/O/1/l 은 뺀다 */
+function tempPw(n = 8) {
+  const abc = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
+  return [...crypto.getRandomValues(new Uint8Array(n))].map((b) => abc[b % abc.length]).join('')
+}
+
+async function handleAuth(request, env, path) {
+  const body = request.method === 'POST' ? await request.json().catch(() => ({})) : {}
+
+  // --- 로그인 ---
+  if (path.endsWith('/auth/login')) {
+    const name = String(body.name || '').trim()
+    const pw = String(body.pw || '')
+    const all = await readAuth(env)
+    const rec = all[name]
+    // 없는 아이디여도 같은 문구로 답한다 — 누가 길드원인지 흘리지 않으려고
+    const fail = json({ error: '아이디나 비밀번호가 달라요.' }, 401)
+    if (!rec || !pw) return fail
+    if (!safeEqual(await hashPw(pw, rec.s), rec.h)) return fail
+    if (!(await stillMember(env, name))) return json({ error: '길드원 명단에 없어요.', code: 'gone' }, 403)
+    return json({ token: await makeToken(env, name), name, mustChange: !!rec.tmp })
+  }
+
+  // --- 내 비번 바꾸기 ---
+  if (path.endsWith('/auth/password')) {
+    const name = await readToken(env, bearer(request))
+    if (!name) return json({ error: '로그인이 필요해요.' }, 401)
+    const next = String(body.next || '')
+    if (next.length < 6) return json({ error: '비밀번호는 6자 이상으로 해주세요.' }, 400)
+    const all = await readAuth(env)
+    const rec = all[name]
+    if (!rec) return json({ error: '아이디가 없어요.' }, 404)
+    if (!safeEqual(await hashPw(String(body.pw || ''), rec.s), rec.h)) {
+      return json({ error: '지금 비밀번호가 달라요.' }, 401)
+    }
+    const s = hex(crypto.getRandomValues(new Uint8Array(16)))
+    all[name] = { h: await hashPw(next, s), s, tmp: 0, at: Date.now() }
+    await writeAuth(env, all)
+    return json({ ok: true })
+  }
+
+  // --- 여기서부터 운영진 ---
+  if (!isAdminReq(request, env)) return json({ error: '운영진만 쓸 수 있어요.' }, 403)
+
+  if (path.endsWith('/auth/list')) {
+    const all = await readAuth(env)
+    const raw = await env.GUILD_KV.get('guild-data')
+    const members = raw ? (JSON.parse(raw).members || []) : []
+    return json({
+      on: await authOn(env),
+      members: members.map((m) => ({
+        name: m.name, excluded: !!m.excluded,
+        hasId: !!all[m.name], tmp: !!all[m.name]?.tmp, at: all[m.name]?.at || null,
+      })),
+      // 명단에 없는데 아이디만 남은 것 — 나간 사람의 찌꺼기
+      orphans: Object.keys(all).filter((n) => !members.some((m) => m.name === n)),
+    })
+  }
+
+  if (path.endsWith('/auth/issue')) {
+    const name = String(body.name || '').trim()
+    if (!name) return json({ error: '이름이 없어요.' }, 400)
+    const pw = tempPw()
+    const s = hex(crypto.getRandomValues(new Uint8Array(16)))
+    const all = await readAuth(env)
+    all[name] = { h: await hashPw(pw, s), s, tmp: 1, at: Date.now() }
+    await writeAuth(env, all)
+    return json({ name, pw })          // 평문은 이때 한 번만 돌려준다
+  }
+
+  if (path.endsWith('/auth/revoke')) {
+    const all = await readAuth(env)
+    for (const n of [].concat(body.names || body.name || [])) delete all[String(n)]
+    await writeAuth(env, all)
+    return json({ ok: true, left: Object.keys(all).length })
+  }
+
+  if (path.endsWith('/auth/enable')) {
+    const on = !!body.on
+    const all = await readAuth(env)
+    if (on && !Object.keys(all).length) {
+      return json({ error: '아이디를 한 명도 안 만들었어요. 켜면 아무도 못 들어옵니다.' }, 400)
+    }
+    await env.GUILD_KV.put('auth-on', on ? '1' : '0')
+    return json({ ok: true, on })
+  }
+
+  return json({ error: '없는 경로예요.' }, 404)
+}
 
 // ===== 통계 API (읽기 전용 — 디스코드 봇 등 외부 연동용) =====
 const WEEKDAYS = ['월', '화', '수', '목', '금', '토', '일']
@@ -1023,6 +1213,16 @@ export default {
     if (request.method === 'OPTIONS') return new Response(null, { headers: corsHeaders() })
 
     const path = new URL(request.url).pathname.replace(/\/+$/, '')
+
+    // ===== 길드원 로그인 =====
+    if (path.includes('/auth/')) return handleAuth(request, env, path)
+
+    // 길드 데이터를 내주거나 받는 경로는 전부 같은 문을 지난다.
+    // 백업본(prev·daily)도 통째로 다 들어 있어서 함께 막는다.
+    if (/\/(data|data\/prev|data\/daily|api\/siege|api\/destroyer)$/.test(path)) {
+      const g = await guard(request, env)
+      if (!g.ok) return g.res
+    }
 
     // ===== 캡처 점수 읽기 =====
     if (path.endsWith('/ocr')) return handleOcr(request, env)

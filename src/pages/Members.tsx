@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { Member, MemberRole, StatRound } from '../types'
 import { getUserData, newId, todayLocal, update, useUserData } from '../store'
+import { MemberIds } from '../components/MemberIds'
 
 const ROLES: MemberRole[] = ['길드마스터', '부길드마스터', '정예멤버', '멤버']
 const roleRank = (r?: MemberRole) => {
@@ -117,6 +118,8 @@ export function MembersPage() {
           )}
         </div>
       </div>
+
+      <MemberIds />
 
       {/* 선택한 계정 일괄 처리 — 자리 정리할 때 한 명씩 누르지 않게 */}
       {sel.size > 0 && (

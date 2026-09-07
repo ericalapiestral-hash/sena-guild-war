@@ -8,6 +8,7 @@ import initialHeroes from './data/heroes.json'
 import initialCounters from './data/counters.json'
 import initialArena from './data/arena.json'
 import { WORKER_URL } from './data/config'
+import { authHeaders, authLost } from './session'
 
 const LS_KEY = 'sena-guild-war:v1'
 const REV_KEY = 'sena-guild-war:rev'
@@ -166,12 +167,18 @@ function saveRev(v: number) {
   }
 }
 
+/** 워커가 로그인을 요구하면 앱에 알린다 — 화면이 로그인으로 넘어간다 */
+function noteAuth(status: number) {
+  if (status === 401) authLost('login')
+  else if (status === 403) authLost('gone')
+}
+
 async function pull() {
   const base = readBase()
   if (!base) return
   try {
-    const r = await fetch(`${base}/data`, { cache: 'no-store' })
-    if (!r.ok) return
+    const r = await fetch(`${base}/data`, { cache: 'no-store', headers: authHeaders() })
+    if (!r.ok) { noteAuth(r.status); return }
     const data = await r.json()
     if (data && typeof data === 'object' && Object.keys(data).length) {
       let incRev = Number(data._rev || 0) || 0
@@ -204,14 +211,15 @@ async function push(keepalive = false) {
   const base = readBase()
   if (!base || !canPush()) return
   saveRev(Math.max(Date.now(), rev + 1))
-  // 덱·가이드 편집은 공개(비번 없음) — 워커가 /data POST를 누구나 허용.
+  // 편집 권한은 워커가 본다 — 로그인 토큰을 같이 보내고, 거절당하면 로그인 화면으로.
   try {
     const r = await fetch(`${base}/data`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ data: { ...state, _rev: rev } }),
       keepalive,
     })
+    if (!r.ok) noteAuth(r.status)
     // 워커가 서버 시각으로 스탬프한 최종 rev를 돌려줌 — 클라이언트 시계 오차와
     // 무관하게 모두가 한 시계(서버)를 기준으로 버전 비교하도록 맞춤
     if (r.ok) {

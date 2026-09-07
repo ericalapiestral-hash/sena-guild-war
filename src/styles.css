@@ -2187,3 +2187,73 @@ button.ghost:hover { background: var(--surface-2); color: var(--text); }
   border: 1px solid var(--accent-dim); border-radius: 999px; padding: 1px 8px;
 }
 @media (max-width: 560px) { .timeline-row input { width: 100%; } }
+
+/* ---- 길드원 로그인 ----
+   워커가 로그인을 요구할 때 사이트 전체를 덮는 화면. 읽기까지 막는 게 목적이라
+   사이드바·본문을 아예 그리지 않고 이 카드 하나만 남긴다. */
+.login-wrap {
+  position: fixed; inset: 0; display: grid; place-items: center;
+  padding: 24px; background: var(--bg); overflow-y: auto;
+}
+.login-card {
+  width: 100%; max-width: 360px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius, 14px); padding: 28px 26px 26px;
+  box-shadow: 0 18px 44px -22px rgba(0, 0, 0, .45);
+}
+.login-brand {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 0.95rem; color: var(--text-2); margin-bottom: 18px;
+}
+.login-brand strong { color: var(--text); font-size: 1.02rem; }
+.login-card h1 { font-size: 1.25rem; margin: 0 0 8px; }
+.login-desc {
+  margin: 0 0 20px; font-size: 0.87rem; line-height: 1.65;
+  color: var(--text-2); word-break: keep-all;
+}
+.login-label {
+  display: block; font-size: 0.8rem; font-weight: 700;
+  color: var(--text-2); margin: 12px 0 5px;
+}
+.login-card input { width: 100%; }
+.login-err {
+  margin: 12px 0 0; padding: 9px 12px; font-size: 0.84rem; line-height: 1.5;
+  color: var(--danger); background: var(--danger-soft, var(--surface-2));
+  border: 1px solid var(--danger); border-radius: var(--radius-sm, 8px);
+  word-break: keep-all;
+}
+.login-go { width: 100%; margin-top: 18px; padding: 11px; font-size: 0.95rem; }
+
+/* ---- 운영진: 길드원 아이디 ---- */
+.id-panel { margin-top: 10px; }
+.id-state {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 11px 13px; border-radius: var(--radius-sm, 8px);
+  border: 1px solid var(--border); background: var(--surface-2);
+  font-size: 0.86rem; color: var(--text-2);
+}
+.id-state.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-strong); }
+.id-rows { display: flex; flex-direction: column; gap: 5px; margin-top: 10px; }
+.id-row {
+  display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: center;
+  padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm, 8px);
+  background: var(--surface); font-size: 0.88rem;
+}
+.id-row.gone { opacity: .55; }
+.id-row .id-name { font-weight: 700; }
+.id-row .id-mark { font-size: 0.78rem; color: var(--text-3); white-space: nowrap; }
+.id-row .id-mark.tmp { color: var(--accent-strong); }
+.id-pw {
+  margin-top: 8px; padding: 12px 14px; border-radius: var(--radius-sm, 8px);
+  border: 1px solid var(--accent); background: var(--accent-soft);
+  font-size: 0.88rem; line-height: 1.7; word-break: keep-all;
+}
+.id-pw code {
+  display: inline-block; margin: 0 2px; padding: 3px 9px;
+  font-size: 1.02rem; font-weight: 800; letter-spacing: .08em;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
+}
+@media (max-width: 560px) {
+  .id-row { grid-template-columns: 1fr auto; }
+  .id-row .id-mark { grid-column: 1 / -1; }
+}

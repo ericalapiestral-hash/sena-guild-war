@@ -17,6 +17,8 @@ import { SiegeGuidePage } from './pages/SiegeGuide'
 import { RaidPlanPage } from './pages/RaidPlan'
 import { AdminLogin } from './pages/AdminLogin'
 import { ADMIN_ROUTES, isAdmin, logout } from './auth'
+import { MemberLoginPage } from './pages/MemberLogin'
+import { onAuthLost } from './session'
 import { useGuildName } from './store'
 
 interface MenuItem {
@@ -335,6 +337,11 @@ export default function App() {
   // 브라우저 탭 제목 — index.html에 박힌 기본 제목을 길드 이름으로 덮는다
   useEffect(() => { document.title = `${guildName} · 세나 리버스 길드` }, [guildName])
 
+  // 워커가 로그인을 요구하면 화면 전체를 로그인으로 돌린다.
+  // 검사를 안 켠 동안은 이 알림이 오지 않으므로 아무 일도 일어나지 않는다.
+  const [authLost, setAuthLost] = useState<'login' | 'gone' | null>(null)
+  useEffect(() => onAuthLost(setAuthLost), [])
+
   const visible = MENU.filter((m) => !m.admin || admin)
   const adminActive = ADMIN_ITEMS.some((m) => m.route === base) || base === 'admin'
   const moreActive = adminActive || SECONDARY.includes(base)
@@ -351,6 +358,11 @@ export default function App() {
     logout()
     setAdmin(false)
     navigate('home')
+  }
+
+  // 로그인이 풀리면 사이트 전체를 가린다 — 읽기도 막는 게 목적이라 화면부터 덮는다
+  if (authLost) {
+    return <MemberLoginPage reason={authLost} onDone={() => { setAuthLost(null); location.reload() }} />
   }
 
   return (
