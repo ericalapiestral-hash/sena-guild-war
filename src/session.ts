@@ -69,9 +69,20 @@ async function post(path: string, body: unknown, extra: Record<string, string> =
     headers: { 'content-type': 'application/json', ...extra },
     body: JSON.stringify(body ?? {}),
   })
-  const j = await r.json().catch(() => ({}))
-  if (!r.ok) throw new Error((j as { error?: string }).error || '요청이 실패했어요.')
-  return j
+  return unwrap(r)
+}
+
+/**
+ * 서버가 준 사유를 그대로 보여준다. 워커가 터지면(500) 본문이 JSON이 아니라
+ * 사유가 없는데, 그때 '실패했어요'만 뜨면 원인을 못 찾는다 — 상태 코드라도 붙인다.
+ */
+async function unwrap(r: Response) {
+  const j = await r.json().catch(() => null) as { error?: string } | null
+  if (r.ok) return j ?? {}
+  if (j?.error) throw new Error(j.error)
+  throw new Error(
+    r.status >= 500 ? `서버 오류 (${r.status}) — 워커 로그를 봐야 해요.`
+      : `요청이 막혔어요 (${r.status}).`)
 }
 
 export async function login(name: string, pw: string): Promise<{ mustChange: boolean }> {
@@ -95,9 +106,7 @@ export type IdRow = { name: string; excluded: boolean; hasId: boolean; tmp: bool
 
 export async function listIds(): Promise<{ on: boolean; members: IdRow[]; orphans: string[] }> {
   const r = await fetch(`${base()}/auth/list`, { method: 'POST', headers: adminHeaders() })
-  const j = await r.json().catch(() => ({}))
-  if (!r.ok) throw new Error((j as { error?: string }).error || '목록을 못 받았어요.')
-  return j as { on: boolean; members: IdRow[]; orphans: string[] }
+  return await unwrap(r) as { on: boolean; members: IdRow[]; orphans: string[] }
 }
 
 /** 아이디 발급 — 임시 비밀번호는 이때 한 번만 돌려받는다. 다시 볼 수 없다 */

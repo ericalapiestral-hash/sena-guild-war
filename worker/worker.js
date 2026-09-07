@@ -76,11 +76,17 @@ function safeEqual(a, b) {
   return diff === 0
 }
 
-/** 비번 해시 — 솔트를 붙여 15만 번 늘린다(PBKDF2). 무차별 대입을 느리게 만든다 */
+/**
+ * 비번 해시 — 솔트를 붙여 PBKDF2 로 늘린다. 무차별 대입을 느리게 만든다.
+ *
+ * ★ 10만 회가 워커의 상한이다. 넘기면 'iteration counts above 100000 are not
+ *   supported' 로 던져서 비번을 만들거나 확인하는 모든 요청이 500 이 된다.
+ *   로컬(wrangler dev)에서는 안 걸리고 배포한 뒤에야 터지니 주의.
+ */
 async function hashPw(pw, salt) {
   const key = await crypto.subtle.importKey('raw', enc(pw), 'PBKDF2', false, ['deriveBits'])
   const bits = await crypto.subtle.deriveBits(
-    { name: 'PBKDF2', salt: enc(salt), iterations: 150000, hash: 'SHA-256' }, key, 256)
+    { name: 'PBKDF2', salt: enc(salt), iterations: 100000, hash: 'SHA-256' }, key, 256)
   return hex(bits)
 }
 
