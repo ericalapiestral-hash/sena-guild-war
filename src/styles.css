@@ -2301,3 +2301,34 @@ button.ghost:hover { background: var(--surface-2); color: var(--text); }
 
 /* 영구 최고권한 표식 — 해제 못 하는 자리라 눈에 띄게 */
 .id-tag.owner { background: var(--accent-soft); color: var(--accent-strong); }
+
+/* 장비 주옵 두 자리 — 같은 부위끼리 한 줄에 붙여 눈으로 묶이게 */
+.gear-pair {
+  display: flex; align-items: flex-start; gap: 8px;
+  margin-top: 8px; padding: 8px 10px;
+  border: 1px solid var(--border-2); border-radius: var(--radius-sm, 8px);
+  background: var(--surface-2);
+}
+.gear-pair .gear-part {
+  flex: 0 0 62px; padding-top: 4px;
+  font-size: 0.8rem; font-weight: 700; color: var(--text-2);
+}
+.gear-pair .def-pick { flex: 1 1 0; min-width: 0; }
+@media (max-width: 560px) {
+  .gear-pair { flex-direction: column; gap: 4px; }
+  .gear-pair .gear-part { flex: none; padding-top: 0; }
+}
+
+/* 주의사항 — 세팅 줄 사이에 끼워 두면 정작 봐야 할 때 안 읽혀서 맨 아래에 따로 세운다 */
+.warn-note {
+  display: flex; align-items: flex-start; gap: 9px;
+  margin-top: 12px; padding: 10px 13px;
+  border: 1px solid var(--danger); border-left-width: 3px;
+  border-radius: var(--radius-sm, 8px);
+  background: var(--danger-soft, var(--surface-2));
+  font-size: 0.9rem; line-height: 1.65; word-break: keep-all;
+}
+.warn-note-l {
+  flex: 0 0 auto; font-weight: 800; font-size: 0.82rem;
+  color: var(--danger); padding-top: 1px;
+}

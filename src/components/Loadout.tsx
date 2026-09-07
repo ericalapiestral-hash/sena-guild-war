@@ -1,7 +1,7 @@
 import type { Hero, LoadoutSlot, SkillPick, TimelineStep } from '../types'
 import { SKILL_RESERVE_MAX } from '../types'
 import { HeroName } from './HeroSelect'
-import { ACCESSORIES, ARMOR_OPTIONS, GEAR_SETS, SIEGE_TURNS, WEAPON_OPTIONS } from '../data/gear'
+import { ACCESSORIES, ARMOR_OPTIONS, GEAR_SETS, GEM_OPTIONS, SIEGE_TURNS, WEAPON_OPTIONS } from '../data/gear'
 
 /**
  * 길드전 방어·공격이 같이 쓰는 입력 부품들.
@@ -43,7 +43,12 @@ export function Line({ label, value, onChange, placeholder }: {
   )
 }
 
-/** 영웅 1인의 장비 세팅 (세트·장신구·무기1/2·방어구1/2 + 한 줄 메모) */
+/**
+ * 영웅 1인의 장비 세팅.
+ *
+ * 무기·방어구는 각각 두 자리라 '무기 1 / 방어구 1 / 무기 2 / 방어구 2' 로 번갈아
+ * 세워 두면 같은 부위끼리 눈으로 못 묶는다. 부위별로 붙여 둔다.
+ */
 export function LoadoutEditor({ slot, hero, onChange }: {
   slot: LoadoutSlot
   hero?: Hero
@@ -55,11 +60,26 @@ export function LoadoutEditor({ slot, hero, onChange }: {
       <div className="def-grid">
         <Pick label="장비 세트" value={slot.set} options={GEAR_SETS} onPick={(v) => onChange({ set: v })} />
         <Pick label="장신구" value={slot.accessory} options={ACCESSORIES} onPick={(v) => onChange({ accessory: v })} />
-        <Pick label="무기 1" value={slot.weapon1} options={WEAPON_OPTIONS} onPick={(v) => onChange({ weapon1: v })} />
-        <Pick label="방어구 1" value={slot.armor1} options={ARMOR_OPTIONS} onPick={(v) => onChange({ armor1: v })} />
-        <Pick label="무기 2" value={slot.weapon2} options={WEAPON_OPTIONS} onPick={(v) => onChange({ weapon2: v })} />
-        <Pick label="방어구 2" value={slot.armor2} options={ARMOR_OPTIONS} onPick={(v) => onChange({ armor2: v })} />
       </div>
+
+      <div className="gear-pair">
+        <span className="gear-part">무기 주옵</span>
+        <Pick label="1" value={slot.weapon1} options={WEAPON_OPTIONS} onPick={(v) => onChange({ weapon1: v })} />
+        <Pick label="2" value={slot.weapon2} options={WEAPON_OPTIONS} onPick={(v) => onChange({ weapon2: v })} />
+      </div>
+      <div className="gear-pair">
+        <span className="gear-part">갑바 주옵</span>
+        <Pick label="1" value={slot.armor1} options={ARMOR_OPTIONS} onPick={(v) => onChange({ armor1: v })} />
+        <Pick label="2" value={slot.armor2} options={ARMOR_OPTIONS} onPick={(v) => onChange({ armor2: v })} />
+      </div>
+      <div className="gear-pair">
+        <span className="gear-part">세공</span>
+        <Pick label="1" value={slot.gem1} options={GEM_OPTIONS} onPick={(v) => onChange({ gem1: v })} />
+        <Pick label="2" value={slot.gem2} options={GEM_OPTIONS} onPick={(v) => onChange({ gem2: v })} />
+      </div>
+
+      <input placeholder="부옵 우선순위 (예: 막기 > 생명 > 방어)" value={slot.subStats ?? ''}
+        onChange={(e) => onChange({ subStats: e.target.value || undefined })} style={{ width: '100%', marginTop: 6 }} />
       <input placeholder="그 외 한 줄 (속공 수치·전용장비 등)" value={slot.stat ?? ''}
         onChange={(e) => onChange({ stat: e.target.value || undefined })} style={{ width: '100%', marginTop: 6 }} />
     </div>
@@ -68,7 +88,19 @@ export function LoadoutEditor({ slot, hero, onChange }: {
 
 /** 잠금(보기) 상태의 세팅 한 줄 — 값이 있는 것만 · 로 이어 붙인다 */
 export function LoadoutView({ slot, hero }: { slot: LoadoutSlot; hero?: Hero }) {
-  const parts = [slot.set, slot.accessory, slot.weapon1, slot.armor1, slot.weapon2, slot.armor2, slot.stat].filter(Boolean)
+  // 같은 부위 두 자리는 '/' 로 붙여 한 덩어리로 읽히게 한다
+  const pair = (a?: string, b?: string, label?: string) => {
+    const v = [a, b].filter(Boolean).join(' / ')
+    return v ? `${label} ${v}` : ''
+  }
+  const parts = [
+    slot.set, slot.accessory,
+    pair(slot.weapon1, slot.weapon2, '무기'),
+    pair(slot.armor1, slot.armor2, '갑바'),
+    pair(slot.gem1, slot.gem2, '세공'),
+    slot.subStats && `부옵 ${slot.subStats}`,
+    slot.stat,
+  ].filter(Boolean)
   return (
     <div className="def-slot">
       <div className="def-slot-head"><HeroName hero={hero} name={slot.name} /></div>

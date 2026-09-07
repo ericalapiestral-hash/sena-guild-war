@@ -240,14 +240,23 @@ export interface LoadoutSlot {
   set?: string
   /** 무기1 주옵 (WEAPON_OPTIONS) */
   weapon1?: string
-  /** 방어구1 주옵 (ARMOR_OPTIONS) */
-  armor1?: string
   /** 무기2 주옵 */
   weapon2?: string
+  /** 방어구1 주옵 (ARMOR_OPTIONS) */
+  armor1?: string
   /** 방어구2 주옵 */
   armor2?: string
+  /** 세공 1 (GEM_OPTIONS) — 게임에서 두 개까지 박는다 */
+  gem1?: string
+  /** 세공 2 */
+  gem2?: string
   /** 장신구 (ACCESSORIES) */
   accessory?: string
+  /**
+   * 이 영웅의 부옵 우선순위.
+   * 덱 전체로 한 줄만 적으면 딜러와 탱커가 같은 기준이 돼 버려서 영웅마다 따로 둔다.
+   */
+  subStats?: string
   /** 그 외 한 줄 (속공 수치·전용장비 등) */
   stat?: string
 }

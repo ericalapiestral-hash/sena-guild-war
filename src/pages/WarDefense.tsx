@@ -170,9 +170,9 @@ function DefenseCard({
 
               <Line label="진형" value={setup.formation} onChange={(v) => patch((s) => { s.formation = v })} placeholder="예: 보호진형" />
               <Line label="펫" value={setup.pet} onChange={(v) => patch((s) => { s.pet = v })} placeholder="예: 루" />
-              <Line label="부옵 우선순위" value={setup.subStats} onChange={(v) => patch((s) => { s.subStats = v })} placeholder="예: 막기 > 생명 > 방어" />
+              <Line label="덱 공통 부옵" value={setup.subStats} onChange={(v) => patch((s) => { s.subStats = v })} placeholder="영웅마다 따로 적었으면 비워두세요" />
               <Line label="장신구 요약" value={setup.accessoryNote} onChange={(v) => patch((s) => { s.accessoryNote = v })} placeholder="예: 6부6권" />
-              <Line label="기타" value={setup.notes} onChange={(v) => patch((s) => { s.notes = v })} placeholder="주의점·상성 등" />
+              <Line label="주의사항" value={setup.notes} onChange={(v) => patch((s) => { s.notes = v })} placeholder="주의점·상성 등" />
             </>
           ) : (
             <DefenseView setup={setup} heroMap={heroMap} />
@@ -208,9 +208,8 @@ function DefenseView({ setup, heroMap }: { setup: DefenseSetup; heroMap: Map<str
     ['속공 수치', speed],
     ['진형', setup.formation],
     ['펫', setup.pet],
-    ['부옵 우선순위', setup.subStats],
+    ['덱 공통 부옵', setup.subStats],
     ['장신구 요약', setup.accessoryNote],
-    ['기타', setup.notes],
   ]
   const hasReserve = (setup.reserve ?? []).some((r) => r.skill)
   return (
@@ -229,6 +228,13 @@ function DefenseView({ setup, heroMap }: { setup: DefenseSetup; heroMap: Map<str
           <span>{v}</span>
         </div>
       ))}
+      {/* 주의사항은 맨 아래에 따로 — 다른 줄에 섞여 있으면 정작 봐야 할 때 안 읽힌다 */}
+      {setup.notes && setup.notes.trim() && (
+        <div className="warn-note">
+          <span className="warn-note-l">주의사항</span>
+          <span>{setup.notes}</span>
+        </div>
+      )}
     </>
   )
 }

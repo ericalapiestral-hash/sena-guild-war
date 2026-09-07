@@ -214,7 +214,6 @@ function AttackDeckCard({ targetId, deck, heroes, heroMap, open, onToggle }: {
     ['속공 수치', speed],
     ['진형', deck.formation],
     ['펫', deck.pet],
-    ['공략 포인트', deck.notes],
   ]
 
   return (
@@ -289,7 +288,7 @@ function AttackDeckCard({ targetId, deck, heroes, heroMap, open, onToggle }: {
 
               <Line label="진형" value={deck.formation} onChange={(v) => patch((k) => { k.formation = v })} placeholder="예: 공격진형" />
               <Line label="펫" value={deck.pet} onChange={(v) => patch((k) => { k.pet = v })} placeholder="예: 카람" />
-              <Line label="공략 포인트" value={deck.notes} onChange={(v) => patch((k) => { k.notes = v })} placeholder="주의점·순서 등" />
+              <Line label="주의사항" value={deck.notes} onChange={(v) => patch((k) => { k.notes = v })} placeholder="주의점·순서 등" />
             </>
           ) : (
             <>
@@ -307,6 +306,13 @@ function AttackDeckCard({ targetId, deck, heroes, heroMap, open, onToggle }: {
                   <span>{v}</span>
                 </div>
               ))}
+              {/* 주의사항은 맨 아래에 따로 — 다른 줄에 섞여 있으면 정작 봐야 할 때 안 읽힌다 */}
+              {deck.notes && deck.notes.trim() && (
+                <div className="warn-note">
+                  <span className="warn-note-l">주의사항</span>
+                  <span>{deck.notes}</span>
+                </div>
+              )}
             </>
           )}
         </div>
