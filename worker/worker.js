@@ -99,13 +99,16 @@ async function signKey(env) {
   return crypto.subtle.importKey('raw', enc(k), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify'])
 }
 
-async function makeToken(env, name) {
-  const body = b64url(JSON.stringify({ n: name, e: Date.now() + TOKEN_DAYS * 864e5 }))
+async function makeToken(env, id) {
+  const body = b64url(JSON.stringify({ i: id, e: Date.now() + TOKEN_DAYS * 864e5 }))
   const sig = hex(await crypto.subtle.sign('HMAC', await signKey(env), enc(body)))
   return body + '.' + sig
 }
 
-/** 토큰 → 닉네임. 서명·만료가 맞아야 하고, 그 다음 명단 대조는 호출한 쪽에서 한다 */
+/**
+ * 토큰 → 길드원 id. 서명·만료가 맞아야 하고, 명단 대조는 부르는 쪽에서 한다.
+ * 방식을 바꾸기 전에 나간 토큰에는 이름(n)이 들어 있어서, 그건 이름으로 풀어준다.
+ */
 async function readToken(env, token) {
   const [body, sig] = String(token || '').split('.')
   if (!body || !sig) return null
@@ -114,18 +117,61 @@ async function readToken(env, token) {
   if (!ok) return null
   try {
     const p = JSON.parse(unb64url(body))
-    return p.e > Date.now() ? p.n : null
+    if (!(p.e > Date.now())) return null
+    if (p.i) return p.i
+    const m = p.n ? await findByName(env, p.n) : null   // 옛 토큰
+    return m ? m.id : null
   } catch { return null }
 }
 
-/** 명단에서 이 사람을 찾는다. 없거나 외부 처리면 null — 그 즉시 못 쓰게 된다 */
-async function findMember(env, name) {
+/**
+ * 로그인·권한은 전부 길드원 고유 id 로 묶는다.
+ *
+ * 닉네임으로 묶으면 게임에서 닉을 바꾸는 순간 로그인 기록과 관리자 지정이
+ * 통째로 끊긴다(명단은 renameMember 가 따라가지만 KV 쪽은 못 따라간다).
+ * id 는 길드원을 만들 때 한 번 정해지고 안 바뀐다.
+ */
+async function roster(env) {
   const raw = await env.GUILD_KV.get('guild-data')
-  if (!raw) return null
-  try {
-    const m = (JSON.parse(raw).members || []).find((x) => x && x.name === name)
-    return m && !m.excluded ? m : null
-  } catch { return null }
+  if (!raw) return []
+  try { return JSON.parse(raw).members || [] } catch { return [] }
+}
+
+/** 명단에서 id 로 찾는다. 없거나 외부 처리면 null — 그 즉시 못 쓰게 된다 */
+async function findMember(env, id) {
+  const m = (await roster(env)).find((x) => x && x.id === id)
+  return m && !m.excluded ? m : null
+}
+
+/** 로그인 창에는 닉네임을 치므로, 그때만 이름으로 찾아 id 를 얻는다 */
+async function findByName(env, name) {
+  const m = (await roster(env)).find((x) => x && x.name === name)
+  return m && !m.excluded ? m : null
+}
+
+/**
+ * 예전에 이름으로 잡아 둔 기록을 id 로 옮긴다.
+ * 아이디를 이미 나눠준 뒤에 방식을 바꾼 거라, 한 번은 옮겨줘야 로그인이 안 끊긴다.
+ * 옮길 게 없으면 아무 일도 안 한다.
+ */
+async function migrateKeys(env) {
+  const members = await roster(env)
+  if (!members.length) return
+  const byName = new Map(members.map((m) => [m.name, m.id]))
+  const ids = new Set(members.map((m) => m.id))
+
+  const auth = JSON.parse((await env.GUILD_KV.get('member-auth')) || '{}')
+  let moved = false
+  for (const k of Object.keys(auth)) {
+    if (!ids.has(k) && byName.has(k)) { auth[byName.get(k)] = auth[k]; delete auth[k]; moved = true }
+  }
+  if (moved) await env.GUILD_KV.put('member-auth', JSON.stringify(auth))
+
+  const admins = JSON.parse((await env.GUILD_KV.get('site-admins')) || '[]')
+  const nextAdmins = admins.map((k) => (!ids.has(k) && byName.has(k) ? byName.get(k) : k))
+  if (nextAdmins.some((v, i) => v !== admins[i])) {
+    await env.GUILD_KV.put('site-admins', JSON.stringify(nextAdmins))
+  }
 }
 
 // ===== 권한 =====
@@ -179,20 +225,21 @@ const bearer = (request) => (request.headers.get('authorization') || '').replace
 async function guard(request, env) {
   // 검사를 안 켠 동안은 전부 통과하고 운영진으로 본다 — 아이디를 나눠주는 기간이다
   if (!(await authOn(env))) return { ok: true, name: null, staff: true }
-  const name = await readToken(env, bearer(request))
-  if (!name) return { ok: false, res: json({ error: '로그인이 필요해요.', code: 'login' }, 401) }
+  await migrateKeys(env)
+  const id = await readToken(env, bearer(request))
+  if (!id) return { ok: false, res: json({ error: '로그인이 필요해요.', code: 'login' }, 401) }
 
   // 임시 비번인 동안은 사이트를 못 쓴다. 안 그러면 새 비번 화면을 새로고침으로
   // 넘겨버릴 수 있고, 그러면 운영진이 아는 비번이 그대로 남는다.
-  const rec = (await readAuth(env))[name]
+  const rec = (await readAuth(env))[id]
   if (rec && rec.tmp) {
     return { ok: false, res: json({ error: '새 비밀번호를 먼저 정해주세요.', code: 'mustchange' }, 403) }
   }
 
-  const member = await findMember(env, name)
+  const member = await findMember(env, id)
   if (!member) return { ok: false, res: json({ error: '길드원 명단에 없어요.', code: 'gone' }, 403) }
-  const admin = await isSiteAdmin(env, name)
-  return { ok: true, name, member, admin, staff: admin || hasStaffRole(member) }
+  const admin = await isSiteAdmin(env, id)
+  return { ok: true, id, name: member.name, member, admin, staff: admin || hasStaffRole(member) }
 }
 
 /**
@@ -225,38 +272,39 @@ async function handleAuth(request, env, path) {
 
   // --- 로그인 ---
   if (path.endsWith('/auth/login')) {
+    await migrateKeys(env)
     const name = String(body.name || '').trim()
     const pw = String(body.pw || '')
-    const all = await readAuth(env)
-    const rec = all[name]
     // 없는 아이디여도 같은 문구로 답한다 — 누가 길드원인지 흘리지 않으려고
     const fail = json({ error: '아이디나 비밀번호가 달라요.' }, 401)
-    if (!rec || !pw) return fail
+    // 로그인 창에는 닉네임을 치지만, 안에서는 곧바로 id 로 바꿔 든다
+    const member = await findByName(env, name)
+    if (!member || !pw) return fail
+    const rec = (await readAuth(env))[member.id]
+    if (!rec) return fail
     if (!safeEqual(await hashPw(pw, rec.s), rec.h)) return fail
-    const member = await findMember(env, name)
-    if (!member) return json({ error: '길드원 명단에 없어요.', code: 'gone' }, 403)
     // staff 는 화면 구성에만 쓴다 — 실제 판정은 요청마다 워커가 다시 한다
-    const admin = await isSiteAdmin(env, name)
+    const admin = await isSiteAdmin(env, member.id)
     return json({
-      token: await makeToken(env, name), name, mustChange: !!rec.tmp,
+      token: await makeToken(env, member.id), name: member.name, mustChange: !!rec.tmp,
       admin, staff: admin || hasStaffRole(member),
     })
   }
 
   // --- 내 비번 바꾸기 ---
   if (path.endsWith('/auth/password')) {
-    const name = await readToken(env, bearer(request))
-    if (!name) return json({ error: '로그인이 필요해요.' }, 401)
+    const id = await readToken(env, bearer(request))
+    if (!id) return json({ error: '로그인이 필요해요.' }, 401)
     const next = String(body.next || '')
     if (next.length < 6) return json({ error: '비밀번호는 6자 이상으로 해주세요.' }, 400)
     const all = await readAuth(env)
-    const rec = all[name]
+    const rec = all[id]
     if (!rec) return json({ error: '아이디가 없어요.' }, 404)
     if (!safeEqual(await hashPw(String(body.pw || ''), rec.s), rec.h)) {
       return json({ error: '지금 비밀번호가 달라요.' }, 401)
     }
     const s = hex(crypto.getRandomValues(new Uint8Array(16)))
-    all[name] = { h: await hashPw(next, s), s, tmp: 0, at: Date.now() }
+    all[id] = { h: await hashPw(next, s), s, tmp: 0, at: Date.now() }
     await writeAuth(env, all)
     return json({ ok: true })
   }
@@ -266,57 +314,58 @@ async function handleAuth(request, env, path) {
   // 두 갈래로 연다.
   //   1) 워커 시크릿(ADMIN_PW) — 항상 통한다. 관리자를 전부 잃었을 때의 복구 수단.
   //   2) 로그인한 사이트 관리자 — 평소엔 이쪽. 비번을 매번 칠 필요가 없다.
+  await migrateKeys(env)
   const bySecret = isAdminReq(request, env)
-  const meName = bySecret ? null : await readToken(env, bearer(request))
-  if (!bySecret && !(await isSiteAdmin(env, meName))) {
+  const meId = bySecret ? null : await readToken(env, bearer(request))
+  if (!bySecret && !(await isSiteAdmin(env, meId))) {
     return json({ error: '사이트 관리자만 쓸 수 있어요.' }, 403)
   }
 
   if (path.endsWith('/auth/list')) {
     const all = await readAuth(env)
-    const raw = await env.GUILD_KV.get('guild-data')
-    const members = raw ? (JSON.parse(raw).members || []) : []
+    const members = await roster(env)
     const admins = await readAdmins(env)
     return json({
       on: await authOn(env),
       admins,
       members: members.map((m) => ({
-        name: m.name, excluded: !!m.excluded, role: m.role || '멤버',
-        admin: admins.includes(m.name),
-        staff: admins.includes(m.name) || hasStaffRole(m),
-        hasId: !!all[m.name], tmp: !!all[m.name]?.tmp, at: all[m.name]?.at || null,
+        id: m.id, name: m.name, excluded: !!m.excluded, role: m.role || '멤버',
+        admin: admins.includes(m.id),
+        staff: admins.includes(m.id) || hasStaffRole(m),
+        hasId: !!all[m.id], tmp: !!all[m.id]?.tmp, at: all[m.id]?.at || null,
       })),
       // 명단에 없는데 아이디만 남은 것 — 나간 사람의 찌꺼기
-      orphans: Object.keys(all).filter((n) => !members.some((m) => m.name === n)),
+      orphans: Object.keys(all).filter((k) => !members.some((m) => m.id === k)),
     })
   }
 
   if (path.endsWith('/auth/issue')) {
-    const name = String(body.name || '').trim()
-    if (!name) return json({ error: '이름이 없어요.' }, 400)
+    const id = String(body.id || '').trim()
+    const m = (await roster(env)).find((x) => x.id === id)
+    if (!m) return json({ error: '명단에 없는 길드원이에요.' }, 400)
     const pw = tempPw()
     const s = hex(crypto.getRandomValues(new Uint8Array(16)))
     const all = await readAuth(env)
-    all[name] = { h: await hashPw(pw, s), s, tmp: 1, at: Date.now() }
+    all[id] = { h: await hashPw(pw, s), s, tmp: 1, at: Date.now() }
     await writeAuth(env, all)
-    return json({ name, pw })          // 평문은 이때 한 번만 돌려준다
+    return json({ name: m.name, pw })  // 평문은 이때 한 번만 돌려준다
   }
 
   if (path.endsWith('/auth/revoke')) {
     const all = await readAuth(env)
-    for (const n of [].concat(body.names || body.name || [])) delete all[String(n)]
+    for (const k of [].concat(body.ids || body.id || [])) delete all[String(k)]
     await writeAuth(env, all)
     return json({ ok: true, left: Object.keys(all).length })
   }
 
   // 사이트 관리자 지정 — 마지막 한 명까지 지우면 워커 시크릿으로만 들어올 수 있게 되므로 막는다
   if (path.endsWith('/auth/admins')) {
-    const names = [...new Set([].concat(body.names || []).map((n) => String(n).trim()).filter(Boolean))]
-    if (!names.length && !bySecret) {
+    const ids = [...new Set([].concat(body.ids || []).map((n) => String(n).trim()).filter(Boolean))]
+    if (!ids.length && !bySecret) {
       return json({ error: '관리자를 전부 지우면 아무도 못 들어와요. 최소 한 명은 남겨주세요.' }, 400)
     }
-    await env.GUILD_KV.put('site-admins', JSON.stringify(names))
-    return json({ ok: true, admins: names })
+    await env.GUILD_KV.put('site-admins', JSON.stringify(ids))
+    return json({ ok: true, admins: ids })
   }
 
   if (path.endsWith('/auth/enable')) {

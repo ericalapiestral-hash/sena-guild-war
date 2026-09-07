@@ -125,6 +125,8 @@ export function setAdminPw(pw: string) { write(ADMIN_KEY, pw) }
 export function clearAdminPw() { write(ADMIN_KEY, '') }
 
 export type IdRow = {
+  /** 길드원 고유 id — 닉이 바뀌어도 안 변한다. 발급·해제는 전부 이걸로 한다 */
+  id: string
   name: string; excluded: boolean; role: string
   admin: boolean; staff: boolean
   hasId: boolean; tmp: boolean; at: number | null
@@ -137,18 +139,18 @@ export async function listIds(): Promise<IdList> {
 }
 
 /** 사이트 관리자 명단을 통째로 바꾼다 */
-export async function setSiteAdmins(names: string[]) {
-  await post('/auth/admins', { names }, adminHeaders())
+export async function setSiteAdmins(ids: string[]) {
+  await post('/auth/admins', { ids }, adminHeaders())
 }
 
 /** 아이디 발급 — 임시 비밀번호는 이때 한 번만 돌려받는다. 다시 볼 수 없다 */
-export async function issueId(name: string): Promise<string> {
-  const j = await post('/auth/issue', { name }, adminHeaders()) as { pw: string }
+export async function issueId(id: string): Promise<string> {
+  const j = await post('/auth/issue', { id }, adminHeaders()) as { pw: string }
   return j.pw
 }
 
-export async function revokeIds(names: string[]) {
-  await post('/auth/revoke', { names }, adminHeaders())
+export async function revokeIds(ids: string[]) {
+  await post('/auth/revoke', { ids }, adminHeaders())
 }
 
 /** 로그인 검사를 켜고 끈다. 켜면 그 순간부터 아이디 없는 사람은 사이트를 못 연다 */

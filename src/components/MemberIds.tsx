@@ -107,7 +107,7 @@ export function MemberIds() {
 
           <div className="id-rows">
             {data.members.map((m) => (
-              <div key={m.name} className={`id-row ${m.excluded ? 'gone' : ''}`}>
+              <div key={m.id} className={`id-row ${m.excluded ? 'gone' : ''}`}>
                 <span className="id-name">
                   {m.name}
                   {m.excluded && <span className="badge excluded" style={{ marginLeft: 6 }}>외부</span>}
@@ -121,20 +121,20 @@ export function MemberIds() {
                     <input type="checkbox" checked={m.admin} disabled={busy}
                       onChange={(e) => {
                         const next = e.target.checked
-                          ? [...data.admins, m.name]
-                          : data.admins.filter((n) => n !== m.name)
+                          ? [...data.admins, m.id]
+                          : data.admins.filter((n) => n !== m.id)
                         if (!next.length && !confirm('관리자가 한 명도 없게 됩니다. 그래도 할까요?')) return
                         void act(() => setSiteAdmins(next))
                       }} />
                     관리자
                   </label>
                   <button className="small" disabled={busy}
-                    onClick={() => void act(async () => { setIssued({ name: m.name, pw: await issueId(m.name) }) })}>
+                    onClick={() => void act(async () => { setIssued({ name: m.name, pw: await issueId(m.id) }) })}>
                     {m.hasId ? '비번 재발급' : '아이디 만들기'}
                   </button>
                   {m.hasId && (
                     <button className="small danger" disabled={busy}
-                      onClick={() => { if (confirm(`'${m.name}' 아이디를 없앨까요? 다시 못 들어옵니다.`)) void act(() => revokeIds([m.name])) }}>
+                      onClick={() => { if (confirm(`'${m.name}' 아이디를 없앨까요? 다시 못 들어옵니다.`)) void act(() => revokeIds([m.id])) }}>
                       ✕
                     </button>
                   )}

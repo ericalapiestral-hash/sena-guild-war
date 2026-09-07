@@ -74,7 +74,7 @@ export function MembersPage() {
     <div>
       <h1>길드원 관리</h1>
       <p className="page-desc">
-        길드원별 역할과 승패 기록을 관리합니다. 여러 명은 쉼표로 한 번에 추가하고, 삭제는 각 줄의 ✕를 누르세요.
+        길드원별 역할과 아이디를 관리합니다. 여러 명은 쉼표로 한 번에 추가하고, 삭제는 각 줄의 ✕를 누르세요.
         <br />
         자리 때문에 잠시 나가 있는 계정은 <b>삭제하지 말고 [외부로 제외]</b>를 쓰세요 — 기록은 남고 통계 명단에서만 빠집니다.
       </p>
@@ -132,9 +132,7 @@ function MemberCard({ member, expanded, onToggle }: {
   expanded: boolean
   onToggle: () => void
 }) {
-  const wins = member.records.filter((r) => r.result === '승').length
-  const losses = member.records.length - wins
-  const [memo, setMemo] = useState(() => getUserData().staffNotes?.[member.name] ?? '')
+  const [memo, setMemo] = useState(() => getUserData().staffNotes?.[member.id] ?? '')
   const [owner, setOwner] = useState(member.owner ?? '')
   const [nick, setNick] = useState(member.name)
   const [tier, setTier] = useState(member.tier ?? '')
@@ -198,13 +196,6 @@ function MemberCard({ member, expanded, onToggle }: {
     })
   }
 
-  function addRecord(result: '승' | '패') {
-    update((d) => {
-      const target = d.members.find((x) => x.id === member.id)
-      if (!target) return
-      target.records.unshift({ id: newId('rec'), date: todayLocal(), result })
-    })
-  }
 
   return (
     <div className={`card member-card${member.excluded ? ' is-excluded' : ''}`}>
@@ -218,8 +209,6 @@ function MemberCard({ member, expanded, onToggle }: {
           {member.owner && <span className="muted">· 주인 {member.owner}</span>}
         </div>
         <div className="row">
-          <span className="badge win">{wins}승</span>
-          <span className="badge lose">{losses}패</span>
           <span className="muted">{expanded ? '▲' : '▼'}</span>
           <button className="small danger" title="길드원 삭제" onClick={(e) => {
             e.stopPropagation()
@@ -304,42 +293,14 @@ function MemberCard({ member, expanded, onToggle }: {
                 onBlur={() => update((d) => {
                   const v = memo.trim()
                   const notes = { ...(d.staffNotes ?? {}) }
-                  if (v) notes[member.name] = v.slice(0, 2000)
-                  else delete notes[member.name]
+                  if (v) notes[member.id] = v.slice(0, 2000)
+                  else delete notes[member.id]
                   d.staffNotes = Object.keys(notes).length ? notes : undefined
                 })} />
             </div>
           )}
 
-          <div className="row" style={{ marginTop: 10 }}>
-            <span className="def-label">길드전 전적</span>
-            <button className="small" style={{ color: 'var(--ok)' }} onClick={() => addRecord('승')}>+ 승</button>
-            <button className="small" style={{ color: 'var(--danger)' }} onClick={() => addRecord('패')}>+ 패</button>
-          </div>
 
-          {member.records.length > 0 && (
-            <div className="table-wrap">
-              <table style={{ marginTop: 10 }}>
-                <thead><tr><th>날짜</th><th>결과</th><th /></tr></thead>
-                <tbody>
-                  {member.records.map((r) => (
-                    <tr key={r.id}>
-                      <td>{r.date}</td>
-                      <td><span className={`badge ${r.result === '승' ? 'win' : 'lose'}`}>{r.result}</span></td>
-                      <td>
-                        <button className="small danger" onClick={() => {
-                          update((d) => {
-                            const t = d.members.find((x) => x.id === member.id)
-                            if (t) t.records = t.records.filter((x) => x.id !== r.id)
-                          })
-                        }}>✕</button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
         </div>
       )}
     </div>
