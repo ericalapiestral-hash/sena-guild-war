@@ -2274,3 +2274,15 @@ button.ghost:hover { background: var(--surface-2); color: var(--text); }
 .pw-eye:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .pw-eye svg { width: 18px; height: 18px; display: block; }
 .pw-eye[aria-pressed="true"] { color: var(--accent-strong); }
+
+/* 아이디 목록의 표식 — 역할(운영진)과 사이트 관리자 토글 */
+.id-tag {
+  margin-left: 6px; padding: 1px 6px; border-radius: 999px;
+  font-size: 0.72rem; font-weight: 700;
+  background: var(--surface-2); color: var(--text-3);
+}
+.id-admin {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 0.78rem; color: var(--text-2); cursor: pointer; white-space: nowrap;
+}
+.id-admin input { margin: 0; }

@@ -12,6 +12,7 @@ const TOKEN_KEY = 'sena-guild-war:token'
 const NAME_KEY = 'sena-guild-war:me'
 const ADMIN_KEY = 'sena-guild-war:adminpw'
 const STAFF_KEY = 'sena-guild-war:staff'
+const SADMIN_KEY = 'sena-guild-war:siteadmin'
 
 const base = () => WORKER_URL.replace(/\/+$/, '')
 
@@ -36,6 +37,12 @@ export const isLoggedIn = () => !!getToken()
  */
 export const isStaff = () => !isLoggedIn() || read(STAFF_KEY) === '1'
 
+/**
+ * 사이트 관리자인가 — 게임 안 직책과 별개로 지정한다.
+ * 길드마스터가 바뀌어도 사이트를 관리하던 사람은 그대로 남는다.
+ */
+export const isSiteAdmin = () => read(SADMIN_KEY) === '1'
+
 /** 워커에 보낼 인증 헤더. 토큰이 없으면 빈 객체 — 검사를 안 켠 동안은 그래도 통한다 */
 export function authHeaders(): Record<string, string> {
   const t = getToken()
@@ -50,7 +57,8 @@ export function authHeaders(): Record<string, string> {
  */
 export function adminHeaders(): Record<string, string> {
   const p = getAdminPw()
-  if (!p) return {}
+  // 비번을 안 넣어뒀으면 로그인 토큰으로 간다 — 사이트 관리자면 그것만으로 통한다.
+  if (!p) return authHeaders()
   const bytes = new TextEncoder().encode(p)
   return { 'x-admin-pw': btoa(String.fromCharCode(...bytes)) }
 }
@@ -72,6 +80,7 @@ export function clearSession() {
   write(TOKEN_KEY, '')
   write(NAME_KEY, '')
   write(STAFF_KEY, '')
+  write(SADMIN_KEY, '')
 }
 
 async function post(path: string, body: unknown, extra: Record<string, string> = {}) {
@@ -98,10 +107,11 @@ async function unwrap(r: Response) {
 
 export async function login(name: string, pw: string): Promise<{ mustChange: boolean }> {
   const j = await post('/auth/login', { name: name.trim(), pw }) as
-    { token: string; name: string; mustChange?: boolean; staff?: boolean }
+    { token: string; name: string; mustChange?: boolean; staff?: boolean; admin?: boolean }
   write(TOKEN_KEY, j.token)
   write(NAME_KEY, j.name)
   write(STAFF_KEY, j.staff ? '1' : '')
+  write(SADMIN_KEY, j.admin ? '1' : '')
   return { mustChange: !!j.mustChange }
 }
 
@@ -114,11 +124,21 @@ export async function changePassword(pw: string, next: string) {
 export function setAdminPw(pw: string) { write(ADMIN_KEY, pw) }
 export function clearAdminPw() { write(ADMIN_KEY, '') }
 
-export type IdRow = { name: string; excluded: boolean; hasId: boolean; tmp: boolean; at: number | null }
+export type IdRow = {
+  name: string; excluded: boolean; role: string
+  admin: boolean; staff: boolean
+  hasId: boolean; tmp: boolean; at: number | null
+}
+export type IdList = { on: boolean; admins: string[]; members: IdRow[]; orphans: string[] }
 
-export async function listIds(): Promise<{ on: boolean; members: IdRow[]; orphans: string[] }> {
+export async function listIds(): Promise<IdList> {
   const r = await fetch(`${base()}/auth/list`, { method: 'POST', headers: adminHeaders() })
-  return await unwrap(r) as { on: boolean; members: IdRow[]; orphans: string[] }
+  return await unwrap(r) as IdList
+}
+
+/** 사이트 관리자 명단을 통째로 바꾼다 */
+export async function setSiteAdmins(names: string[]) {
+  await post('/auth/admins', { names }, adminHeaders())
 }
 
 /** 아이디 발급 — 임시 비밀번호는 이때 한 번만 돌려받는다. 다시 볼 수 없다 */

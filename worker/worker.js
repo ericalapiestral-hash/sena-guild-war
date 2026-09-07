@@ -136,8 +136,16 @@ async function findMember(env, name) {
 //
 // 데이터가 한 덩어리라 화면에서 막는 것으로는 부족하다. 내보낼 때 통계를 빼고,
 // 받을 때 허용된 칸만 골라 담는다. 나머지는 저장된 값을 그대로 둔다.
+// 게임 안 직책과 사이트 권한은 다른 축이다. 길드마스터가 바뀌어도 사이트를
+// 관리하던 사람은 그대로여야 하고, 사이트만 맡는 사람도 있을 수 있다.
+// 그래서 '사이트 관리자'를 명단과 별개로 KV(site-admins)에 따로 둔다.
 const STAFF_ROLES = ['길드마스터', '부길드마스터']
-const isStaff = (m) => !!m && STAFF_ROLES.includes(m.role || '')
+const hasStaffRole = (m) => !!m && STAFF_ROLES.includes(m.role || '')
+
+const readAdmins = async (env) => {
+  try { return JSON.parse((await env.GUILD_KV.get('site-admins')) || '[]') } catch { return [] }
+}
+const isSiteAdmin = async (env, name) => !!name && (await readAdmins(env)).includes(name)
 
 /** 일반 길드원에게 안 보내는 칸 — 점수 기록과 그 기준 */
 const STAFF_ONLY_FIELDS = ['siegeRounds', 'destroyerRounds', 'cutlineGuide']
@@ -180,7 +188,8 @@ async function guard(request, env) {
 
   const member = await findMember(env, name)
   if (!member) return { ok: false, res: json({ error: '길드원 명단에 없어요.', code: 'gone' }, 403) }
-  return { ok: true, name, member, staff: isStaff(member) }
+  const admin = await isSiteAdmin(env, name)
+  return { ok: true, name, member, admin, staff: admin || hasStaffRole(member) }
 }
 
 /**
@@ -224,7 +233,11 @@ async function handleAuth(request, env, path) {
     const member = await findMember(env, name)
     if (!member) return json({ error: '길드원 명단에 없어요.', code: 'gone' }, 403)
     // staff 는 화면 구성에만 쓴다 — 실제 판정은 요청마다 워커가 다시 한다
-    return json({ token: await makeToken(env, name), name, mustChange: !!rec.tmp, staff: isStaff(member) })
+    const admin = await isSiteAdmin(env, name)
+    return json({
+      token: await makeToken(env, name), name, mustChange: !!rec.tmp,
+      admin, staff: admin || hasStaffRole(member),
+    })
   }
 
   // --- 내 비번 바꾸기 ---
@@ -245,17 +258,29 @@ async function handleAuth(request, env, path) {
     return json({ ok: true })
   }
 
-  // --- 여기서부터 운영진 ---
-  if (!isAdminReq(request, env)) return json({ error: '운영진만 쓸 수 있어요.' }, 403)
+  // --- 여기서부터 사이트 관리자 ---
+  //
+  // 두 갈래로 연다.
+  //   1) 워커 시크릿(ADMIN_PW) — 항상 통한다. 관리자를 전부 잃었을 때의 복구 수단.
+  //   2) 로그인한 사이트 관리자 — 평소엔 이쪽. 비번을 매번 칠 필요가 없다.
+  const bySecret = isAdminReq(request, env)
+  const meName = bySecret ? null : await readToken(env, bearer(request))
+  if (!bySecret && !(await isSiteAdmin(env, meName))) {
+    return json({ error: '사이트 관리자만 쓸 수 있어요.' }, 403)
+  }
 
   if (path.endsWith('/auth/list')) {
     const all = await readAuth(env)
     const raw = await env.GUILD_KV.get('guild-data')
     const members = raw ? (JSON.parse(raw).members || []) : []
+    const admins = await readAdmins(env)
     return json({
       on: await authOn(env),
+      admins,
       members: members.map((m) => ({
-        name: m.name, excluded: !!m.excluded,
+        name: m.name, excluded: !!m.excluded, role: m.role || '멤버',
+        admin: admins.includes(m.name),
+        staff: admins.includes(m.name) || hasStaffRole(m),
         hasId: !!all[m.name], tmp: !!all[m.name]?.tmp, at: all[m.name]?.at || null,
       })),
       // 명단에 없는데 아이디만 남은 것 — 나간 사람의 찌꺼기
@@ -279,6 +304,16 @@ async function handleAuth(request, env, path) {
     for (const n of [].concat(body.names || body.name || [])) delete all[String(n)]
     await writeAuth(env, all)
     return json({ ok: true, left: Object.keys(all).length })
+  }
+
+  // 사이트 관리자 지정 — 마지막 한 명까지 지우면 워커 시크릿으로만 들어올 수 있게 되므로 막는다
+  if (path.endsWith('/auth/admins')) {
+    const names = [...new Set([].concat(body.names || []).map((n) => String(n).trim()).filter(Boolean))]
+    if (!names.length && !bySecret) {
+      return json({ error: '관리자를 전부 지우면 아무도 못 들어와요. 최소 한 명은 남겨주세요.' }, 400)
+    }
+    await env.GUILD_KV.put('site-admins', JSON.stringify(names))
+    return json({ ok: true, admins: names })
   }
 
   if (path.endsWith('/auth/enable')) {

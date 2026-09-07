@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { PasswordInput } from './PasswordInput'
-import { getAdminPw, issueId, listIds, revokeIds, setAdminPw, setGate, type IdRow } from '../session'
+import { getAdminPw, isSiteAdmin, issueId, listIds, revokeIds, setAdminPw, setGate, setSiteAdmins,
+  type IdList } from '../session'
 
 /**
  * 길드원 아이디 발급 — [길드원] 페이지의 운영진 도구.
@@ -14,7 +15,7 @@ import { getAdminPw, issueId, listIds, revokeIds, setAdminPw, setGate, type IdRo
  */
 export function MemberIds() {
   const [pw, setPw] = useState(getAdminPw())
-  const [data, setData] = useState<{ on: boolean; members: IdRow[]; orphans: string[] } | null>(null)
+  const [data, setData] = useState<IdList | null>(null)
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
   const [issued, setIssued] = useState<{ name: string; pw: string } | null>(null)
@@ -27,7 +28,8 @@ export function MemberIds() {
       setErr(e instanceof Error ? e.message : '목록을 못 받았어요.')
     } finally { setBusy(false) }
   }
-  useEffect(() => { if (getAdminPw()) void load() }, [])
+  // 사이트 관리자로 로그인해 있으면 비번을 칠 필요가 없다 — 토큰만으로 통한다
+  useEffect(() => { if (getAdminPw() || isSiteAdmin()) void load() }, [])
 
   async function act(fn: () => Promise<unknown>) {
     setErr(''); setBusy(true)
@@ -46,15 +48,22 @@ export function MemberIds() {
         길드원마다 아이디를 만들어 두면, <b>길드를 나간 사람은 사이트를 못 엽니다.</b>
         명단에서 빼거나 외부 처리하는 순간 바로 막혀요.
       </p>
+      <p className="muted">
+        <b>사이트 관리자</b>는 게임 직책과 별개입니다. 길드마스터가 바뀌어도 그대로 남고,
+        아이디 발급과 검사 켜기를 할 수 있어요. 길드마스터·부길드마스터는 직책만으로
+        <b>운영진</b>(통계·명단 편집)이 되지만, 여기 관리는 못 합니다.
+      </p>
 
+      {!data && !isSiteAdmin() && (
       <div className="row" style={{ marginTop: 10 }}>
-        <label className="def-label">운영진 비번</label>
+        <label className="def-label">관리자 비번</label>
         <span style={{ flex: 1, minWidth: 140, maxWidth: 240 }}>
           <PasswordInput value={pw} onChange={setPw} onEnter={() => void load(pw)}
             placeholder="워커에 넣어둔 비밀번호" />
         </span>
         <button className="small primary" disabled={busy || !pw} onClick={() => void load(pw)}>확인</button>
       </div>
+      )}
 
       {err && <p className="login-err">{err}</p>}
 
@@ -105,8 +114,20 @@ export function MemberIds() {
                 </span>
                 <span className={`id-mark ${m.tmp ? 'tmp' : ''}`}>
                   {!m.hasId ? '아이디 없음' : m.tmp ? '임시 비번 (아직 안 바꿈)' : '사용 중'}
+                  {m.staff && !m.admin && <span className="id-tag">운영진</span>}
                 </span>
                 <span className="row" style={{ gap: 5 }}>
+                  <label className="id-admin" title="사이트 관리자 — 게임 직책과 별개">
+                    <input type="checkbox" checked={m.admin} disabled={busy}
+                      onChange={(e) => {
+                        const next = e.target.checked
+                          ? [...data.admins, m.name]
+                          : data.admins.filter((n) => n !== m.name)
+                        if (!next.length && !confirm('관리자가 한 명도 없게 됩니다. 그래도 할까요?')) return
+                        void act(() => setSiteAdmins(next))
+                      }} />
+                    관리자
+                  </label>
                   <button className="small" disabled={busy}
                     onClick={() => void act(async () => { setIssued({ name: m.name, pw: await issueId(m.name) }) })}>
                     {m.hasId ? '비번 재발급' : '아이디 만들기'}
