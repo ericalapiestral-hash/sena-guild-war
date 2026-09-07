@@ -118,15 +118,44 @@ async function readToken(env, token) {
   } catch { return null }
 }
 
-/** 지금도 길드원인가 — 명단에 있고 외부 처리가 아니어야 한다 */
-async function stillMember(env, name) {
+/** 명단에서 이 사람을 찾는다. 없거나 외부 처리면 null — 그 즉시 못 쓰게 된다 */
+async function findMember(env, name) {
   const raw = await env.GUILD_KV.get('guild-data')
-  if (!raw) return false
+  if (!raw) return null
   try {
-    const members = (JSON.parse(raw).members) || []
-    const m = members.find((x) => x && x.name === name)
-    return !!m && !m.excluded
-  } catch { return false }
+    const m = (JSON.parse(raw).members || []).find((x) => x && x.name === name)
+    return m && !m.excluded ? m : null
+  } catch { return null }
+}
+
+// ===== 권한 =====
+//
+// 길드원이면 다 되는 게 아니다. 명단의 역할을 보고 가른다.
+//   운영진(길드마스터·부길드마스터) — 전부
+//   그 밖 —  통계 빼고 읽기 / 길드전 관련만 쓰기
+//
+// 데이터가 한 덩어리라 화면에서 막는 것으로는 부족하다. 내보낼 때 통계를 빼고,
+// 받을 때 허용된 칸만 골라 담는다. 나머지는 저장된 값을 그대로 둔다.
+const STAFF_ROLES = ['길드마스터', '부길드마스터']
+const isStaff = (m) => !!m && STAFF_ROLES.includes(m.role || '')
+
+/** 일반 길드원에게 안 보내는 칸 — 점수 기록과 그 기준 */
+const STAFF_ONLY_FIELDS = ['siegeRounds', 'destroyerRounds', 'cutlineGuide']
+
+/** 일반 길드원이 고칠 수 있는 칸 — 길드전 관련 메뉴가 쓰는 것들 */
+const MEMBER_WRITE_FIELDS = [
+  'counters', 'hiddenCounterIds',   // 카운터덱
+  'savedDecks',                     // 저장한 덱
+  'defenseSetups', 'attackTargets', // 길드전 방어·공격
+  'siegeGuides', 'raidPlans',       // 공성전 공략·원정대 배치
+]
+
+function stripForMember(raw) {
+  try {
+    const d = JSON.parse(raw)
+    for (const k of STAFF_ONLY_FIELDS) delete d[k]
+    return JSON.stringify(d)
+  } catch { return raw }
 }
 
 const authOn = async (env) => (await env.GUILD_KV.get('auth-on')) === '1'
@@ -137,13 +166,21 @@ const bearer = (request) => (request.headers.get('authorization') || '').replace
  * 검사를 안 켠 동안(auth-on 없음)은 전부 통과 — 아이디를 나눠주는 기간이다.
  */
 async function guard(request, env) {
-  if (!(await authOn(env))) return { ok: true, name: null }
+  // 검사를 안 켠 동안은 전부 통과하고 운영진으로 본다 — 아이디를 나눠주는 기간이다
+  if (!(await authOn(env))) return { ok: true, name: null, staff: true }
   const name = await readToken(env, bearer(request))
   if (!name) return { ok: false, res: json({ error: '로그인이 필요해요.', code: 'login' }, 401) }
-  if (!(await stillMember(env, name))) {
-    return { ok: false, res: json({ error: '길드원 명단에 없어요.', code: 'gone' }, 403) }
+
+  // 임시 비번인 동안은 사이트를 못 쓴다. 안 그러면 새 비번 화면을 새로고침으로
+  // 넘겨버릴 수 있고, 그러면 운영진이 아는 비번이 그대로 남는다.
+  const rec = (await readAuth(env))[name]
+  if (rec && rec.tmp) {
+    return { ok: false, res: json({ error: '새 비밀번호를 먼저 정해주세요.', code: 'mustchange' }, 403) }
   }
-  return { ok: true, name }
+
+  const member = await findMember(env, name)
+  if (!member) return { ok: false, res: json({ error: '길드원 명단에 없어요.', code: 'gone' }, 403) }
+  return { ok: true, name, member, staff: isStaff(member) }
 }
 
 /**
@@ -184,8 +221,10 @@ async function handleAuth(request, env, path) {
     const fail = json({ error: '아이디나 비밀번호가 달라요.' }, 401)
     if (!rec || !pw) return fail
     if (!safeEqual(await hashPw(pw, rec.s), rec.h)) return fail
-    if (!(await stillMember(env, name))) return json({ error: '길드원 명단에 없어요.', code: 'gone' }, 403)
-    return json({ token: await makeToken(env, name), name, mustChange: !!rec.tmp })
+    const member = await findMember(env, name)
+    if (!member) return json({ error: '길드원 명단에 없어요.', code: 'gone' }, 403)
+    // staff 는 화면 구성에만 쓴다 — 실제 판정은 요청마다 워커가 다시 한다
+    return json({ token: await makeToken(env, name), name, mustChange: !!rec.tmp, staff: isStaff(member) })
   }
 
   // --- 내 비번 바꾸기 ---
@@ -1235,9 +1274,11 @@ export default {
 
     // 길드 데이터를 내주거나 받는 경로는 전부 같은 문을 지난다.
     // 백업본(prev·daily)도 통째로 다 들어 있어서 함께 막는다.
+    let who = { staff: true }
     if (/\/(data|data\/prev|data\/daily|api\/siege|api\/destroyer)$/.test(path)) {
       const g = await guard(request, env)
       if (!g.ok) return g.res
+      who = g
     }
 
     // ===== 캡처 점수 읽기 =====
@@ -1305,12 +1346,14 @@ export default {
 
     // 직전 버전 조회 (실수 복구용): GET /data/prev — 10분에 1번 백업본
     if (path.endsWith('/data/prev')) {
+      if (!who.staff) return json({ error: '운영진만 볼 수 있어요.' }, 403)
       const raw = env.GUILD_KV ? await env.GUILD_KV.get('guild-data-prev') : null
       return rawJson(raw)
     }
 
     // 일별 백업 조회 (오염·장난 복구용): GET /data/daily — 하루 1번 백업본
     if (path.endsWith('/data/daily')) {
+      if (!who.staff) return json({ error: '운영진만 볼 수 있어요.' }, 403)
       const raw = env.GUILD_KV ? await env.GUILD_KV.get('guild-data-daily') : null
       return rawJson(raw)
     }
@@ -1319,7 +1362,8 @@ export default {
     if (path.endsWith('/data')) {
       if (request.method === 'GET') {
         const raw = env.GUILD_KV ? await env.GUILD_KV.get('guild-data') : null
-        return rawJson(raw)
+        // 화면에서 메뉴를 감추는 것으로는 부족하다. 아예 안 실어 보낸다.
+        return rawJson(who.staff ? raw : (raw ? stripForMember(raw) : raw))
       }
       if (request.method === 'POST') {
         if (!env.GUILD_KV) return json({ error: '서버에 GUILD_KV가 설정되지 않았어요.' }, 500)
@@ -1336,7 +1380,7 @@ export default {
         }
 
         // 형식 검증 — 깨진 데이터가 저장되면 전 길드원 사이트가 안 열림.
-        const data = body && body.data
+        let data = body && body.data
         if (!data || typeof data !== 'object' || Array.isArray(data)) {
           return json({ error: 'data가 객체가 아니에요.' }, 400)
         }
@@ -1364,6 +1408,20 @@ export default {
               }
             }
           } catch { /* 이월 실패해도 저장은 진행 */ }
+        }
+
+        // 일반 길드원의 저장은 허용된 칸만 반영한다.
+        // 저장된 값을 바탕으로 두고 그 위에 몇 칸만 얹는 방식이라, 명단이나 점수를
+        // 건드리려 해도 통째로 무시된다. 통계는 애초에 안 내려보내므로, 그대로
+        // 되돌려 보내면 빈 값으로 덮일 뻔한 것도 여기서 같이 막힌다.
+        if (!who.staff) {
+          let base = {}
+          try { base = prevRaw ? JSON.parse(prevRaw) : {} } catch { base = {} }
+          if (!base || typeof base !== 'object' || Array.isArray(base)) base = {}
+          for (const k of MEMBER_WRITE_FIELDS) {
+            if (k in data) base[k] = data[k]
+          }
+          data = base
         }
 
         // 편집 버전은 서버 시각으로 강제 — 클라이언트가 미래 시각을 넣어

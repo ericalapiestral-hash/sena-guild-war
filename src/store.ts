@@ -8,7 +8,7 @@ import initialHeroes from './data/heroes.json'
 import initialCounters from './data/counters.json'
 import initialArena from './data/arena.json'
 import { WORKER_URL } from './data/config'
-import { authHeaders, authLost } from './session'
+import { authHeaders, authLost, isStaff } from './session'
 
 const LS_KEY = 'sena-guild-war:v1'
 const REV_KEY = 'sena-guild-war:rev'
@@ -141,10 +141,22 @@ export function sharedMode(): boolean {
   return !!readBase()
 }
 
-/** 편집(등록/수정/삭제) 가능 여부: 길드원 누구나 덱·가이드 편집 가능(공개).
- *  (관리자 전용 페이지 접근은 별개 — auth.isAdmin) */
+/**
+ * 길드전 관련(카운터덱·공격·방어·공성전 공략·원정대 배치)을 고칠 수 있는가.
+ * 로그인한 길드원이면 누구나 된다.
+ */
 export function canEdit(): boolean {
   return true
+}
+
+/**
+ * 운영진만 손대는 곳 — 영웅·결투장·가이드·명단·설정·점수 기록.
+ *
+ * ★ 화면에서 버튼을 감출 뿐이다. 진짜 판정은 워커가 한다. 여기를 우회해서
+ *   저장을 눌러도 워커가 허용된 칸만 반영하고 나머지는 저장된 값을 그대로 둔다.
+ */
+export function canEditStaff(): boolean {
+  return isStaff()
 }
 
 // 편집 버전(타임스탬프). KV는 최종 일관성이라 방금 저장한 것보다 오래된 데이터가
@@ -167,10 +179,19 @@ function saveRev(v: number) {
   }
 }
 
-/** 워커가 로그인을 요구하면 앱에 알린다 — 화면이 로그인으로 넘어간다 */
-function noteAuth(status: number) {
-  if (status === 401) authLost('login')
-  else if (status === 403) authLost('gone')
+/**
+ * 워커가 거절했을 때 화면을 어디로 보낼지 정한다.
+ *
+ * 401 은 무조건 로그인. 403 은 사유를 봐야 한다 — 명단에서 빠졌으면(gone)
+ * 로그인 화면으로 보내야 하지만, 그냥 권한이 모자란 것(운영진 전용)이라면
+ * 로그아웃시키면 안 된다. 사유를 안 보고 끊으면 일반 길드원이 운영진 화면을
+ * 한 번 스칠 때마다 튕겨나간다.
+ */
+async function noteAuth(r: Response) {
+  if (r.status === 401) { authLost('login'); return }
+  if (r.status !== 403) return
+  const code = await r.clone().json().then((j) => (j as { code?: string }).code).catch(() => undefined)
+  if (code === 'gone' || code === 'mustchange') authLost(code === 'gone' ? 'gone' : 'login')
 }
 
 async function pull() {
@@ -178,7 +199,7 @@ async function pull() {
   if (!base) return
   try {
     const r = await fetch(`${base}/data`, { cache: 'no-store', headers: authHeaders() })
-    if (!r.ok) { noteAuth(r.status); return }
+    if (!r.ok) { await noteAuth(r); return }
     const data = await r.json()
     if (data && typeof data === 'object' && Object.keys(data).length) {
       let incRev = Number(data._rev || 0) || 0
@@ -219,7 +240,7 @@ async function push(keepalive = false) {
       body: JSON.stringify({ data: { ...state, _rev: rev } }),
       keepalive,
     })
-    if (!r.ok) noteAuth(r.status)
+    if (!r.ok) await noteAuth(r)
     // 워커가 서버 시각으로 스탬프한 최종 rev를 돌려줌 — 클라이언트 시계 오차와
     // 무관하게 모두가 한 시계(서버)를 기준으로 버전 비교하도록 맞춤
     if (r.ok) {

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { Grade, Hero, Position, SavedDeck } from '../types'
-import { canEdit, getAllHeroes, newId, todayLocal, update, useUserData } from '../store'
+import { canEditStaff, getAllHeroes, newId, todayLocal, update, useUserData } from '../store'
 import { DeckNames, HeroName, HeroPickerModal, SlotRow } from '../components/HeroSelect'
 import { Modal } from '../components/Modal'
 import { recFor } from '../data/heroRecs'
@@ -74,7 +74,7 @@ function DeckBuilder({
 
         {sel.length > 0 && <DeckRecs heroIds={sel} heroMap={heroMap} />}
 
-        {canEdit() && (
+        {canEditStaff() && (
           <div className="deck-save">
             <input placeholder="덱 이름" value={name} onChange={(e) => setName(e.target.value)} />
             <select value={kind} onChange={(e) => setKind(e.target.value as SavedDeck['kind'])}>
@@ -120,7 +120,7 @@ function DeckBuilder({
                   <DeckNames names={d.heroes} heroMap={heroMap} />
                   {d.memo && <p className="muted deck-item-memo">{d.memo}</p>}
                 </div>
-                {canEdit() && (
+                {canEditStaff() && (
                   <button className="small danger" onClick={() => {
                     if (confirm(`'${d.name}' 덱을 삭제할까요?`)) {
                       update((u) => { u.savedDecks = u.savedDecks.filter((x) => x.id !== d.id) })
@@ -178,7 +178,7 @@ function HeroBrowser({ heroes }: { heroes: Hero[] }) {
     <section className="panel">
       <div className="panel-head">
         <div className="sec-label">영웅 {filtered.length}<span className="muted">/{heroes.length}</span></div>
-        {canEdit() && <button className="small" onClick={() => setShowAdd(true)}>+ 영웅 추가</button>}
+        {canEditStaff() && <button className="small" onClick={() => setShowAdd(true)}>+ 영웅 추가</button>}
       </div>
 
       <input className="w-full" placeholder="영웅 이름 검색" value={q} onChange={(e) => setQ(e.target.value)} />
@@ -210,7 +210,7 @@ function HeroBrowser({ heroes }: { heroes: Hero[] }) {
               {h.position && <span className="tag">{h.position}</span>}
             </div>
             {h.role && <p className="hcard-role">{h.role}</p>}
-            {h.custom && canEdit() && (
+            {h.custom && canEditStaff() && (
               <button className="small danger hcard-del" onClick={() => {
                 if (confirm(`'${h.name}' 영웅을 삭제할까요?`)) {
                   update((u) => { u.customHeroes = u.customHeroes.filter((x) => x.id !== h.id) })

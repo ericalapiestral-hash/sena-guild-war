@@ -18,7 +18,7 @@ import { RaidPlanPage } from './pages/RaidPlan'
 import { AdminLogin } from './pages/AdminLogin'
 import { ADMIN_ROUTES, isAdmin, logout } from './auth'
 import { MemberLoginPage } from './pages/MemberLogin'
-import { onAuthLost } from './session'
+import { isStaff, onAuthLost } from './session'
 import { useGuildName } from './store'
 
 interface MenuItem {
@@ -26,6 +26,8 @@ interface MenuItem {
   label: string
   icon: string
   admin?: boolean
+  /** 운영진(길드마스터·부길드마스터)에게만 보이는 메뉴 */
+  staff?: boolean
   /** 사이드바에서 이 항목 위에 그룹 제목을 넣는다 */
   group?: string
 }
@@ -40,9 +42,11 @@ const MENU: MenuItem[] = [
   { route: 'wardefense', label: '길드전 방어', icon: 'shield' },
   { route: 'siegeguide', label: '공성전 공략', icon: 'siege' },
   { route: 'raid', label: '원정대 배치', icon: 'destroyer' },
-  { route: 'siege', label: '공성전', icon: 'siege', group: '길드 기록' },
-  { route: 'destroyer', label: '파괴신', icon: 'destroyer' },
-  { route: 'cutlines', label: '커트라인', icon: 'cutline' },
+  // 점수 기록은 운영진만 본다. 워커가 이 세 메뉴가 쓰는 칸을 아예 안 내려보내므로
+  // 메뉴를 감추지 않으면 빈 화면만 보게 된다.
+  { route: 'siege', label: '공성전', icon: 'siege', staff: true, group: '길드 기록' },
+  { route: 'destroyer', label: '파괴신', icon: 'destroyer', staff: true },
+  { route: 'cutlines', label: '커트라인', icon: 'cutline', staff: true },
   { route: 'members', label: '길드원', icon: 'users', admin: true, group: '운영' },
   { route: 'settings', label: '데이터', icon: 'data', admin: true },
 ]
@@ -342,7 +346,9 @@ export default function App() {
   const [authLost, setAuthLost] = useState<'login' | 'gone' | null>(null)
   useEffect(() => onAuthLost(setAuthLost), [])
 
-  const visible = MENU.filter((m) => !m.admin || admin)
+  // 운영진이 아니면 점수 기록과 운영 메뉴를 아예 안 그린다
+  const staff = isStaff()
+  const visible = MENU.filter((m) => (!m.admin || admin) && (!m.staff || staff))
   const adminActive = ADMIN_ITEMS.some((m) => m.route === base) || base === 'admin'
   const moreActive = adminActive || SECONDARY.includes(base)
   const needLogin = (ADMIN_ROUTES.includes(base) || base === 'admin') && !admin
@@ -447,7 +453,8 @@ export default function App() {
           <div className="sheet" role="dialog" aria-label="더보기 메뉴">
             <div className="sheet-handle" />
             <div className="stagger">
-              {SECONDARY.map((r) => {
+              {/* 운영진 전용 메뉴는 여기서도 뺀다 — 사이드바에서만 감추면 모바일에서 새어 나간다 */}
+              {SECONDARY.filter((r) => visible.some((m) => m.route === r)).map((r) => {
                 const m = MENU.find((x) => x.route === r)!
                 return (
                   <button

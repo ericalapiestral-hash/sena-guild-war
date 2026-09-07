@@ -11,6 +11,7 @@ import { WORKER_URL } from './data/config'
 const TOKEN_KEY = 'sena-guild-war:token'
 const NAME_KEY = 'sena-guild-war:me'
 const ADMIN_KEY = 'sena-guild-war:adminpw'
+const STAFF_KEY = 'sena-guild-war:staff'
 
 const base = () => WORKER_URL.replace(/\/+$/, '')
 
@@ -25,6 +26,15 @@ export const getToken = () => read(TOKEN_KEY)
 export const getMe = () => read(NAME_KEY)
 export const getAdminPw = () => read(ADMIN_KEY)
 export const isLoggedIn = () => !!getToken()
+
+/**
+ * 운영진(길드마스터·부길드마스터)인가.
+ *
+ * ★ 화면을 어떻게 그릴지 정하는 데만 쓴다. 여기 값을 손대도 실제로는 아무것도
+ *   못 한다 — 워커가 요청마다 명단의 역할을 다시 보고 판정하기 때문이다.
+ *   검사를 안 켠 동안(로그인 전)은 예전처럼 전부 열어둔다.
+ */
+export const isStaff = () => !isLoggedIn() || read(STAFF_KEY) === '1'
 
 /** 워커에 보낼 인증 헤더. 토큰이 없으면 빈 객체 — 검사를 안 켠 동안은 그래도 통한다 */
 export function authHeaders(): Record<string, string> {
@@ -61,6 +71,7 @@ export function authLost(reason: 'login' | 'gone') {
 export function clearSession() {
   write(TOKEN_KEY, '')
   write(NAME_KEY, '')
+  write(STAFF_KEY, '')
 }
 
 async function post(path: string, body: unknown, extra: Record<string, string> = {}) {
@@ -87,9 +98,10 @@ async function unwrap(r: Response) {
 
 export async function login(name: string, pw: string): Promise<{ mustChange: boolean }> {
   const j = await post('/auth/login', { name: name.trim(), pw }) as
-    { token: string; name: string; mustChange?: boolean }
+    { token: string; name: string; mustChange?: boolean; staff?: boolean }
   write(TOKEN_KEY, j.token)
   write(NAME_KEY, j.name)
+  write(STAFF_KEY, j.staff ? '1' : '')
   return { mustChange: !!j.mustChange }
 }
 

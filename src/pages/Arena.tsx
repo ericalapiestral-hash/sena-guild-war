@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import type { ArenaDeckKind, ArenaEntry, ArenaHeroSlot, ArenaMode, Hero } from '../types'
-import { canEdit, getAllArena, getAllHeroes, isBuiltinArena, newId, todayLocal, update, useUserData } from '../store'
+import { canEditStaff, getAllArena, getAllHeroes, isBuiltinArena, newId, todayLocal, update, useUserData } from '../store'
 import { HeroName, HeroPickerModal, HeroSearchBar, SlotRow } from '../components/HeroSelect'
 import { Modal } from '../components/Modal'
 import { useMediaQuery } from '../lib/useMediaQuery'
@@ -83,7 +83,7 @@ export function ArenaPage({ sub }: { sub: string }) {
           <h1>결투장</h1>
           <p className="page-desc">{meta.desc}</p>
         </div>
-        {canEdit() && <button className="primary" onClick={startNew}>+ 덱 등록</button>}
+        {canEditStaff() && <button className="primary" onClick={startNew}>+ 덱 등록</button>}
       </header>
 
       {/* 하위 메뉴 — 일반 / 상급 / 실시간. --i는 미끄러지는 알약 위치 */}
@@ -126,7 +126,7 @@ export function ArenaPage({ sub }: { sub: string }) {
       {filtered.length === 0 ? (
         <div className="empty">
           <p>{inMode.length === 0 ? `아직 등록된 ${meta.label} 덱이 없어요.` : '조건에 맞는 덱이 없어요.'}</p>
-          {canEdit() && <button className="primary" onClick={startNew}>덱 등록하기</button>}
+          {canEditStaff() && <button className="primary" onClick={startNew}>덱 등록하기</button>}
         </div>
       ) : (
         <div className={`cd-split ${isDesktop ? 'is-desktop' : ''}`}>
@@ -219,7 +219,7 @@ function ArenaDetail({
           </div>
           {entry.summary && <p className="cd-notes">{entry.summary}</p>}
         </div>
-        {canEdit() && (
+        {canEditStaff() && (
           <div className="row">
             <button className="small" onClick={onEdit}>수정</button>
             <button className="small danger" onClick={onRemove}>삭제</button>

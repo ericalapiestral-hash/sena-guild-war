@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { INITIAL_GUIDES } from '../data/guide'
-import { canEdit, newId, update, useUserData } from '../store'
+import { canEditStaff, newId, update, useUserData } from '../store'
 import { Markdown } from '../components/Markdown'
 import { Modal } from '../components/Modal'
 
@@ -18,7 +18,7 @@ export function GuidePage() {
           <h1>가이드</h1>
           <p className="page-desc">길드전 규칙과 운영 팁. 길드 자체 공략도 추가할 수 있어요.</p>
         </div>
-        {canEdit() && <button className="primary" onClick={() => setShowAdd(true)}>+ 섹션 추가</button>}
+        {canEditStaff() && <button className="primary" onClick={() => setShowAdd(true)}>+ 섹션 추가</button>}
       </header>
 
       <div className="doc-split">
@@ -42,7 +42,7 @@ export function GuidePage() {
               <article className="doc-sec" key={s.id} id={s.id}>
                 <div className="doc-sec-head">
                   <h2>{s.title}</h2>
-                  {isCustom && canEdit() && (
+                  {isCustom && canEditStaff() && (
                     <button className="small danger" onClick={() => {
                       if (confirm(`'${s.title}' 섹션을 삭제할까요?`)) {
                         update((d) => { d.customGuides = d.customGuides.filter((g) => g.id !== s.id) })
