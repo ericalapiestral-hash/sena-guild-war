@@ -44,8 +44,18 @@ function normalize(raw: unknown): UserData {
   const base = structuredClone(EMPTY)
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return base
   const src = raw as Record<string, unknown>
+  // 문자열 id 만 담는 칸과, 객체를 담는 칸을 따로 거른다.
+  // 배열인지만 보고 통과시켰더니 counters:[null] 한 줄에 홈·카운터덱이 통째로
+  // 죽었다(getAllCounters 의 c.id 에서 TypeError). 워커도 같은 검증을 하지만,
+  // 이미 저장된 오염 데이터는 여기서 걸러야 화면이 산다.
+  const ID_FIELDS = new Set(['hiddenCounterIds', 'hiddenArenaIds'])
   for (const k of ARRAY_FIELDS) {
-    if (Array.isArray(src[k])) (base as unknown as Record<string, unknown>)[k] = src[k]
+    const v = src[k]
+    if (!Array.isArray(v)) continue
+    const clean = ID_FIELDS.has(k)
+      ? v.filter((x) => typeof x === 'string')
+      : v.filter((x) => !!x && typeof x === 'object' && !Array.isArray(x))
+    ;(base as unknown as Record<string, unknown>)[k] = clean
   }
   // 커트라인 기준표(객체 필드) — 숫자 값만 살린다
   const cg = src.cutlineGuide as Record<string, unknown> | undefined

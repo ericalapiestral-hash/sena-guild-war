@@ -125,5 +125,37 @@ const nullBody = await fetch(B + '/auth/login', {
 })
 ok('JSON null 로그인 → 500 아님', nullBody.status !== 500, 'status=' + nullBody.status)
 
+console.log('\n== 2차 패치 ==')
+// 오염 원소 하나로 전원 화면이 죽던 것
+const poisoned = await call('/data', {
+  body: { data: { ...roster().data, counters: [null] } }, token: staffTok,
+})
+ok('★ counters:[null] → 400', poisoned.s === 400, 'status=' + poisoned.s)
+
+// 영구 관리자를 명단에서 밀어내기
+const kick = await call('/data', {
+  body: { data: { ...roster().data, members: roster().data.members.filter((m) => m.id !== 'own') } },
+  token: staffTok,
+})
+ok('★ 영구 관리자 명단에서 제거 → 403', kick.s === 403, 'status=' + kick.s)
+const excl = await call('/data', {
+  body: {
+    data: {
+      ...roster().data,
+      members: roster().data.members.map((m) => (m.id === 'own' ? { ...m, excluded: true } : m)),
+    },
+  },
+  token: staffTok,
+})
+ok('★ 영구 관리자 외부처리 → 403', excl.s === 403, 'status=' + excl.s)
+
+// 본문을 읽기 전에 크기로 자르는가
+const huge = await fetch(B + '/auth/login', {
+  method: 'POST',
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({ name: 'x'.repeat(40000), pw: 'y' }),
+})
+ok('★ 과대 본문 로그인 → 413', huge.status === 413, 'status=' + huge.status)
+
 console.log(`\n결과: ${pass} PASS / ${fail} FAIL`)
 process.exit(fail ? 1 : 0)

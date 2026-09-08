@@ -18,7 +18,7 @@ import { RaidPlanPage } from './pages/RaidPlan'
 import { AdminLogin } from './pages/AdminLogin'
 import { ADMIN_ROUTES, isAdmin, logout } from './auth'
 import { MemberLoginPage } from './pages/MemberLogin'
-import { isStaff, onAuthLost } from './session'
+import { clearSession, isLoggedIn, isStaff, onAuthLost } from './session'
 import { useGuildName } from './store'
 
 interface MenuItem {
@@ -184,6 +184,7 @@ function Sidebar({
   items,
   active,
   admin,
+  loggedIn,
   mode,
   theme,
   onToggleTheme,
@@ -193,6 +194,8 @@ function Sidebar({
   items: MenuItem[]
   active: string
   admin: boolean
+  /** 길드원으로 로그인해 있나 — 로그아웃 버튼을 관리자에게만 보여주면 안 된다 */
+  loggedIn: boolean
   mode: SideMode
   theme: Theme
   onToggleTheme: () => void
@@ -303,8 +306,8 @@ function Sidebar({
           <Icon name="collapse" className="ic" />
           <span className="side-label">메뉴 접기</span>
         </button>
-        {admin ? (
-          <button className="side-item side-lock" onClick={onLogout} aria-label="관리자 로그아웃" {...flyoutProps('관리자 로그아웃')}>
+        {admin || loggedIn ? (
+          <button className="side-item side-lock" onClick={onLogout} aria-label="로그아웃" {...flyoutProps('로그아웃')}>
             <Icon name="lock" className="ic" />
             <span className="side-label">로그아웃</span>
           </button>
@@ -360,10 +363,18 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' })
   }, [base])
 
+  /**
+   * 로그아웃은 '이 브라우저에 아무것도 안 남는다'는 뜻이어야 한다.
+   * 예전엔 관리자 UI 플래그만 지워서, 30일짜리 로그인 토큰과 마지막으로 받은
+   * 길드 데이터 사본(닉네임·점수·운영진 메모)이 그대로 남았다. 공용 PC 에서
+   * 탭만 닫고 자리를 뜨면 다음 사람이 그대로 그 사람 계정이 됐다.
+   */
   function doLogout() {
-    logout()
+    logout()            // 관리자 UI 플래그 + 메모리의 운영진 비번
+    clearSession()      // 토큰 · 이름 · 권한 플래그 · 공유 데이터 사본
     setAdmin(false)
-    navigate('home')
+    location.hash = '#/home'
+    location.reload()   // 메모리에 남은 상태까지 확실히 턴다
   }
 
   // 로그인이 풀리면 사이트 전체를 가린다 — 읽기도 막는 게 목적이라 화면부터 덮는다
@@ -377,6 +388,7 @@ export default function App() {
         items={visible}
         active={base}
         admin={admin}
+        loggedIn={isLoggedIn()}
         mode={sideMode}
         theme={theme}
         onToggleTheme={toggleTheme}
@@ -491,6 +503,11 @@ export default function App() {
                     관리자 로그아웃
                   </button>
                 </>
+              ) : isLoggedIn() ? (
+                <button className="sheet-item" onClick={() => { doLogout(); setSheet(false) }}>
+                  <Icon name="lock" className="ic" />
+                  로그아웃
+                </button>
               ) : (
                 <button
                   className={`sheet-item ${base === 'admin' ? 'active' : ''}`}
