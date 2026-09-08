@@ -1,8 +1,8 @@
 import { useId, useState } from 'react'
-import type { Hero, LoadoutSlot, SkillPick, TimelineStep } from '../types'
+import type { Hero, LoadoutSlot, RingPick, SkillPick, TimelineStep } from '../types'
 import { SKILL_RESERVE_MAX } from '../types'
 import { HeroName } from './HeroSelect'
-import { ACCESSORIES, ARMOR_OPTIONS, ATTUNE_SLOTS, GEAR_SETS, SIEGE_TURNS, STAT_HINTS, WEAPON_OPTIONS } from '../data/gear'
+import { ARMOR_OPTIONS, ATTUNE_SLOTS, GEAR_SETS, RING_STARS, RINGS, SIEGE_TURNS, STAT_HINTS, WEAPON_OPTIONS } from '../data/gear'
 
 /**
  * 길드전 방어·공격이 같이 쓰는 입력 부품들.
@@ -102,7 +102,58 @@ export function Step({ n, title, desc, children }: {
 /** 이 영웅 칸에 뭐라도 적혀 있나 — 탭에 표시해서 빠뜨린 영웅을 찾게 한다 */
 const slotFilled = (s: LoadoutSlot) =>
   !!(s.set || s.weapon1 || s.weapon2 || s.armor1 || s.armor2 || s.accessory ||
+    (s.ringsMin ?? []).length || (s.ringsWant ?? []).length ||
     s.ringSub || (s.attune ?? []).some((v) => v && v.trim()) || s.subStats || s.stat)
+
+/** 반지 한 줄 표기 — '6성 권능 / 불사' */
+const ringText = (list?: RingPick[]) =>
+  (list ?? []).map((r) => [r.star, r.name].filter(Boolean).join(' ')).join(' / ')
+
+/**
+ * 반지 고르기 — 여러 개 고를 수 있고, 고른 것마다 성급을 붙인다.
+ *
+ * 하나만 고르게 했더니 '권능이든 불사든 상관없다' 를 적을 데가 없었다.
+ * 성급은 같은 반지라도 값이 달라서(6부 vs 4부) 같이 적어야 뜻이 통한다.
+ */
+function RingPicker({ label, hint, value, onChange }: {
+  label: string
+  hint: string
+  value?: RingPick[]
+  onChange: (v?: RingPick[]) => void
+}) {
+  const list = value ?? []
+  const set = (next: RingPick[]) => onChange(next.length ? next : undefined)
+  const toggle = (name: string) => {
+    const at = list.findIndex((r) => r.name === name)
+    if (at >= 0) set(list.filter((_, i) => i !== at))
+    else set([...list, { name, star: RING_STARS[0] }])
+  }
+  const star = (name: string, s: string) =>
+    set(list.map((r) => (r.name === name ? { ...r, star: s || undefined } : r)))
+
+  return (
+    <div className="ring-row">
+      <span className="ring-l">{label}<em>{hint}</em></span>
+      <div className="ring-chips">
+        {RINGS.map((name) => {
+          const pick = list.find((r) => r.name === name)
+          return (
+            <span key={name} className={`ring-chip ${pick ? 'on' : ''}`}>
+              <button className="chip" onClick={() => toggle(name)}>{name}</button>
+              {pick && (
+                <select value={pick.star ?? ''} onChange={(e) => star(name, e.target.value)}
+                  aria-label={`${name} 성급`}>
+                  <option value="">성급</option>
+                  {RING_STARS.map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+              )}
+            </span>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
 
 /**
  * 영웅별 장비 — 탭으로 한 명씩.
@@ -180,13 +231,24 @@ export function LoadoutEditor({ slot, hero, onChange }: {
         <Pick label="1" value={slot.armor1} options={ARMOR_OPTIONS} onPick={(v) => onChange({ armor1: v })} />
         <Pick label="2" value={slot.armor2} options={ARMOR_OPTIONS} onPick={(v) => onChange({ armor2: v })} />
       </div>
-      <div className="gear-pair">
+      <div className="gear-pair gear-rings">
         <span className="gear-part">반지</span>
-        <Pick label="계열" value={slot.accessory} options={ACCESSORIES} onPick={(v) => onChange({ accessory: v })} />
-        <div className="def-pick">
-          <span className="def-pick-l">부세공</span>
-          <input list={hintId} placeholder="예: 효과 저항" value={slot.ringSub ?? ''}
-            onChange={(e) => onChange({ ringSub: e.target.value || undefined })} />
+        <div className="ring-box">
+          <RingPicker label="최소" hint="이건 있어야 한다"
+            value={slot.ringsMin} onChange={(v) => onChange({ ringsMin: v })} />
+          <RingPicker label="권장" hint="있으면 제일 좋다"
+            value={slot.ringsWant} onChange={(v) => onChange({ ringsWant: v })} />
+          {slot.accessory && (
+            <p className="ring-old">
+              옛 기록: <b>{slot.accessory}</b>
+              <button className="small" onClick={() => onChange({ accessory: undefined })}>지우기</button>
+            </p>
+          )}
+          <div className="def-pick" style={{ marginTop: 4 }}>
+            <span className="def-pick-l">부세공</span>
+            <input list={hintId} placeholder="예: 효과 저항" value={slot.ringSub ?? ''}
+              onChange={(e) => onChange({ ringSub: e.target.value || undefined })} />
+          </div>
         </div>
       </div>
       <div className="gear-pair">
@@ -219,6 +281,8 @@ export function LoadoutView({ slot, hero }: { slot: LoadoutSlot; hero?: Hero }) 
     slot.set,
     pair(slot.weapon1, slot.weapon2, '무기'),
     pair(slot.armor1, slot.armor2, '갑바'),
+    ringText(slot.ringsMin) && `반지 최소 ${ringText(slot.ringsMin)}`,
+    ringText(slot.ringsWant) && `권장 ${ringText(slot.ringsWant)}`,
     slot.accessory && `반지 ${slot.accessory}`,
     slot.ringSub && `반지 부세공 ${slot.ringSub}`,
     attune.length ? `조율 ${attune.join(' / ')}` : '',

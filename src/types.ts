@@ -232,6 +232,14 @@ export interface CutlineGuide {
 // ---- 길드전·공성전 세팅 (세나링크 허브 구조 참고, 2026-08-25) ----
 // 네 화면(길드전 공격·방어, 공성전 공략, 원정대 배치)이 '영웅 1인 세팅'을 공유한다.
 
+/** 반지 한 칸 — 종류와 성급 */
+export interface RingPick {
+  /** RINGS 중 하나 */
+  name: string
+  /** RING_STARS 중 하나 (미지정 가능) */
+  star?: string
+}
+
 /** 영웅 1인의 장비 세팅 — 기존 CounterHeroSlot보다 항목이 잘게 나뉜다 */
 export interface LoadoutSlot {
   /** 영웅 이름 (heroes.json과 매칭되면 유형 표시) */
@@ -246,7 +254,16 @@ export interface LoadoutSlot {
   armor1?: string
   /** 방어구2 주옵 */
   armor2?: string
-  /** 반지 (ACCESSORIES) */
+  /**
+   * 반지 — 여러 개 고를 수 있다('이 중 아무거나'라는 뜻).
+   * 최소는 '이건 있어야 한다', 권장은 '있으면 제일 좋다'.
+   */
+  ringsMin?: RingPick[]
+  ringsWant?: RingPick[]
+  /**
+   * @deprecated 옛 단일 선택 반지. 새로 쓰지 말 것 — 읽기만 한다.
+   * 예전에 저장된 값이 화면에서 조용히 사라지지 않게 남겨 뒀다.
+   */
   accessory?: string
   /** 반지 부세공 */
   ringSub?: string

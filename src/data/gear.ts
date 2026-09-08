@@ -7,10 +7,19 @@ export const GEAR_SETS = [
   '선봉장', '추적자', '성기사', '수문장', '수호자', '암살자', '복수자', '주술사', '조율자',
 ] as const
 
-/** 장신구(반지) 계열 */
-export const ACCESSORIES = [
-  '불사', '권능', '부활', '상태이상', '출혈&화상', '토벌&공성',
+/**
+ * 반지 — 길드전에서 실제로 쓰는 것만 남겼다.
+ *
+ * 예전 목록에 있던 '상태이상'·'출혈&화상'·'토벌&공성' 은 뺐다. 길드전에서 안 쓰는데
+ * 칸만 차지해서, 고를 때 눈이 한 번 더 걸렸다. (원정대·공성전도 같은 편집기를 쓰므로
+ * 거기서 다른 반지가 필요해지면 LoadoutEditor 의 rings 인자로 다른 목록을 넘기면 된다)
+ */
+export const RINGS = [
+  '권능', '불사', '부활', '즉사', '벞제', '디버프', '기합', '철벽',
 ] as const
+
+/** 반지 성급 — 같은 반지도 성급에 따라 값이 달라서 같이 적는다 */
+export const RING_STARS = ['6성', '5성', '4성'] as const
 
 /** 무기 주옵션 */
 export const WEAPON_OPTIONS = [
@@ -70,8 +79,8 @@ export const SIEGE_DECK_SIZE = 5
  */
 export const SIEGE_TURNS = Array.from({ length: 18 }, (_, i) => i * 4)
 
-/** 방어 세팅 타입 */
-export const DEFENSE_STYLES = ['속공', '내실'] as const
+/** 방어 세팅 타입 — 속공과 내실 사이를 반반 가는 '속내실' 이 실제로 제일 흔하다 */
+export const DEFENSE_STYLES = ['속공', '속내실', '내실'] as const
 
 /** 진형 — 게임에 정해진 네 가지. 자유 입력도 같이 받는다('보호진형(멜키르)' 같은 메모) */
 export const FORMATIONS = ['기본진형', '공격진형', '밸런스진형', '보호진형'] as const

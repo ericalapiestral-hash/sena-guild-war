@@ -2384,3 +2384,37 @@ button.ghost:hover { background: var(--surface-2); color: var(--text); }
 .attune { flex: 1 1 0; min-width: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
 .attune input { width: 100%; min-width: 0; }
 @media (max-width: 560px) { .attune { grid-template-columns: repeat(2, 1fr); } }
+
+/* ---- 반지 — 여러 개 고르고, 고른 것마다 성급을 붙인다 ---- */
+.gear-rings .ring-box { flex: 1 1 0; min-width: 0; }
+.ring-row { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px; }
+.ring-row:last-of-type { margin-bottom: 0; }
+.ring-l {
+  flex: 0 0 74px; padding-top: 4px;
+  font-size: 0.82rem; font-weight: 700; color: var(--text-2);
+  display: flex; flex-direction: column; line-height: 1.35;
+}
+/* 최소/권장이 무슨 뜻인지 매번 묻지 않게 한 줄로 붙여 둔다 */
+.ring-l em { font-style: normal; font-weight: 500; font-size: 0.68rem; color: var(--text-3); }
+.ring-chips { flex: 1 1 0; min-width: 0; display: flex; flex-wrap: wrap; gap: 5px; }
+.ring-chip { display: inline-flex; align-items: stretch; border-radius: 999px; }
+.ring-chip .chip { border-radius: 999px; }
+.ring-chip.on .chip {
+  background: var(--accent-soft); border-color: var(--accent-dim);
+  color: var(--accent-strong); font-weight: 700;
+  border-top-right-radius: 0; border-bottom-right-radius: 0; border-right: 0;
+}
+.ring-chip select {
+  border: 1px solid var(--accent-dim); border-left: 0;
+  border-top-right-radius: 999px; border-bottom-right-radius: 999px;
+  background: var(--surface); color: var(--text-2);
+  font-size: 0.76rem; font-weight: 700; padding: 0 6px; min-height: 0;
+}
+.ring-old {
+  margin: 2px 0 0; font-size: 0.8rem; color: var(--text-3);
+  display: flex; align-items: center; gap: 8px;
+}
+@media (max-width: 560px) {
+  .ring-row { flex-direction: column; gap: 4px; }
+  .ring-l { flex: none; padding-top: 0; flex-direction: row; gap: 6px; align-items: baseline; }
+}
