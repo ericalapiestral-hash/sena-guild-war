@@ -38,7 +38,8 @@ src/
   types.ts         공용 타입
   auth.ts          운영 메뉴 표시 판정 (비번 로그인 아님)
   styles.css       전체 스타일 (68KB — 단일 파일)
-  pages/           Home Arena Counters Cutlines Guide Heroes Members Settings Stats MemberLogin
+  pages/           Home Counters Heroes Members Settings Stats Cutlines MemberLogin
+                   WarAttack WarDefense RaidPlan (Arena·Guide·SiegeGuide 는 메뉴에서 내림)
   components/      HeroSelect Modal ScoreImport Icon Markdown ErrorBoundary
   lib/
     ocr.ts         캡처 → 점수표 인식 (31KB, 핵심 로직)
@@ -107,6 +108,8 @@ tools/             보조 스크립트
   - 공성전·파괴신이 같은 `EntryTable`을 쓴다. **파괴신은 넣을 칸이 둘**(`mid` 중간집계 / `value` 최종)이라 `targets`로 골라 넣는다 — 안 물어보면 시즌 도중 캡처가 최종으로 잘못 들어가 순위·미달이 통째로 어긋난다. 공성전은 칸이 하나라 선택지를 숨긴다.
   - 수치 이름(`metric`: '점수'/'딜량')을 워커 `/ocr` 프롬프트까지 넘긴다. **클라이언트 문자열을 그대로 프롬프트에 넣지 말 것** — `OCR_METRICS` 화이트리스트로 거른다.
   - 한국어 조사는 `josa()`로 받침을 보고 고른다(점수**를** / 딜량**을**). 프론트·워커 양쪽에 같은 함수가 있다.
+- **결투장 · 가이드 · 공성전 공략 메뉴는 내렸다**(2026-09-08). 메뉴·라우트·홈 링크만 뺐고 **페이지 파일(`pages/Arena.tsx`·`Guide.tsx`·`SiegeGuide.tsx`)과 저장된 데이터(`arenaEntries`·`hiddenArenaIds`·`customGuides`·`siegeGuides`)는 그대로 둔다.** 되살리려면 `App.tsx` 의 `MENU`·임포트·렌더 분기 세 줄이면 된다.
+  - 하단 탭(`PRIMARY`)은 **반드시 4개**여야 한다 — `.bn-ind` 가 `(100% - 8px) / 5` 로 칸 너비를 계산해서, 개수가 바뀌면 표시자가 어긋난다. 결투장이 빠진 자리에는 길드전 방어를 올렸다.
 - 커트라인은 **공성전 요일별 / 파괴신 파이 초월별** 기준 메뉴로 나뉜다.
 - 초기 데이터는 `src/data/*.json`. 사이트에서 입력한 데이터를 [데이터 관리]에서 JSON으로 내보내 이 파일에 반영하면 배포본 기본값으로 승격된다.
 

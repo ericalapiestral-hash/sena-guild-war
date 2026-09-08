@@ -1,15 +1,13 @@
 import { useMemo } from 'react'
 import type { CutlineGuide, StatEntry, StatRound } from '../types'
-import { counterHeroNames, getAllArena, getAllCounters, getAllHeroes, useGuildName, useUserData } from '../store'
+import { counterHeroNames, getAllCounters, getAllHeroes, useGuildName, useUserData } from '../store'
 import { navigate } from '../router'
 import { DeckNames } from '../components/HeroSelect'
 import { Delta, cutlineFor, effOf, fmt, lastFilled, latestDayWithData, tierMap, tierShort } from '../lib/stat'
 
 const LINKS: Array<{ route: string; label: string; desc: string }> = [
   { route: 'counters', label: '카운터덱', desc: '상대 방덱을 뚫는 조합 찾기' },
-  { route: 'arena', label: '결투장', desc: '일반 · 상급 · 실시간 5인 덱' },
   { route: 'heroes', label: '영웅 · 덱', desc: '3인 덱 짜고 저장하기' },
-  { route: 'guide', label: '가이드', desc: '길드전 규칙과 팁' },
 ]
 
 export function HomePage() {
@@ -21,7 +19,6 @@ export function HomePage() {
 
   const stats: Array<{ n: number; label: string; route: string }> = [
     { n: counters.length, label: '방어덱 공략', route: 'counters' },
-    { n: getAllArena().length, label: '결투장 덱', route: 'arena' },
     { n: heroes.length, label: '영웅', route: 'heroes' },
     { n: userData.siegeRounds.length, label: '공성전 주차', route: 'siege' },
     { n: userData.destroyerRounds.length, label: '파괴신 시즌', route: 'destroyer' },
@@ -90,7 +87,7 @@ export function HomePage() {
       </section>
 
       <p className="foot-note">
-        덱·가이드는 길드원 누구나, <b>공성전·파괴신 기록은 운영진</b>이 입력합니다. 저장한 내용은 길드 공유 저장소에 자동 반영돼요.
+        덱·공략은 길드원 누구나, <b>공성전·파괴신 기록은 운영진</b>이 입력합니다. 저장한 내용은 길드 공유 저장소에 자동 반영돼요.
       </p>
     </div>
   )

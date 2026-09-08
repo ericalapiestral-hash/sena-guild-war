@@ -5,15 +5,12 @@ import { ErrorBoundary } from './components/ErrorBoundary'
 import { HomePage } from './pages/Home'
 import { CutlinesPage } from './pages/Cutlines'
 import { CountersPage } from './pages/Counters'
-import { ArenaPage } from './pages/Arena'
 import { HeroesPage } from './pages/Heroes'
-import { GuidePage } from './pages/Guide'
 import { StatsPage } from './pages/Stats'
 import { MembersPage } from './pages/Members'
 import { SettingsPage } from './pages/Settings'
 import { WarDefensePage } from './pages/WarDefense'
 import { WarAttackPage } from './pages/WarAttack'
-import { SiegeGuidePage } from './pages/SiegeGuide'
 import { RaidPlanPage } from './pages/RaidPlan'
 import { isAdmin } from './auth'
 import { MemberLoginPage } from './pages/MemberLogin'
@@ -34,12 +31,9 @@ interface MenuItem {
 const MENU: MenuItem[] = [
   { route: 'home', label: '홈', icon: 'home' },
   { route: 'counters', label: '카운터덱', icon: 'target', group: '대전' },
-  { route: 'arena', label: '결투장', icon: 'arena' },
   { route: 'heroes', label: '영웅 · 덱', icon: 'shield' },
-  { route: 'guide', label: '가이드', icon: 'book' },
   { route: 'warattack', label: '길드전 공격', icon: 'target', group: '길드전 세팅' },
   { route: 'wardefense', label: '길드전 방어', icon: 'shield' },
-  { route: 'siegeguide', label: '공성전 공략', icon: 'siege' },
   { route: 'raid', label: '원정대 배치', icon: 'destroyer' },
   // 점수 기록은 운영진만 본다. 워커가 이 세 메뉴가 쓰는 칸을 아예 안 내려보내므로
   // 메뉴를 감추지 않으면 빈 화면만 보게 된다.
@@ -51,8 +45,8 @@ const MENU: MenuItem[] = [
 ]
 
 // 모바일 하단 탭은 5칸(4 + 더보기) — 자주 쓰는 대전 콘텐츠를 앞에 두고 나머지는 '더보기'로
-const PRIMARY = ['home', 'counters', 'arena', 'heroes']
-const SECONDARY = ['guide', 'warattack', 'wardefense', 'siegeguide', 'raid', 'siege', 'destroyer', 'cutlines']
+const PRIMARY = ['home', 'counters', 'heroes', 'wardefense']
+const SECONDARY = ['warattack', 'raid', 'siege', 'destroyer', 'cutlines']
 const ADMIN_ITEMS = MENU.filter((m) => m.admin)
 const fullLabel = (label: string) =>
   ({ 데이터: '데이터 관리', 길드원: '길드원 관리', 공성전: '공성전 통계', 파괴신: '파괴신 통계', 커트라인: '커트라인 기준', '원정대 배치': '강림 원정대 배치' } as Record<string, string>)[label] ?? label
@@ -378,15 +372,12 @@ export default function App() {
             <>
                 {base === 'home' && <HomePage />}
                 {base === 'counters' && <CountersPage />}
-                {base === 'arena' && <ArenaPage sub={route.split('/')[1] || 'normal'} />}
                 {base === 'heroes' && <HeroesPage />}
-                {base === 'guide' && <GuidePage />}
                 {base === 'siege' && <StatsPage kind="siege" />}
                 {base === 'destroyer' && <StatsPage kind="destroyer" />}
                 {base === 'cutlines' && <CutlinesPage />}
                 {base === 'wardefense' && <WarDefensePage />}
                 {base === 'warattack' && <WarAttackPage />}
-                {base === 'siegeguide' && <SiegeGuidePage />}
                 {base === 'raid' && <RaidPlanPage />}
                 {/* 운영 메뉴는 워커가 실제로 막는다 — 여기 검사는 화면을 안 그리는 용도다 */}
                 {base === 'members' && (admin ? <MembersPage /> : <HomePage />)}
@@ -398,7 +389,7 @@ export default function App() {
       </main>
 
       <div className="footer-note">
-        {guildName} · 세븐나이츠 리버스 길드 사이트 — 길드전 · 결투장 · 공성전 · 파괴신을 한곳에서.
+        {guildName} · 세븐나이츠 리버스 길드 사이트 — 길드전 · 공성전 · 파괴신을 한곳에서.
       </div>
 
       {/* 모바일 하단 탭바 */}
