@@ -100,3 +100,20 @@ export const tierShort = (t?: string): string => {
 /** 길드원 이름 → 등급 (파괴신 등급별 커트라인용) */
 export const tierMap = (members: Member[]): Map<string, string> =>
   new Map(members.filter((m) => m.tier).map((m) => [m.name, m.tier as string]))
+
+/**
+ * 화면에 거는 링크 주소를 거른다.
+ *
+ * href 에는 javascript: 같은 스킴도 들어간다. 여기 오는 값은 학습(AI)이 외부
+ * 라운지 글에서 뽑아 온 것이거나 운영진이 손으로 적은 것이라, 우리가 만든 값이
+ * 아니다. http/https 가 아니면 링크를 아예 안 건다.
+ */
+export function safeUrl(u?: string): string | undefined {
+  if (!u) return undefined
+  try {
+    const p = new URL(u, location.origin)
+    return p.protocol === 'http:' || p.protocol === 'https:' ? p.href : undefined
+  } catch {
+    return undefined
+  }
+}

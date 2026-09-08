@@ -11,6 +11,10 @@ function corsHeaders() {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'content-type, authorization, x-admin-pw',
+    // 같은 주소가 Authorization 에 따라 다른 본문을 준다 — 중간 캐시가 운영진용
+    // 응답을 일반 길드원에게 되돌려 주는 사고를 막는다.
+    'Cache-Control': 'no-store',
+    'Vary': 'Origin, Authorization, x-admin-pw',
   }
 }
 
@@ -46,8 +50,12 @@ const CARRY_OVER_FIELDS = [
 ]
 
 // 백업 시각 (isolate 메모리 — 재시작 시 초기화돼도 무해, 몇 번 더 백업될 뿐)
-let lastBackupAt = 0
-let lastDailyDay = ''
+// 백업 시각은 KV 에 둔다.
+// 예전엔 모듈 전역이었는데, 워커 isolate 는 언제든 새로 뜨고 여러 개가 동시에 돈다.
+// 새 isolate 는 0 으로 시작하니 '10분에 한 번' 이 지켜지지 않고, 연속 두 번의 저장이
+// 서로 다른 isolate 에 걸리면 직전본·일별본이 한꺼번에 새 값으로 덮여 복구 지점이
+// 통째로 사라진다. 백업이 정확히 그 사고를 막으려고 있는 장치라 더 뼈아팠다.
+const BACKUP_META = 'backup-meta'
 
 // ===== 길드원 로그인 =====
 //
@@ -99,8 +107,15 @@ async function signKey(env) {
   return crypto.subtle.importKey('raw', enc(k), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify'])
 }
 
-async function makeToken(env, id) {
-  const body = b64url(JSON.stringify({ i: id, e: Date.now() + TOKEN_DAYS * 864e5 }))
+/**
+ * 토큰에 그때의 비번 갱신 시각(a)을 같이 새긴다.
+ *
+ * 예전 토큰에는 이게 없어서, 아이디를 해제하거나 비번을 바꿔도 이미 나간 토큰이
+ * 30일 내내 그대로 통했다. 화면은 '다시 못 들어옵니다'라고 약속하는데 실제로는
+ * 안 끊겼다. 이제 member-auth 의 at 과 맞춰 보고, 더 최신이면 거절한다.
+ */
+async function makeToken(env, id, at = 0) {
+  const body = b64url(JSON.stringify({ i: id, a: at, e: Date.now() + TOKEN_DAYS * 864e5 }))
   const sig = hex(await crypto.subtle.sign('HMAC', await signKey(env), enc(body)))
   return body + '.' + sig
 }
@@ -112,16 +127,30 @@ async function makeToken(env, id) {
 async function readToken(env, token) {
   const [body, sig] = String(token || '').split('.')
   if (!body || !sig) return null
+  if (!/^[0-9a-f]+$/i.test(sig) || sig.length % 2) return null
   const ok = await crypto.subtle.verify('HMAC', await signKey(env),
     Uint8Array.from(sig.match(/../g)?.map((h) => parseInt(h, 16)) ?? []), enc(body))
   if (!ok) return null
   try {
     const p = JSON.parse(unb64url(body))
     if (!(p.e > Date.now())) return null
-    if (p.i) return p.i
+    if (p.i) return { id: p.i, at: Number(p.a) || 0 }
     const m = p.n ? await findByName(env, p.n) : null   // 옛 토큰
-    return m ? m.id : null
+    return m ? { id: m.id, at: 0 } : null
   } catch { return null }
+}
+
+/**
+ * 토큰이 아직 유효한 계정의 것인가.
+ * 아이디를 해제했으면(레코드 없음) 끊고, 비번을 바꿨으면 그 전 토큰을 끊는다.
+ */
+async function liveToken(env, token) {
+  const t = await readToken(env, token)
+  if (!t) return null
+  const rec = (await readAuth(env))[t.id]
+  if (!rec) return null                       // 해제된 아이디
+  if ((rec.at || 0) > t.at) return null        // 비번을 바꾼 뒤에 나온 토큰이 아니다
+  return { ...t, rec }
 }
 
 /**
@@ -168,8 +197,13 @@ async function migrateKeys(env) {
   if (moved) await env.GUILD_KV.put('member-auth', JSON.stringify(auth))
 
   const admins = JSON.parse((await env.GUILD_KV.get('site-admins')) || '[]')
-  const nextAdmins = admins.map((k) => (!ids.has(k) && byName.has(k) ? byName.get(k) : k))
-  if (nextAdmins.some((v, i) => v !== admins[i])) {
+  const nextAdmins = admins
+    .map((k) => (!ids.has(k) && byName.has(k) ? byName.get(k) : k))
+    // 명단에서 아주 사라진 사람의 관리자 자격은 여기서 턴다. 안 그러면 KV 에만
+    // 유령으로 남아 화면에는 안 보이고 지울 수도 없다. '외부 처리(excluded)'는
+    // 명단에 그대로 있으므로 안 지운다 — 돌아오면 그대로 복귀해야 한다.
+    .filter((k) => ids.has(k))
+  if (nextAdmins.length !== admins.length || nextAdmins.some((v, i) => v !== admins[i])) {
     await env.GUILD_KV.put('site-admins', JSON.stringify(nextAdmins))
   }
 }
@@ -222,6 +256,10 @@ const isSiteAdmin = async (env, id) =>
  */
 const STAFF_ONLY_FIELDS = ['siegeRounds', 'destroyerRounds', 'cutlineGuide', 'staffNotes']
 
+/** 한 칸에 넣을 수 있는 항목 수 / 저장본 전체 크기 상한 */
+const MAX_ITEMS = 2000
+const MAX_TOTAL = 3_000_000
+
 /** 일반 길드원이 고칠 수 있는 칸 — 길드전 관련 메뉴가 쓰는 것들 */
 const MEMBER_WRITE_FIELDS = [
   'counters', 'hiddenCounterIds',   // 카운터덱
@@ -249,12 +287,13 @@ async function guard(request, env) {
   // 검사를 안 켠 동안은 전부 통과하고 운영진으로 본다 — 아이디를 나눠주는 기간이다
   if (!(await authOn(env))) return { ok: true, name: null, staff: true }
   await migrateKeys(env)
-  const id = await readToken(env, bearer(request))
-  if (!id) return { ok: false, res: json({ error: '로그인이 필요해요.', code: 'login' }, 401) }
+  const t = await liveToken(env, bearer(request))
+  if (!t) return { ok: false, res: json({ error: '로그인이 필요해요.', code: 'login' }, 401) }
+  const id = t.id
 
   // 임시 비번인 동안은 사이트를 못 쓴다. 안 그러면 새 비번 화면을 새로고침으로
   // 넘겨버릴 수 있고, 그러면 운영진이 아는 비번이 그대로 남는다.
-  const rec = (await readAuth(env))[id]
+  const rec = t.rec
   if (rec && rec.tmp) {
     return { ok: false, res: json({ error: '새 비밀번호를 먼저 정해주세요.', code: 'mustchange' }, 403) }
   }
@@ -290,8 +329,36 @@ function tempPw(n = 8) {
   return [...crypto.getRandomValues(new Uint8Array(n))].map((b) => abc[b % abc.length]).join('')
 }
 
+/**
+ * 로그인 시도 제한 — 이름당 15분에 LOGIN_MAX 회.
+ *
+ * 없을 때는 비번을 무제한으로 넣어볼 수 있었고, 게다가 한 번 틀릴 때마다
+ * PBKDF2 10만 회가 돌아서 CPU 도 같이 태울 수 있었다. 그래서 해시를 돌리기
+ * '전에' 센다. 한도를 넘으면 KV 에 쓰지도 않는다(쓰기 한도 소진 방지).
+ */
+const LOGIN_MAX = 10
+const LOGIN_WINDOW = 900
+
+/**
+ * ★ 세는 단위는 '닉네임' 이 아니라 '어디서 + 누구' 다.
+ *   닉네임만으로 세면, 아무나 남의 닉으로 열 번 틀려서 그 사람을 15분간 잠글 수
+ *   있다 — 막으려던 것보다 나쁜 괴롭힘 수단이 된다. 보내는 쪽을 같이 묶으면
+ *   퍼붓는 사람만 자기 발이 묶인다.
+ */
+async function loginTries(env, request, name) {
+  const ip = request.headers.get('cf-connecting-ip') || 'local'
+  const k = `login-try:${ip}:${name.slice(0, 60)}`
+  const v = Number(await env.GUILD_KV.get(k)) || 0
+  return { k, v }
+}
+
 async function handleAuth(request, env, path) {
-  const body = request.method === 'POST' ? await request.json().catch(() => ({})) : {}
+  // 상태를 바꾸는 경로가 GET 으로도 돌면 링크 한 번으로 사고가 난다.
+  // 실제로 GET /auth/enable 이 본문 없이 통해서 로그인 검사를 꺼버릴 수 있었다.
+  if (request.method !== 'POST') return json({ error: 'POST만 지원해요.' }, 405)
+  const raw = await request.json().catch(() => ({}))
+  // JSON "null" 이나 배열이 와도 아래에서 body.x 로 터지지 않게 여기서 거른다
+  const body = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}
 
   // --- 로그인 ---
   if (path.endsWith('/auth/login')) {
@@ -300,24 +367,39 @@ async function handleAuth(request, env, path) {
     const pw = String(body.pw || '')
     // 없는 아이디여도 같은 문구로 답한다 — 누가 길드원인지 흘리지 않으려고
     const fail = json({ error: '아이디나 비밀번호가 달라요.' }, 401)
+    if (!name) return fail
+
+    // ★ 해시를 돌리기 전에 센다. PBKDF2 는 일부러 느려서, 세지 않으면
+    //   틀린 비번을 퍼붓는 것만으로 워커 CPU 를 태울 수 있다.
+    const try_ = await loginTries(env, request, name)
+    if (try_.v >= LOGIN_MAX) {
+      return json({ error: '잠시 뒤에 다시 시도해주세요.' }, 429)
+    }
+    const burn = async () => {
+      await env.GUILD_KV.put(try_.k, String(try_.v + 1), { expirationTtl: LOGIN_WINDOW })
+      return fail
+    }
+
     // 로그인 창에는 닉네임을 치지만, 안에서는 곧바로 id 로 바꿔 든다
     const member = await findByName(env, name)
-    if (!member || !pw) return fail
+    if (!member || !pw) return burn()
     const rec = (await readAuth(env))[member.id]
-    if (!rec) return fail
-    if (!safeEqual(await hashPw(pw, rec.s), rec.h)) return fail
+    if (!rec) return burn()
+    if (!safeEqual(await hashPw(pw, rec.s), rec.h)) return burn()
+    if (try_.v) await env.GUILD_KV.delete(try_.k)   // 성공하면 카운터를 턴다
     // staff 는 화면 구성에만 쓴다 — 실제 판정은 요청마다 워커가 다시 한다
     const admin = await isSiteAdmin(env, member.id)
     return json({
-      token: await makeToken(env, member.id), name: member.name, mustChange: !!rec.tmp,
+      token: await makeToken(env, member.id, rec.at || 0), name: member.name, mustChange: !!rec.tmp,
       admin, staff: admin || hasStaffRole(member),
     })
   }
 
   // --- 내 비번 바꾸기 ---
   if (path.endsWith('/auth/password')) {
-    const id = await readToken(env, bearer(request))
-    if (!id) return json({ error: '로그인이 필요해요.' }, 401)
+    const t = await liveToken(env, bearer(request))
+    if (!t) return json({ error: '로그인이 필요해요.' }, 401)
+    const id = t.id
     const next = String(body.next || '')
     if (next.length < 6) return json({ error: '비밀번호는 6자 이상으로 해주세요.' }, 400)
     const all = await readAuth(env)
@@ -329,7 +411,9 @@ async function handleAuth(request, env, path) {
     const s = hex(crypto.getRandomValues(new Uint8Array(16)))
     all[id] = { h: await hashPw(next, s), s, tmp: 0, at: Date.now() }
     await writeAuth(env, all)
-    return json({ ok: true })
+    // 비번을 바꾸면 그 전에 나간 토큰이 전부 죽는다 — 본인 것도 포함이라
+    // 새 토큰을 같이 돌려준다. 안 그러면 비번을 정하자마자 튕긴다.
+    return json({ ok: true, token: await makeToken(env, id, all[id].at) })
   }
 
   // --- 여기서부터 사이트 관리자 ---
@@ -339,8 +423,15 @@ async function handleAuth(request, env, path) {
   //   2) 로그인한 사이트 관리자 — 평소엔 이쪽. 비번을 매번 칠 필요가 없다.
   await migrateKeys(env)
   const bySecret = isAdminReq(request, env)
-  const meId = bySecret ? null : await readToken(env, bearer(request))
-  if (!bySecret && !(await isSiteAdmin(env, meId))) {
+  const me = bySecret ? null : await liveToken(env, bearer(request))
+  const meId = me ? me.id : null
+  // ★ guard() 와 같은 기준으로 명단을 한 번 더 본다.
+  //   여기가 비어 있어서, 길드를 나가 명단에서 지워진 옛 사이트 관리자가 토큰이
+  //   살아 있는 30일 동안 /auth/* 전권을 유지했다. /data 는 막히니 차단된 줄 알지만
+  //   그 사이 로그인 검사를 꺼버리거나(전원 공개) 영구 관리자 비번을 재발급받아
+  //   계정을 통째로 가져갈 수 있었다. isSiteAdmin 은 KV 목록만 볼 뿐 명단을 안 본다.
+  const meMember = meId ? await findMember(env, meId) : null
+  if (!bySecret && !(meMember && (await isSiteAdmin(env, meId)))) {
     return json({ error: '사이트 관리자만 쓸 수 있어요.' }, 403)
   }
 
@@ -369,6 +460,11 @@ async function handleAuth(request, env, path) {
     const id = String(body.id || '').trim()
     const m = (await roster(env)).find((x) => x.id === id)
     if (!m) return json({ error: '명단에 없는 길드원이에요.' }, 400)
+    // 재발급은 곧 그 계정 인수다 — 평문 임시 비번을 그 자리에서 받아 로그인할 수 있다.
+    // 영구 관리자만은 워커 시크릿을 아는 사람만 손댈 수 있게 막는다.
+    if (id === (await ownerId(env)) && !bySecret) {
+      return json({ error: '영구 관리자 비번은 워커 시크릿으로만 재발급할 수 있어요.' }, 403)
+    }
     const pw = tempPw()
     const s = hex(crypto.getRandomValues(new Uint8Array(16)))
     const all = await readAuth(env)
@@ -391,7 +487,11 @@ async function handleAuth(request, env, path) {
 
   // 사이트 관리자 지정 — 마지막 한 명까지 지우면 워커 시크릿으로만 들어올 수 있게 되므로 막는다
   if (path.endsWith('/auth/admins')) {
-    const ids = [...new Set([].concat(body.ids || []).map((n) => String(n).trim()).filter(Boolean))]
+    if (!Array.isArray(body.ids)) return json({ error: 'ids 배열이 필요해요.' }, 400)
+    // 명단에 없는 id 는 저장하지 않는다 — 삭제된 사람의 관리자 자격이 KV 에 유령으로
+    // 남아 화면에 안 보이고 지울 수도 없었다. 저장할 때마다 같이 청소된다.
+    const live = new Set((await roster(env)).map((x) => x && x.id))
+    const ids = [...new Set(body.ids.map((v) => String(v).trim()).filter((v) => v && live.has(v)))]
     // 영구 관리자는 목록에서 빠져도 권한이 유지된다. 목록에도 도로 넣어 화면과 어긋나지 않게 한다.
     const owner = await ownerId(env)
     if (owner && !ids.includes(owner)) ids.push(owner)
@@ -403,6 +503,8 @@ async function handleAuth(request, env, path) {
   }
 
   if (path.endsWith('/auth/enable')) {
+    // 본문 없는 요청이 조용히 검사를 꺼버리지 않게 — 값이 왔는지부터 본다
+    if (typeof body.on !== 'boolean') return json({ error: 'on 값(true/false)이 필요해요.' }, 400)
     const on = !!body.on
     const all = await readAuth(env)
     if (on && !Object.keys(all).length) {
@@ -1402,7 +1504,18 @@ export default {
       who = g
     }
 
-    // ===== 캡처 점수 읽기 =====
+    // ===== 캡처 점수 읽기 · 학습 =====
+    // Origin 헤더는 브라우저만 붙인다 — curl 이면 아무 값이나 넣을 수 있어서
+    // 문지방이 못 된다. 둘 다 Workers AI 무료 할당량을 태우는 경로라 로그인을 건다.
+    // (학습은 운영진 전용. cron 은 이 경로를 안 지나므로 영향 없다)
+    if (path.endsWith('/ocr') || path.endsWith('/learn')) {
+      const g = await guard(request, env)
+      if (!g.ok) return g.res
+      if (path.endsWith('/learn') && !g.staff) {
+        return json({ error: '운영진만 학습을 돌릴 수 있어요.' }, 403)
+      }
+    }
+
     if (path.endsWith('/ocr')) return handleOcr(request, env)
 
     // ===== 학습 =====
@@ -1444,6 +1557,10 @@ export default {
     // GET /api/destroyer?season=<시즌 라벨(부분일치 가능)>
     if (path.endsWith('/api/siege') || path.endsWith('/api/destroyer')) {
       if (request.method !== 'GET') return json({ error: 'GET만 지원해요.' }, 405)
+      // 이 경로는 guild-data 에서 직접 계산해서 stripForMember 를 안 탄다.
+      // 검사를 안 걸어 두는 바람에 /data 에서 애써 뺀 점수·커트라인이 여기로 그대로
+      // 새어 나갔다 — 일반 길드원도 회차별 전원 점수를 볼 수 있었다.
+      if (!who.staff) return json({ error: '운영진만 볼 수 있어요.' }, 403)
       try {
         const raw = env.GUILD_KV ? await env.GUILD_KV.get('guild-data') : null
         let data = {}
@@ -1509,6 +1626,11 @@ export default {
           if (k in data && !Array.isArray(data[k])) {
             return json({ error: `${k} 필드는 배열이어야 해요.` }, 400)
           }
+          // 요청 1MB 제한만으로는 저장본 총량이 안 잡힌다 — 칸을 나눠 여러 번
+          // 보내면 얼마든지 불릴 수 있어서, 칸마다 개수도 막는다.
+          if (Array.isArray(data[k]) && data[k].length > MAX_ITEMS) {
+            return json({ error: `${k} 항목이 너무 많아요 (최대 ${MAX_ITEMS}개).` }, 413)
+          }
         }
         // 길드 이름은 화면 곳곳(로고·제목·탭)에 그대로 박히는 문자열이라 형식·길이를 여기서도 막는다
         if ('guildName' in data && typeof data.guildName !== 'string') {
@@ -1549,23 +1671,32 @@ export default {
         // 모두의 동기화를 얼려버리는 조작 방지. 응답으로 돌려줘 클라이언트가 맞춰 저장.
         data._rev = Date.now()
         const next = JSON.stringify(data)
+        // 총량 상한 — 여기서 안 막으면 공유 데이터가 KV 한도까지 부풀어
+        // 어느 순간 전원이 사이트를 못 연다.
+        if (next.length > MAX_TOTAL) {
+          return json({ error: '저장본이 너무 커요. 오래된 기록을 정리해주세요.' }, 413)
+        }
 
         // 백업 2단계: 직전본(10분에 1번, 실수 복구) + 일별본(하루 1번, 오염돼도 하루 전으로 복구)
         // KV 무료 쓰기 한도(하루 1000회) 절약을 위해 각각 제한.
         const day = new Date().toISOString().slice(0, 10)
-        const needPrev = Date.now() - lastBackupAt > 10 * 60 * 1000
-        const needDaily = day !== lastDailyDay
+        let meta = {}
+        try { meta = JSON.parse((await env.GUILD_KV.get(BACKUP_META)) || '{}') || {} } catch { meta = {} }
+        const needPrev = Date.now() - (meta.prevAt || 0) > 10 * 60 * 1000
+        const needDaily = day !== meta.dailyDay
         if (needPrev || needDaily) {
           const prev = prevRaw
           if (prev) {
+            let dirty = false
             if (needPrev && prev !== next) {
               await env.GUILD_KV.put('guild-data-prev', prev)
-              lastBackupAt = Date.now()
+              meta.prevAt = Date.now(); dirty = true
             }
             if (needDaily) {
               await env.GUILD_KV.put('guild-data-daily', prev)
-              lastDailyDay = day
+              meta.dailyDay = day; dirty = true
             }
+            if (dirty) await env.GUILD_KV.put(BACKUP_META, JSON.stringify(meta))
           }
         }
 

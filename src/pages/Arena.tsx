@@ -1,3 +1,4 @@
+import { safeUrl } from '../lib/stat'
 import { useMemo, useRef, useState } from 'react'
 import type { ArenaDeckKind, ArenaEntry, ArenaHeroSlot, ArenaMode, Hero } from '../types'
 import { canEditStaff, getAllArena, getAllHeroes, isBuiltinArena, newId, todayLocal, update, useUserData } from '../store'
@@ -265,7 +266,7 @@ function ArenaDetail({
 
       {entry.sourceUrl && (
         <p className="ar-source">
-          출처: <a href={entry.sourceUrl} target="_blank" rel="noopener noreferrer">{entry.source || '원문 보기'}</a>
+          출처: <a href={safeUrl(entry.sourceUrl)} target="_blank" rel="noopener noreferrer">{entry.source || '원문 보기'}</a>
         </p>
       )}
     </div>

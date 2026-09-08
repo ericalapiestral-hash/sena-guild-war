@@ -2,6 +2,9 @@ node_modules/
 dist/
 *.tsbuildinfo
 .wrangler/
+# wrangler tail 출력 — 실제 요청 로그가 그대로 담긴다. 저장소에 올리지 않는다.
+worker/tail.log
+*.log
 worker/node_modules/
 *.local
 .DS_Store

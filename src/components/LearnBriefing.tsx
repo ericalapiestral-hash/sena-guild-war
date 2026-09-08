@@ -1,3 +1,4 @@
+import { safeUrl } from '../lib/stat'
 import { useEffect, useState } from 'react'
 import { WORKER_URL } from '../data/config'
 import { isAdmin } from '../auth'
@@ -166,7 +167,7 @@ export function LearnBriefing() {
           {data?.meta && <p className="learn-meta">{data.meta}</p>}
           <div className="learn-list stagger">
             {shown.map((it) => (
-              <a key={it.feedId} className="learn-item" href={it.url} target="_blank" rel="noreferrer">
+              <a key={it.feedId} className="learn-item" href={safeUrl(it.url)} target="_blank" rel="noreferrer">
                 <span className="learn-line1">
                   <em className={`learn-cat ${CATEGORY_CLASS[it.category] ?? 'cat-etc'}`}>{it.category}</em>
                   <strong>{it.title}</strong>

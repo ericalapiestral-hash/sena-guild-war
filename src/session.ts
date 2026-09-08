@@ -10,9 +10,17 @@ import { WORKER_URL } from './data/config'
 
 const TOKEN_KEY = 'sena-guild-war:token'
 const NAME_KEY = 'sena-guild-war:me'
-const ADMIN_KEY = 'sena-guild-war:adminpw'
 const STAFF_KEY = 'sena-guild-war:staff'
 const SADMIN_KEY = 'sena-guild-war:siteadmin'
+
+/**
+ * 운영진 비밀번호는 이 탭이 살아 있는 동안만 기억한다.
+ *
+ * 예전엔 localStorage 에 평문으로 넣어 두고 지우지도 않았다. 이건 워커의 최고권한
+ * 비번이라, 공용 PC 나 XSS 한 방이면 그대로 넘어간다. 사이트 관리자로 로그인해
+ * 있으면 토큰만으로 통하므로 대개는 칠 일도 없다 — adminHeaders() 참고.
+ */
+let adminPw = ''
 
 const base = () => WORKER_URL.replace(/\/+$/, '')
 
@@ -25,7 +33,7 @@ const write = (k: string, v: string) => {
 
 export const getToken = () => read(TOKEN_KEY)
 export const getMe = () => read(NAME_KEY)
-export const getAdminPw = () => read(ADMIN_KEY)
+export const getAdminPw = () => adminPw
 export const isLoggedIn = () => !!getToken()
 
 /**
@@ -81,6 +89,11 @@ export function clearSession() {
   write(NAME_KEY, '')
   write(STAFF_KEY, '')
   write(SADMIN_KEY, '')
+  adminPw = ''
+  // 공유 데이터 사본도 같이 턴다. 안 그러면 서버가 일부러 빼고 보낸 운영진 전용
+  // 칸(점수·커트라인·운영진 메모)이 브라우저에 남아 다음 사람 화면에 그대로 그려진다.
+  write('sena-guild-war:v1', '')
+  write('sena-guild-war:rev', '')
 }
 
 async function post(path: string, body: unknown, extra: Record<string, string> = {}) {
@@ -116,13 +129,16 @@ export async function login(name: string, pw: string): Promise<{ mustChange: boo
 }
 
 export async function changePassword(pw: string, next: string) {
-  await post('/auth/password', { pw, next }, authHeaders())
+  // 비번을 바꾸면 그 전에 나간 토큰이 워커에서 전부 죽는다 — 지금 들고 있는 것도
+  // 포함이라, 새로 받은 토큰으로 갈아끼우지 않으면 바로 튕긴다.
+  const j = await post('/auth/password', { pw, next }, authHeaders()) as { token?: string }
+  if (j.token) write(TOKEN_KEY, j.token)
 }
 
 // ---- 운영진 ----
 
-export function setAdminPw(pw: string) { write(ADMIN_KEY, pw) }
-export function clearAdminPw() { write(ADMIN_KEY, '') }
+export function setAdminPw(pw: string) { adminPw = pw }
+export function clearAdminPw() { adminPw = '' }
 
 export type IdRow = {
   /** 길드원 고유 id — 닉이 바뀌어도 안 변한다. 발급·해제는 전부 이걸로 한다 */
