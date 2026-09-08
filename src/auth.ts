@@ -5,12 +5,19 @@
 //   공개고, 솔트가 없어 오프라인으로 깨면 끝이었다. 지금은 워커에 실제로 물어본다
 //   (틀린 비번은 워커가 403 을 준다). 비번은 이 탭 메모리에만 남는다.
 import { WORKER_URL } from './data/config'
-import { clearAdminPw, listIds, setAdminPw } from './session'
+import { clearAdminPw, isSiteAdmin, listIds, setAdminPw } from './session'
 
 const KEY = 'sena-guild-war:admin'
 export const ADMIN_ROUTES = ['members', 'settings']
 
 export function isAdmin(): boolean {
+  // ★ 사이트 관리자로 로그인해 있으면 그것만으로 연다.
+  //
+  //   워커가 로그인할 때 이미 '이 사람은 사이트 관리자'라고 판정해서 내려준 값이다
+  //   (session 의 SADMIN_KEY). 그런데 여기서 그걸 안 보고 옛 비번 플래그만 봐서,
+  //   영구 관리자로 로그인해도 [길드원]·[데이터] 메뉴가 안 떴다. 비번을 또 치게
+  //   하면 그 비번이 워커 시크릿과 다를 때 자기 사이트에서 잠긴다.
+  if (isSiteAdmin()) return true
   try {
     return localStorage.getItem(KEY) === '1'
   } catch {

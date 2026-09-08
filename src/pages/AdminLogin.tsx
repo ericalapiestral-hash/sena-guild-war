@@ -22,7 +22,12 @@ export function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
         <div className="login-lock">🔒</div>
         <h1 style={{ textAlign: 'center' }}>관리자 로그인</h1>
         <p className="page-desc" style={{ textAlign: 'center' }}>
-          운영진 전용 페이지(길드원 · 데이터)는 비밀번호가 필요해요.
+          운영진 전용 페이지(길드원 · 데이터)예요.
+          <br />
+          <b>사이트 관리자는 길드원 로그인만으로 바로 들어옵니다</b> — 여기는 로그인 검사를
+          아직 안 켰거나, 아무도 못 들어갈 때 쓰는 예비 문이에요.
+          <br />
+          비밀번호는 워커에 넣어 둔 <code>ADMIN_PW</code> 입니다.
         </p>
         <input
           type="password"
