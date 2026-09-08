@@ -1,60 +1,28 @@
-// 관리자(운영진) 소프트 로그인 — 아이디 없이 비번만.
-// 정적 사이트라 이건 "관리 UI 를 감추는" 장치일 뿐이다. 진짜 판정은 워커가 한다.
+// 운영 메뉴([길드원]·[데이터])를 보여줄지 정한다.
 //
-// ★ 예전엔 사이트 코드에 박아 둔 SHA-256 해시와 맞춰봤다. 번들이 공개되니 해시도
-//   공개고, 솔트가 없어 오프라인으로 깨면 끝이었다. 지금은 워커에 실제로 물어본다
-//   (틀린 비번은 워커가 403 을 준다). 비번은 이 탭 메모리에만 남는다.
-import { WORKER_URL } from './data/config'
-import { clearAdminPw, isSiteAdmin, listIds, setAdminPw } from './session'
+// ★ 예전엔 여기 '관리자 비밀번호' 로그인이 따로 있었다. 없앴다.
+//   비번을 두 번 받을 이유가 없다 — 누가 관리자인지는 워커가 길드원 로그인 때
+//   이미 판정해서 내려준다(session 의 isSiteAdmin). 게다가 그 두 번째 비번이
+//   워커 시크릿과 어긋나면 자기 사이트에서 잠겼다.
+//
+//   정적 사이트라 이 판정은 '화면을 어떻게 그릴까'용일 뿐이다. 실제 차단은
+//   워커가 요청마다 한다(worker.js 의 guard / handleAuth 관문).
+import { clearAdminPw, isLoggedIn, isSiteAdmin } from './session'
 
-const KEY = 'sena-guild-war:admin'
+/** 운영진 전용 화면 */
 export const ADMIN_ROUTES = ['members', 'settings']
 
-export function isAdmin(): boolean {
-  // ★ 사이트 관리자로 로그인해 있으면 그것만으로 연다.
-  //
-  //   워커가 로그인할 때 이미 '이 사람은 사이트 관리자'라고 판정해서 내려준 값이다
-  //   (session 의 SADMIN_KEY). 그런데 여기서 그걸 안 보고 옛 비번 플래그만 봐서,
-  //   영구 관리자로 로그인해도 [길드원]·[데이터] 메뉴가 안 떴다. 비번을 또 치게
-  //   하면 그 비번이 워커 시크릿과 다를 때 자기 사이트에서 잠긴다.
-  if (isSiteAdmin()) return true
-  try {
-    return localStorage.getItem(KEY) === '1'
-  } catch {
-    return false
-  }
-}
+/**
+ * 운영 메뉴를 열어 줄 사람인가.
+ *
+ * 로그인 검사를 아직 안 켠 동안(로그인 자체가 없는 상태)은 열어 둔다 —
+ * 그때는 워커도 전부 통과시키므로 감춰봐야 의미가 없고, 무엇보다 아이디를
+ * 나눠주려면 [길드원] 화면에 들어갈 수 있어야 한다. 검사를 켠 뒤로는
+ * 사이트 관리자만 보인다. (isStaff 와 같은 규칙)
+ */
+export const isAdmin = (): boolean => !isLoggedIn() || isSiteAdmin()
 
+/** 남은 뒷정리 — 메모리에 든 워커 비번을 턴다 */
 export function logout(): void {
   clearAdminPw()
-  try {
-    localStorage.removeItem(KEY)
-  } catch {
-    /* noop */
-  }
-}
-
-function mark() {
-  try {
-    localStorage.setItem(KEY, '1')
-  } catch {
-    /* noop */
-  }
-}
-
-export async function login(pw: string): Promise<boolean> {
-  // 로컬 모드(워커 미연결)에는 공유 데이터 자체가 없어 감출 것도 없다
-  if (!WORKER_URL) {
-    mark()
-    return true
-  }
-  setAdminPw(pw)
-  try {
-    await listIds()          // 워커가 ADMIN_PW 와 맞춰본다
-    mark()
-    return true
-  } catch {
-    clearAdminPw()
-    return false
-  }
 }

@@ -36,9 +36,9 @@ src/
   router.ts        자체 라우터
   store.ts         전역 상태 + 저장소 (localStorage / 공유 KV)
   types.ts         공용 타입
-  auth.ts          관리자 로그인
+  auth.ts          운영 메뉴 표시 판정 (비번 로그인 아님)
   styles.css       전체 스타일 (68KB — 단일 파일)
-  pages/           Home Arena Counters Cutlines Guide Heroes Members Settings Stats AdminLogin
+  pages/           Home Arena Counters Cutlines Guide Heroes Members Settings Stats MemberLogin
   components/      HeroSelect Modal ScoreImport Icon Markdown ErrorBoundary
   lib/
     ocr.ts         캡처 → 점수표 인식 (31KB, 핵심 로직)
@@ -75,6 +75,9 @@ tools/             보조 스크립트
   - 로그인 시도 제한은 **`IP + 닉네임`** 으로 센다. 닉네임만으로 세면 아무나 남을 15분씩 잠글 수 있다. 세는 건 PBKDF2 **전에** — 안 그러면 틀린 비번만으로 워커 CPU 를 태운다.
   - `/ocr`·`/learn` 은 Origin 헤더가 유일한 문이었다(curl 이면 아무 값이나 넣는다). 이제 `guard()` 를 타고, `/learn` 은 운영진 전용이다. **cron 은 이 경로를 안 지난다.**
   - 백업 시각은 **KV(`backup-meta`)** 에 둔다. isolate 전역 변수는 새 isolate 마다 0 으로 시작해서, 연속 저장이 직전본·일별본을 한꺼번에 날려버렸다.
+  - **관리자 비밀번호 로그인 화면은 없앴다**(`src/pages/AdminLogin.tsx` 삭제). 권한은 **길드원 로그인 하나에서만** 온다 — 워커가 로그인 응답에 `admin`(사이트 관리자)을 담아 주고, `auth.ts` 의 `isAdmin()` 이 그걸 본다. 비번을 두 번 받을 이유가 없고, 두 번째 비번이 워커 시크릿과 어긋나면 자기 사이트에서 잠겼다.
+    - `isAdmin()` = `!isLoggedIn() || isSiteAdmin()` — `isStaff()` 와 같은 규칙이다. **검사를 안 켠 동안 열어 두는 게 핵심**이다. 안 그러면 아이디를 나눠주려고 [길드원] 에 들어가야 하는데 아무도 못 들어가는 잠금이 된다(워커도 그때는 전부 통과시키므로 감춰봐야 의미도 없다).
+    - 그래도 실제 아이디 발급·검사 켜기는 **워커가 막는다** — 사이트 관리자 토큰이거나 `x-admin-pw`(워커 시크릿 `ADMIN_PW`)여야 한다. [길드원] 화면의 비번 칸이 그 예비 문이고, 관리자를 전부 잃었을 때의 복구 수단이다.
   - `src/data/config.ts` 에 **비밀을 두지 말 것.** 예전에 있던 `ADMIN_PW_HASH`(솔트 없는 SHA-256)는 지웠다 — 공개 번들이라 받아서 깨면 그만이고, 같은 비번이 워커 시크릿이면 워커까지 넘어간다. 관리자 확인은 워커에 물어본다(`src/auth.ts`).
   - 운영진 비번은 **localStorage 에 안 남긴다** — `session.ts` 의 모듈 변수(탭 메모리)뿐이다. 사이트 관리자로 로그인해 있으면 토큰만으로 통해서 대개 칠 일도 없다.
   - `index.html` 에 CSP 가 있다. 바깥 출처는 **jsdelivr 하나** (Pretendard 폰트 + tesseract.js 폴백). 외부 리소스를 늘리면 여기도 같이 고쳐야 로드된다.

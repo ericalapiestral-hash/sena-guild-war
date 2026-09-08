@@ -58,10 +58,10 @@ export function MemberIds() {
 
       {!data && !isSiteAdmin() && (
       <div className="row" style={{ marginTop: 10 }}>
-        <label className="def-label">관리자 비번</label>
+        <label className="def-label">워커 비번</label>
         <span style={{ flex: 1, minWidth: 140, maxWidth: 240 }}>
           <PasswordInput value={pw} onChange={setPw} onEnter={() => void load(pw)}
-            placeholder="워커에 넣어둔 비밀번호" />
+            placeholder="워커 시크릿 ADMIN_PW" />
         </span>
         <button className="small primary" disabled={busy || !pw} onClick={() => void load(pw)}>확인</button>
       </div>

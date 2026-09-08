@@ -15,8 +15,7 @@ import { WarDefensePage } from './pages/WarDefense'
 import { WarAttackPage } from './pages/WarAttack'
 import { SiegeGuidePage } from './pages/SiegeGuide'
 import { RaidPlanPage } from './pages/RaidPlan'
-import { AdminLogin } from './pages/AdminLogin'
-import { ADMIN_ROUTES, isAdmin, logout } from './auth'
+import { isAdmin } from './auth'
 import { MemberLoginPage } from './pages/MemberLogin'
 import { clearSession, isLoggedIn, isStaff, onAuthLost } from './session'
 import { useGuildName } from './store'
@@ -57,7 +56,7 @@ const SECONDARY = ['guide', 'warattack', 'wardefense', 'siegeguide', 'raid', 'si
 const ADMIN_ITEMS = MENU.filter((m) => m.admin)
 const fullLabel = (label: string) =>
   ({ 데이터: '데이터 관리', 길드원: '길드원 관리', 공성전: '공성전 통계', 파괴신: '파괴신 통계', 커트라인: '커트라인 기준', '원정대 배치': '강림 원정대 배치' } as Record<string, string>)[label] ?? label
-const ROUTES = [...MENU.map((m) => m.route), 'admin']
+const ROUTES = MENU.map((m) => m.route)
 
 const Brand = () => (
   <span className="logo">
@@ -156,24 +155,6 @@ function useSidebarMode(): [SideMode, () => void] {
   }
 
   return [mode, toggle]
-}
-
-function AdminHome({ onLogout }: { onLogout: () => void }) {
-  return (
-    <div>
-      <h1>관리자 메뉴</h1>
-      <p className="page-desc">운영진 전용 페이지예요. 아래에서 이동하세요.</p>
-      <div className="grid-2 stagger">
-        {ADMIN_ITEMS.map((m) => (
-          <button key={m.route} className="admin-tile" onClick={() => navigate(m.route)}>
-            <Icon name={m.icon} className="ic" />
-            <span>{fullLabel(m.label)}</span>
-          </button>
-        ))}
-      </div>
-      <button className="danger" style={{ marginTop: 16 }} onClick={onLogout}>로그아웃</button>
-    </div>
-  )
 }
 
 /**
@@ -306,20 +287,10 @@ function Sidebar({
           <Icon name="collapse" className="ic" />
           <span className="side-label">메뉴 접기</span>
         </button>
-        {admin || loggedIn ? (
+        {loggedIn && (
           <button className="side-item side-lock" onClick={onLogout} aria-label="로그아웃" {...flyoutProps('로그아웃')}>
             <Icon name="lock" className="ic" />
             <span className="side-label">로그아웃</span>
-          </button>
-        ) : (
-          <button
-            className={`side-item side-lock ${active === 'admin' ? 'active' : ''}`}
-            onClick={() => navigate('admin')}
-            aria-label="관리자 로그인"
-            {...flyoutProps('관리자 로그인')}
-          >
-            <Icon name="lock" className="ic" />
-            <span className="side-label">관리자</span>
           </button>
         )}
       </div>
@@ -336,7 +307,9 @@ export default function App() {
   const route = useRoute()
   const base = route.split('/')[0]
   const [sheet, setSheet] = useState(false)
-  const [admin, setAdmin] = useState(isAdmin())
+  // 권한은 길드원 로그인에서만 온다. 로그인·로그아웃 둘 다 새로고침을 타므로
+  // 상태로 들고 있을 이유가 없다.
+  const admin = isAdmin()
   const [sideMode, toggleSide] = useSidebarMode()
   const [theme, toggleTheme] = useTheme()
   const guildName = useGuildName()
@@ -352,9 +325,8 @@ export default function App() {
   // 운영진이 아니면 점수 기록과 운영 메뉴를 아예 안 그린다
   const staff = isStaff()
   const visible = MENU.filter((m) => (!m.admin || admin) && (!m.staff || staff))
-  const adminActive = ADMIN_ITEMS.some((m) => m.route === base) || base === 'admin'
+  const adminActive = ADMIN_ITEMS.some((m) => m.route === base)
   const moreActive = adminActive || SECONDARY.includes(base)
-  const needLogin = (ADMIN_ROUTES.includes(base) || base === 'admin') && !admin
   const primaryIndex = PRIMARY.indexOf(base)
 
   // 페이지를 옮기면 맨 위에서 시작 — 긴 목록을 보다 이동했을 때 중간에 떨어지지 않게
@@ -370,9 +342,7 @@ export default function App() {
    * 탭만 닫고 자리를 뜨면 다음 사람이 그대로 그 사람 계정이 됐다.
    */
   function doLogout() {
-    logout()            // 관리자 UI 플래그 + 메모리의 운영진 비번
-    clearSession()      // 토큰 · 이름 · 권한 플래그 · 공유 데이터 사본
-    setAdmin(false)
+    clearSession()      // 토큰 · 이름 · 권한 플래그 · 워커 비번 · 공유 데이터 사본
     location.hash = '#/home'
     location.reload()   // 메모리에 남은 상태까지 확실히 턴다
   }
@@ -405,15 +375,7 @@ export default function App() {
         {/* key={base}: 오류가 나도 다른 페이지로 이동하면 오류 상태가 풀리고, 전환 애니메이션도 다시 돈다 */}
         <ErrorBoundary key={base}>
           <div className="page" key={route}>
-            {needLogin ? (
-              <AdminLogin
-                onSuccess={() => {
-                  setAdmin(true)
-                  if (base === 'admin') navigate('members')
-                }}
-              />
-            ) : (
-              <>
+            <>
                 {base === 'home' && <HomePage />}
                 {base === 'counters' && <CountersPage />}
                 {base === 'arena' && <ArenaPage sub={route.split('/')[1] || 'normal'} />}
@@ -426,12 +388,11 @@ export default function App() {
                 {base === 'warattack' && <WarAttackPage />}
                 {base === 'siegeguide' && <SiegeGuidePage />}
                 {base === 'raid' && <RaidPlanPage />}
-                {base === 'members' && <MembersPage />}
-                {base === 'settings' && <SettingsPage />}
-                {base === 'admin' && admin && <AdminHome onLogout={doLogout} />}
+                {/* 운영 메뉴는 워커가 실제로 막는다 — 여기 검사는 화면을 안 그리는 용도다 */}
+                {base === 'members' && (admin ? <MembersPage /> : <HomePage />)}
+                {base === 'settings' && (admin ? <SettingsPage /> : <HomePage />)}
                 {!ROUTES.includes(base) && <HomePage />}
-              </>
-            )}
+            </>
           </div>
         </ErrorBoundary>
       </main>
@@ -486,35 +447,20 @@ export default function App() {
                 <em className="sheet-hint">눌러서 {THEME_LABEL[theme === 'jadan' ? 'yacheong' : 'jadan']}으로</em>
               </button>
               <div className="sheet-sep" />
-              {admin ? (
-                <>
-                  {ADMIN_ITEMS.map((m) => (
-                    <button
-                      key={m.route}
-                      className={`sheet-item ${base === m.route ? 'active' : ''}`}
-                      onClick={() => { navigate(m.route); setSheet(false) }}
-                    >
-                      <Icon name={m.icon} className="ic" />
-                      {fullLabel(m.label)}
-                    </button>
-                  ))}
-                  <button className="sheet-item" onClick={() => { doLogout(); setSheet(false) }}>
-                    <Icon name="lock" className="ic" />
-                    관리자 로그아웃
-                  </button>
-                </>
-              ) : isLoggedIn() ? (
+              {admin && ADMIN_ITEMS.map((m) => (
+                <button
+                  key={m.route}
+                  className={`sheet-item ${base === m.route ? 'active' : ''}`}
+                  onClick={() => { navigate(m.route); setSheet(false) }}
+                >
+                  <Icon name={m.icon} className="ic" />
+                  {fullLabel(m.label)}
+                </button>
+              ))}
+              {isLoggedIn() && (
                 <button className="sheet-item" onClick={() => { doLogout(); setSheet(false) }}>
                   <Icon name="lock" className="ic" />
                   로그아웃
-                </button>
-              ) : (
-                <button
-                  className={`sheet-item ${base === 'admin' ? 'active' : ''}`}
-                  onClick={() => { navigate('admin'); setSheet(false) }}
-                >
-                  <Icon name="lock" className="ic" />
-                  관리자 로그인
                 </button>
               )}
             </div>
