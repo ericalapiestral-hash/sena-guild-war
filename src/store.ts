@@ -27,7 +27,6 @@ const EMPTY: UserData = {
   defenseSetups: [],
   attackTargets: [],
   siegeGuides: [],
-  raidPlans: [],
 }
 
 const ARRAY_FIELDS = Object.keys(EMPTY) as (keyof UserData)[]
@@ -161,7 +160,7 @@ export function sharedMode(): boolean {
 }
 
 /**
- * 길드전 관련(카운터덱·공격·방어·공성전 공략·원정대 배치)을 고칠 수 있는가.
+ * 길드전 관련(카운터덱·공격·방어·공성전 공략)을 고칠 수 있는가.
  * 로그인한 길드원이면 누구나 된다.
  */
 export function canEdit(): boolean {

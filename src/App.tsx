@@ -11,7 +11,6 @@ import { MembersPage } from './pages/Members'
 import { SettingsPage } from './pages/Settings'
 import { WarDefensePage } from './pages/WarDefense'
 import { WarAttackPage } from './pages/WarAttack'
-import { RaidPlanPage } from './pages/RaidPlan'
 import { isAdmin } from './auth'
 import { MemberLoginPage } from './pages/MemberLogin'
 import { clearSession, isLoggedIn, isStaff, onAuthLost, onRoleChange } from './session'
@@ -34,7 +33,6 @@ const MENU: MenuItem[] = [
   { route: 'heroes', label: '영웅 · 덱', icon: 'shield' },
   { route: 'warattack', label: '길드전 공격', icon: 'target', group: '길드전 세팅' },
   { route: 'wardefense', label: '길드전 방어', icon: 'shield' },
-  { route: 'raid', label: '원정대 배치', icon: 'destroyer' },
   // 점수 기록은 운영진만 본다. 워커가 이 세 메뉴가 쓰는 칸을 아예 안 내려보내므로
   // 메뉴를 감추지 않으면 빈 화면만 보게 된다.
   { route: 'siege', label: '공성전', icon: 'siege', staff: true, group: '길드 기록' },
@@ -46,10 +44,10 @@ const MENU: MenuItem[] = [
 
 // 모바일 하단 탭은 5칸(4 + 더보기) — 자주 쓰는 대전 콘텐츠를 앞에 두고 나머지는 '더보기'로
 const PRIMARY = ['home', 'counters', 'heroes', 'wardefense']
-const SECONDARY = ['warattack', 'raid', 'siege', 'destroyer', 'cutlines']
+const SECONDARY = ['warattack', 'siege', 'destroyer', 'cutlines']
 const ADMIN_ITEMS = MENU.filter((m) => m.admin)
 const fullLabel = (label: string) =>
-  ({ 데이터: '데이터 관리', 길드원: '길드원 관리', 공성전: '공성전 통계', 파괴신: '파괴신 통계', 커트라인: '커트라인 기준', '원정대 배치': '강림 원정대 배치' } as Record<string, string>)[label] ?? label
+  ({ 데이터: '데이터 관리', 길드원: '길드원 관리', 공성전: '공성전 통계', 파괴신: '파괴신 통계', 커트라인: '커트라인 기준' } as Record<string, string>)[label] ?? label
 const ROUTES = MENU.map((m) => m.route)
 
 const Brand = () => (
@@ -381,7 +379,6 @@ export default function App() {
                 {base === 'cutlines' && <CutlinesPage />}
                 {base === 'wardefense' && <WarDefensePage />}
                 {base === 'warattack' && <WarAttackPage />}
-                {base === 'raid' && <RaidPlanPage />}
                 {/* 운영 메뉴는 워커가 실제로 막는다 — 여기 검사는 화면을 안 그리는 용도다 */}
                 {base === 'members' && (admin ? <MembersPage /> : <HomePage />)}
                 {base === 'settings' && (admin ? <SettingsPage /> : <HomePage />)}

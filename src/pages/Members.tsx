@@ -140,7 +140,7 @@ function MemberCard({ member, expanded, onToggle }: {
   /**
    * 닉네임 변경 — 게임에서 닉을 바꾸면 기록이 옛 이름에 묶여 끊긴다.
    * 그래서 '이름으로 사람을 가리키는 곳'을 전부 같이 옮긴다:
-   *   공성전·파괴신 기록(entries/days) · 부계정 주인 표기 · 강림 원정대 배치
+   *   공성전·파괴신 기록(entries/days) · 부계정 주인 표기
    *
    * ★ 이름으로 길드원을 가리키는 필드를 새로 만들면 여기에도 넣을 것.
    *   (원정대 배치가 실제로 여기서 빠져 있어서 닉을 바꾸면 배치에서 조용히 사라졌다)
@@ -170,11 +170,9 @@ function MemberCard({ member, expanded, onToggle }: {
       }, 0)
     const siege = countIn(now.siegeRounds)
     const destroyer = countIn(now.destroyerRounds)
-    const raid = now.raidPlans.filter((p) => p.assigned.includes(from)).length
     const moved = [
       siege && `공성전 기록 ${siege}건`,
       destroyer && `파괴신 기록 ${destroyer}건`,
-      raid && `원정대 배치 ${raid}곳`,
     ].filter(Boolean).join(' · ')
     if (moved && !confirm(`'${from}' → '${to}'\n\n${moved}도 함께 따라갑니다. 바꿀까요?`)) {
       setNick(from)
@@ -191,8 +189,6 @@ function MemberCard({ member, expanded, onToggle }: {
         renameEntries(r.entries)
         if (r.days) for (const day of Object.keys(r.days)) renameEntries(r.days[day])
       }
-      // 원정대 배치는 이름 문자열 배열이라 위 루프에 안 걸린다 — 따로 옮긴다
-      for (const p of d.raidPlans) p.assigned = p.assigned.map((n) => (n === from ? to : n))
     })
   }
 
@@ -215,10 +211,6 @@ function MemberCard({ member, expanded, onToggle }: {
             if (confirm(`'${member.name}' 길드원을 삭제할까요? 기록도 함께 삭제됩니다.`)) {
               update((d) => {
                 d.members = d.members.filter((x) => x.id !== member.id)
-                // 원정대 배치에서도 뺀다 — 명단에 없는 이름은 화면에 안 그려지면서
-                // 'n/10명' 숫자에만 남아 자리가 없는 것처럼 보인다.
-                // (배치는 '지금 누가 뛰는가'라는 계획이라 명단을 따라간다. 점수 기록은 과거 사실이라 그대로 둔다)
-                for (const p of d.raidPlans) p.assigned = p.assigned.filter((n) => n !== member.name)
               })
             }
           }}>✕</button>
@@ -234,7 +226,7 @@ function MemberCard({ member, expanded, onToggle }: {
               onBlur={(e) => renameMember(e.target.value)}
               style={{ flex: 1, minWidth: 140 }} />
             <button className="small" onClick={() => renameMember(nick)}>이름 변경</button>
-            <span className="muted" style={{ fontSize: '0.78rem' }}>바꾸면 공성전·파괴신 기록과 원정대 배치도 같이 따라가요</span>
+            <span className="muted" style={{ fontSize: '0.78rem' }}>바꾸면 공성전·파괴신 기록도 같이 따라가요</span>
           </div>
           <div className="row" style={{ marginBottom: 10 }}>
             <label style={{ fontWeight: 600, fontSize: '0.85rem' }}>역할</label>

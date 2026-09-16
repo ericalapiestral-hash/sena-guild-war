@@ -11,7 +11,7 @@ export const GEAR_SETS = [
  * 반지 — 길드전에서 실제로 쓰는 것만 남겼다.
  *
  * 예전 목록에 있던 '상태이상'·'출혈&화상'·'토벌&공성' 은 뺐다. 길드전에서 안 쓰는데
- * 칸만 차지해서, 고를 때 눈이 한 번 더 걸렸다. (원정대·공성전도 같은 편집기를 쓰므로
+ * 칸만 차지해서, 고를 때 눈이 한 번 더 걸렸다. (공성전도 같은 편집기를 쓰므로
  * 거기서 다른 반지가 필요해지면 LoadoutEditor 의 rings 인자로 다른 목록을 넘기면 된다)
  */
 export const RINGS = [
@@ -57,17 +57,6 @@ export const SIEGE_BOSSES: Array<{ day: string; boss: string; type: string }> = 
 
 export const bossOf = (day: string) => SIEGE_BOSSES.find((b) => b.day === day)
 
-/** 강림 원정대 단계 (파괴신) */
-export const RAID_STAGES = [
-  '파괴의 그림자 태오',
-  '파괴의 그림자 연희',
-  '파괴의 그림자 카일',
-  '파괴의 그림자 카르마',
-  '최종 파괴신',
-] as const
-
-/** 한 단계에 배치할 수 있는 인원 */
-export const RAID_SLOTS = 10
 /** 길드전은 3v3 */
 export const WAR_DECK_SIZE = 3
 /** 공성전 편성 인원 */

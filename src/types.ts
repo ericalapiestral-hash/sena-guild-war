@@ -230,7 +230,7 @@ export interface CutlineGuide {
 }
 
 // ---- 길드전·공성전 세팅 (세나링크 허브 구조 참고, 2026-08-25) ----
-// 네 화면(길드전 공격·방어, 공성전 공략, 원정대 배치)이 '영웅 1인 세팅'을 공유한다.
+// 길드전 공격·방어가 '영웅 1인 세팅'을 공유한다.
 
 /** 반지 한 칸 — 종류와 성급 */
 export interface RingPick {
@@ -391,19 +391,6 @@ export interface SiegeGuide {
   updatedAt: string
 }
 
-/** 강림 원정대 단계별 계획 — 배치와 공략을 같이 둔다 */
-export interface RaidPlan {
-  id: string
-  /** RAID_STAGES 중 하나 */
-  stage: string
-  /** 배치된 길드원 (최대 RAID_SLOTS) */
-  assigned: string[]
-  /** 이 단계 공략 */
-  decks: AttackDeck[]
-  memo?: string
-  updatedAt: string
-}
-
 export interface UserData {
   /**
    * 길드 이름 — 로고·홈 제목·푸터·인쇄표·브라우저 탭에 같이 쓴다.
@@ -435,8 +422,6 @@ export interface UserData {
   attackTargets: AttackTarget[]
   /** 공성전 요일 보스 공략 */
   siegeGuides: SiegeGuide[]
-  /** 강림 원정대 단계별 배치·공략 */
-  raidPlans: RaidPlan[]
   /**
    * 길드원별 운영진 메모 — 키는 길드원 고유 id(Member.id).
    *

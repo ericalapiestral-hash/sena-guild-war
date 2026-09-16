@@ -50,7 +50,7 @@ const ARRAY_FIELDS = [
   'customHeroes', 'counters', 'hiddenCounterIds', 'savedDecks',
   'members', 'customGuides', 'arenaEntries', 'hiddenArenaIds',
   'siegeRounds', 'destroyerRounds',
-  'defenseSetups', 'attackTargets', 'siegeGuides', 'raidPlans',
+  'defenseSetups', 'attackTargets', 'siegeGuides',
 ]
 
 /**
@@ -59,7 +59,7 @@ const ARRAY_FIELDS = [
  * ★ 새 최상위 필드를 추가할 때마다 여기에도 넣을 것.
  */
 const CARRY_OVER_FIELDS = [
-  'cutlineGuide', 'defenseSetups', 'attackTargets', 'siegeGuides', 'raidPlans',
+  'cutlineGuide', 'defenseSetups', 'attackTargets', 'siegeGuides',
   'guildName', 'staffNotes',
 ]
 
@@ -292,7 +292,7 @@ const MEMBER_WRITE_FIELDS = [
   'counters', 'hiddenCounterIds',   // 카운터덱
   'savedDecks',                     // 저장한 덱
   'defenseSetups', 'attackTargets', // 길드전 방어·공격
-  'siegeGuides', 'raidPlans',       // 공성전 공략·원정대 배치
+  'siegeGuides',                    // 공성전 공략
 ]
 
 function stripForMember(raw) {
