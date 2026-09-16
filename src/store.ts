@@ -32,7 +32,7 @@ const EMPTY: UserData = {
 const ARRAY_FIELDS = Object.keys(EMPTY) as (keyof UserData)[]
 
 /** 길드 이름 기본값 — 설정 전이거나 비워두면 이 이름으로 나온다 */
-export const DEFAULT_GUILD_NAME = '낭만주의'
+export const DEFAULT_GUILD_NAME = '피해증폭'
 /** 길드 이름 최대 길이 — 로고 한 줄에 들어가는 선 */
 const GUILD_NAME_MAX = 16
 

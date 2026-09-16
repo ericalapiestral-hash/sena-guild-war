@@ -342,9 +342,14 @@ export default function App() {
     location.reload()   // 메모리에 남은 상태까지 확실히 턴다
   }
 
-  // 로그인이 풀리면 사이트 전체를 가린다 — 읽기도 막는 게 목적이라 화면부터 덮는다
-  if (authLost) {
-    return <MemberLoginPage reason={authLost} onDone={() => { setAuthLost(null); location.reload() }} />
+  // 로그인이 풀리면 사이트 전체를 가린다 — 읽기도 막는 게 목적이라 화면부터 덮는다.
+  //
+  // ★ 토큰이 없으면 워커 응답을 기다리지 않고 그 자리에서 막는다(fail-closed).
+  //   authLost 만 보던 때는 401 이 도착할 때까지 사이트가 그대로 그려졌고,
+  //   워커에 아예 못 닿으면(pull 의 catch 가 오프라인으로 삼킨다) 401 이 영영
+  //   안 와서 문이 열린 채로 남았다. 워커를 못 믿는 상황일수록 닫혀 있어야 한다.
+  if (authLost || !isLoggedIn()) {
+    return <MemberLoginPage reason={authLost ?? 'login'} onDone={() => { setAuthLost(null); location.reload() }} />
   }
 
   return (

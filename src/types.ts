@@ -394,7 +394,7 @@ export interface SiegeGuide {
 export interface UserData {
   /**
    * 길드 이름 — 로고·홈 제목·푸터·인쇄표·브라우저 탭에 같이 쓴다.
-   * 비어 있으면 DEFAULT_GUILD_NAME('낭만주의')을 쓴다. 배열이 아니라
+   * 비어 있으면 DEFAULT_GUILD_NAME('피해증폭')을 쓴다. 배열이 아니라
    * store의 ARRAY_FIELDS 루프를 타지 않으니 normalize에서 따로 걸러야 한다.
    */
   guildName?: string
