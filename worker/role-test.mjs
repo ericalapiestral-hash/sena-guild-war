@@ -45,6 +45,8 @@ ok('CORS 노출 헤더 있음', (d.h.get('access-control-expose-headers') || '')
   d.h.get('access-control-expose-headers'))
 ok('권한 올리기 전 x-role-admin=0', d.h.get('x-role-admin') === '0', d.h.get('x-role-admin'))
 ok('권한 올리기 전 x-role-staff=0', d.h.get('x-role-staff') === '0', d.h.get('x-role-staff'))
+ok('권한 올리기 전 운영진 데이터는 안 내려온다', !!d.j && !('siegeRounds' in d.j),
+  JSON.stringify(Object.keys(d.j || {})))
 
 // ★ 다른 관리자가 이 사람을 관리자로 올린다 (이 사람은 다시 로그인하지 않는다)
 ok('관리자로 지정', (await call('/auth/admins', { body: { ids: ['b1'] }, admin: true })).s === 200)
@@ -52,7 +54,10 @@ ok('관리자로 지정', (await call('/auth/admins', { body: { ids: ['b1'] }, a
 d = await call('/data', { method: 'GET', token: tok })
 ok('★ 재로그인 없이 x-role-admin=1', d.h.get('x-role-admin') === '1', d.h.get('x-role-admin'))
 ok('★ 재로그인 없이 x-role-staff=1', d.h.get('x-role-staff') === '1', d.h.get('x-role-staff'))
-ok('★ 이제 운영진 데이터가 내려온다', d.j && !('__stripped' in d.j))
+// __stripped 같은 표식은 워커가 안 남긴다 — stripForMember 는 실제 키를 지운다.
+// 그래서 운영진 전용 칸이 돌아왔는지로 본다(위에서 0 일 때는 없어야 한다).
+ok('★ 이제 운영진 데이터가 내려온다', !!d.j && 'siegeRounds' in d.j,
+  JSON.stringify(Object.keys(d.j || {})))
 
 // 다시 내리면 즉시 0 으로
 ok('관리자 해제', (await call('/auth/admins', { body: { ids: ['own'] }, admin: true })).s === 200)

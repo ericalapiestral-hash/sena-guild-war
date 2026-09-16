@@ -47,8 +47,8 @@ const i1 = await call('/auth/issue', { body: { id: 'm1' }, admin: true })
 const i2 = await call('/auth/issue', { body: { id: 'm2' }, admin: true })
 ok('m1 발급', i1.s === 200 && !!i1.j.pw)
 ok('m2 발급', i2.s === 200 && !!i2.j.pw)
-ok('영구관리자 재발급은 시크릿 없이 거부',
-  (await call('/auth/issue', { body: { id: 'own' } })).s === 403 || true)
+ok('자격 없이 발급 시도 → 403',
+  (await call('/auth/issue', { body: { id: 'own' } })).s === 403)
 const own = await call('/auth/issue', { body: { id: 'own' }, admin: true })
 ok('영구관리자 재발급(시크릿)은 허용', own.s === 200)
 ok('검사 켜기', (await call('/auth/enable', { body: { on: true }, admin: true })).s === 200)
@@ -84,6 +84,11 @@ ok('운영진 /api/siege → 200',
 console.log('\n== ★ 명단에서 빠진 사이트 관리자 차단 ==')
 ok('m2 를 사이트 관리자로', (await call('/auth/admins', { body: { ids: ['m2'] }, admin: true })).s === 200)
 ok('m2 가 /auth/list 사용 가능', (await call('/auth/list', { token: memTok })).s === 200)
+// ★ 사이트 관리자여도 영구 관리자 비번은 못 건드린다 — 재발급은 곧 계정 인수다.
+//   토큰만으로 부르면 worker 의 ownerId 가드(handleAuth 의 /auth/issue)에 걸려야 한다.
+//   위의 '자격 없이' 케이스는 그 앞의 관리자 관문에서 먼저 막혀 여기까지 안 온다.
+ok('★ 사이트 관리자라도 영구관리자 재발급은 시크릿 없이 거부',
+  (await call('/auth/issue', { body: { id: 'own' }, token: memTok })).s === 403)
 // m2 를 명단에서 지운다 (운영진 권한으로 저장)
 await call('/data', {
   body: { data: { ...roster().data, members: roster().data.members.filter((m) => m.id !== 'm2') } },
