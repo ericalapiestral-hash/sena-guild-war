@@ -14,7 +14,7 @@ import { WarAttackPage } from './pages/WarAttack'
 import { RaidPlanPage } from './pages/RaidPlan'
 import { isAdmin } from './auth'
 import { MemberLoginPage } from './pages/MemberLogin'
-import { clearSession, isLoggedIn, isStaff, onAuthLost } from './session'
+import { clearSession, isLoggedIn, isStaff, onAuthLost, onRoleChange } from './session'
 import { useGuildName } from './store'
 
 interface MenuItem {
@@ -315,6 +315,9 @@ export default function App() {
   // 검사를 안 켠 동안은 이 알림이 오지 않으므로 아무 일도 일어나지 않는다.
   const [authLost, setAuthLost] = useState<'login' | 'gone' | null>(null)
   useEffect(() => onAuthLost(setAuthLost), [])
+  // 워커가 '너 이제 관리자야'라고 알려주면 메뉴를 다시 그린다 — 재로그인 없이
+  const [, bumpRole] = useState(0)
+  useEffect(() => onRoleChange(() => bumpRole((v) => v + 1)), [])
 
   // 운영진이 아니면 점수 기록과 운영 메뉴를 아예 안 그린다
   const staff = isStaff()

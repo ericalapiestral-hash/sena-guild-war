@@ -15,6 +15,8 @@ function corsHeaders() {
     // 응답을 일반 길드원에게 되돌려 주는 사고를 막는다.
     'Cache-Control': 'no-store',
     'Vary': 'Origin, Authorization, x-admin-pw',
+    // 권한 헤더는 기본적으로 스크립트에서 못 읽는다 — 읽게 열어 줘야 한다
+    'Access-Control-Expose-Headers': 'x-role-staff, x-role-admin',
   }
 }
 
@@ -25,11 +27,23 @@ function json(obj, status = 200) {
   })
 }
 
-function rawJson(raw) {
+function rawJson(raw, extra = {}) {
   return new Response(raw || '{}', {
-    headers: { 'content-type': 'application/json; charset=utf-8', ...corsHeaders() },
+    headers: { 'content-type': 'application/json; charset=utf-8', ...corsHeaders(), ...extra },
   })
 }
+
+/**
+ * 지금 이 요청자의 권한을 응답 헤더에 적어 보낸다.
+ *
+ * 프론트는 로그인할 때 받은 권한을 localStorage 에 넣어두고 그대로 쓴다.
+ * 그래서 누굴 관리자로 올려도 **그 사람이 다시 로그인하기 전까지** 화면이 안 바뀌었다
+ * (워커는 이미 관리자로 대우하는데 메뉴가 안 보이는 상태). 데이터를 받아올 때마다
+ * 같이 알려주면 다음 갱신(60초)에 저절로 맞춰진다.
+ */
+const roleHeaders = (who) => (who && who.id
+  ? { 'x-role-staff': who.staff ? '1' : '0', 'x-role-admin': who.admin ? '1' : '0' }
+  : {})
 
 // UserData의 배열 필드 — 배열이 아닌 값이 들어오면 전 길드원 화면이 깨지므로 거부
 const ARRAY_FIELDS = [
@@ -1676,7 +1690,7 @@ export default {
       if (request.method === 'GET') {
         const raw = env.GUILD_KV ? await env.GUILD_KV.get('guild-data') : null
         // 화면에서 메뉴를 감추는 것으로는 부족하다. 아예 안 실어 보낸다.
-        return rawJson(who.staff ? raw : (raw ? stripForMember(raw) : raw))
+        return rawJson(who.staff ? raw : (raw ? stripForMember(raw) : raw), roleHeaders(who))
       }
       if (request.method === 'POST') {
         if (!env.GUILD_KV) return json({ error: '서버에 GUILD_KV가 설정되지 않았어요.' }, 500)

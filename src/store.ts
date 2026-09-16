@@ -8,7 +8,7 @@ import initialHeroes from './data/heroes.json'
 import initialCounters from './data/counters.json'
 import initialArena from './data/arena.json'
 import { WORKER_URL } from './data/config'
-import { authHeaders, authLost, isStaff } from './session'
+import { applyRole, authHeaders, authLost, isStaff } from './session'
 
 const LS_KEY = 'sena-guild-war:v1'
 const REV_KEY = 'sena-guild-war:rev'
@@ -219,6 +219,8 @@ async function pull() {
   try {
     const r = await fetch(`${base}/data`, { cache: 'no-store', headers: authHeaders() })
     if (!r.ok) { await noteAuth(r); return }
+    // 데이터보다 먼저 권한을 맞춘다 — 아래 normalize 가 isStaff() 를 본다
+    applyRole(r)
     const data = await r.json()
     if (data && typeof data === 'object' && Object.keys(data).length) {
       let incRev = Number(data._rev || 0) || 0

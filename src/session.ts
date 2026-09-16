@@ -51,6 +51,33 @@ export const isStaff = () => !isLoggedIn() || read(STAFF_KEY) === '1'
  */
 export const isSiteAdmin = () => read(SADMIN_KEY) === '1'
 
+// 권한이 바뀌면 화면을 다시 그려야 한다 (메뉴가 늘거나 준다)
+type RoleListener = () => void
+const roleListeners = new Set<RoleListener>()
+export function onRoleChange(fn: RoleListener): () => void {
+  roleListeners.add(fn)
+  return () => { roleListeners.delete(fn) }
+}
+
+/**
+ * 워커가 응답 헤더에 적어 보낸 '지금 이 사람의 권한'을 받아 적는다.
+ *
+ * 예전엔 로그인할 때 받은 값을 그대로 두고 끝이라, 누굴 관리자로 올려도
+ * 그 사람이 다시 로그인하기 전까지 메뉴가 안 나타났다. 워커는 이미 관리자로
+ * 대우하는데 화면만 모르는 상태였다. 이제 데이터를 받을 때마다 맞춘다.
+ */
+export function applyRole(r: Response) {
+  const staff = r.headers.get('x-role-staff')
+  const admin = r.headers.get('x-role-admin')
+  if (staff === null && admin === null) return   // 헤더가 없으면(옛 워커) 그냥 둔다
+  const nextStaff = staff === '1' ? '1' : ''
+  const nextAdmin = admin === '1' ? '1' : ''
+  if (read(STAFF_KEY) === nextStaff && read(SADMIN_KEY) === nextAdmin) return
+  write(STAFF_KEY, nextStaff)
+  write(SADMIN_KEY, nextAdmin)
+  for (const fn of roleListeners) fn()
+}
+
 /** 워커에 보낼 인증 헤더. 토큰이 없으면 빈 객체 — 검사를 안 켠 동안은 그래도 통한다 */
 export function authHeaders(): Record<string, string> {
   const t = getToken()
