@@ -14,7 +14,7 @@ import { WarAttackPage } from './pages/WarAttack'
 import { isAdmin } from './auth'
 import { MemberLoginPage } from './pages/MemberLogin'
 import { clearSession, isLoggedIn, isStaff, onAuthLost, onRoleChange } from './session'
-import { useGuildName } from './store'
+import { clearSaveError, useGuildName, useSaveError } from './store'
 
 interface MenuItem {
   route: string
@@ -354,6 +354,7 @@ export default function App() {
 
   return (
     <>
+      <SaveErrorBanner />
       <Sidebar
         items={visible}
         active={base}
@@ -464,5 +465,24 @@ export default function App() {
         </>
       )}
     </>
+  )
+}
+
+/**
+ * 공유 저장소에 저장이 실패했을 때 띄우는 띠.
+ *
+ * 저장은 1.2초 몰아치기로 화면 뒤에서 일어난다. 예전엔 실패해도 아무 표시가 없어서
+ * 저장된 줄 알고 화면을 닫았고, 그 입력이 그대로 사라졌다. (게다가 실패한 저장이
+ * 로컬 rev 만 올려놔서 그 브라우저는 이후 공유 데이터를 영영 못 받았다 — store 의
+ * push() 주석 참고)
+ */
+function SaveErrorBanner() {
+  const err = useSaveError()
+  if (!err) return null
+  return (
+    <div className="save-error" role="alert">
+      <b>저장 안 됨</b> — {err}
+      <button className="small" onClick={clearSaveError}>닫기</button>
+    </div>
   )
 }

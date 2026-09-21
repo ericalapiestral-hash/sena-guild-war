@@ -61,6 +61,10 @@ const ARRAY_FIELDS = [
 const CARRY_OVER_FIELDS = [
   'cutlineGuide', 'defenseSetups', 'attackTargets', 'siegeGuides',
   'guildName', 'staffNotes',
+  // 운영진 전용이라 일반 길드원 응답에서는 빠지는 칸. 권한이 막 바뀐 클라이언트가
+  // 이 칸 없이 저장해도 과거 회차가 날아가지 않게 이월한다. (빈 배열을 '보내는' 것은
+  // 여전히 통한다 — [전체 초기화]가 그 경로다)
+  'siegeRounds', 'destroyerRounds',
 ]
 
 // 백업 시각 (isolate 메모리 — 재시작 시 초기화돼도 무해, 몇 번 더 백업될 뿐)

@@ -219,14 +219,20 @@ async function pull() {
     const r = await fetch(`${base}/data`, { cache: 'no-store', headers: authHeaders() })
     if (!r.ok) { await noteAuth(r); return }
     // 데이터보다 먼저 권한을 맞춘다 — 아래 normalize 가 isStaff() 를 본다
-    applyRole(r)
+    const roleChanged = applyRole(r)
     const data = await r.json()
     if (data && typeof data === 'object' && Object.keys(data).length) {
       let incRev = Number(data._rev || 0) || 0
       // 미래 시각으로 조작된 rev 방어 — 그대로 저장하면 이후 모든 pull이 무시됨
       if (incRev > Date.now() + 60 * 60 * 1000) incRev = Date.now()
       // 내 최신 편집(rev)보다 오래되거나 같은 버전이면 무시 — 입력 중 덮어쓰기 방지
-      if (rev && incRev <= rev) return
+      //
+      // ★ 단, 권한이 방금 바뀌었으면 건너뛰면 안 된다. rev 는 그대로인데 워커가
+      //   내려주는 칸이 달라지기 때문이다(stripForMember). 일반 길드원이던 사람이
+      //   운영진으로 올라간 순간 여기서 건너뛰면, 화면은 운영진인데 state 는
+      //   siegeRounds·destroyerRounds 가 빈 배열인 stripped 사본으로 남는다.
+      //   그 상태로 뭐라도 저장하면 그 빈 배열이 공성전·파괴신 기록을 통째로 덮었다.
+      if (!roleChanged && rev && incRev <= rev) return
       state = normalize(data)
       if (incRev) saveRev(incRev)
       persistLocal()
@@ -251,7 +257,21 @@ function schedulePush() {
 async function push(keepalive = false) {
   const base = readBase()
   if (!base || !canPush()) return
-  saveRev(Math.max(Date.now(), rev + 1))
+  const prevRev = rev
+  const nextRev = Math.max(Date.now(), rev + 1)
+  saveRev(nextRev)
+  /**
+   * ★ 저장이 실패하면 rev 를 반드시 되돌린다.
+   *
+   * 예전엔 보내기 전에 올린 rev 를 실패해도 그대로 뒀다. 그러면 로컬 rev 가 서버
+   * _rev 보다 앞서게 되고, pull 의 `incRev <= rev` 가 그때부터 **모든** 갱신을
+   * 조용히 건너뛴다 — 그 브라우저만 공유 데이터에서 영영 떨어져 나가고, 화면에는
+   * 아무 표시도 없었다. 413(크기 초과)·400(검증)·403(영구 관리자 보호)처럼
+   * noteAuth 가 안 보는 거절이 한 번만 나도 그렇게 됐다.
+   *
+   * 보내는 사이에 다른 push 가 rev 를 또 올렸으면 건드리지 않는다.
+   */
+  const rollback = () => { if (rev === nextRev) saveRev(prevRev) }
   // 편집 권한은 워커가 본다 — 로그인 토큰을 같이 보내고, 거절당하면 로그인 화면으로.
   try {
     const r = await fetch(`${base}/data`, {
@@ -260,15 +280,27 @@ async function push(keepalive = false) {
       body: JSON.stringify({ data: { ...state, _rev: rev } }),
       keepalive,
     })
-    if (!r.ok) await noteAuth(r)
+    if (!r.ok) {
+      rollback()
+      await noteAuth(r)
+      // 401 은 로그인 화면이 뜨므로 따로 알릴 필요가 없다. 나머지는 사용자가 알아야
+      // 한다 — 저장이 안 됐는데 됐다고 믿으면 그 입력을 그대로 잃는다.
+      if (r.status !== 401) {
+        const why = await r.clone().json()
+          .then((j) => (j as { error?: string }).error)
+          .catch(() => undefined)
+        setSaveError(why || `저장이 거절됐어요 (${r.status})`)
+      }
+      return
+    }
+    setSaveError('')
     // 워커가 서버 시각으로 스탬프한 최종 rev를 돌려줌 — 클라이언트 시계 오차와
     // 무관하게 모두가 한 시계(서버)를 기준으로 버전 비교하도록 맞춤
-    if (r.ok) {
-      const j = (await r.json().catch(() => null)) as { rev?: number } | null
-      if (j && typeof j.rev === 'number' && j.rev > 0) saveRev(j.rev)
-    }
+    const j = (await r.json().catch(() => null)) as { rev?: number } | null
+    if (j && typeof j.rev === 'number' && j.rev > 0) saveRev(j.rev)
   } catch {
-    /* noop */
+    rollback()
+    setSaveError('서버에 못 닿았어요 — 저장되지 않았습니다.')
   }
 }
 
@@ -299,6 +331,30 @@ export function subscribe(listener: () => void): () => void {
 
 export function getUserData(): UserData {
   return state
+}
+
+/**
+ * 마지막 저장 실패 사유. 빈 문자열이면 정상.
+ *
+ * 저장은 1.2초 몰아치기(schedulePush)로 화면 뒤에서 일어나서, 실패해도 사용자는
+ * 성공한 줄 안다. 공유 데이터라 그 오해가 곧 기록 분실로 이어진다.
+ */
+let saveError = ''
+const saveErrorListeners = new Set<() => void>()
+
+function setSaveError(msg: string) {
+  if (saveError === msg) return
+  saveError = msg
+  for (const fn of saveErrorListeners) fn()
+}
+
+export function clearSaveError() { setSaveError('') }
+
+export function useSaveError(): string {
+  return useSyncExternalStore(
+    (fn) => { saveErrorListeners.add(fn); return () => { saveErrorListeners.delete(fn) } },
+    () => saveError,
+  )
 }
 
 /** React 훅: 사용자/공유 데이터 구독 */

@@ -69,16 +69,19 @@ export function onRoleChange(fn: RoleListener): () => void {
  * 그 사람이 다시 로그인하기 전까지 메뉴가 안 나타났다. 워커는 이미 관리자로
  * 대우하는데 화면만 모르는 상태였다. 이제 데이터를 받을 때마다 맞춘다.
  */
-export function applyRole(r: Response) {
+export function applyRole(r: Response): boolean {
   const staff = r.headers.get('x-role-staff')
   const admin = r.headers.get('x-role-admin')
-  if (staff === null && admin === null) return   // 헤더가 없으면(옛 워커) 그냥 둔다
+  if (staff === null && admin === null) return false   // 헤더가 없으면(옛 워커) 그냥 둔다
   const nextStaff = staff === '1' ? '1' : ''
   const nextAdmin = admin === '1' ? '1' : ''
-  if (read(STAFF_KEY) === nextStaff && read(SADMIN_KEY) === nextAdmin) return
+  if (read(STAFF_KEY) === nextStaff && read(SADMIN_KEY) === nextAdmin) return false
   write(STAFF_KEY, nextStaff)
   write(SADMIN_KEY, nextAdmin)
   for (const fn of roleListeners) fn()
+  // ★ 바뀌었다고 알려준다. 권한이 바뀌면 같은 rev 라도 워커가 내려주는 칸이 달라져서
+  //   (운영진 전용 필드가 붙거나 빠진다) store 가 데이터를 반드시 새로 받아야 한다.
+  return true
 }
 
 /** 워커에 보낼 인증 헤더. 토큰이 없으면 빈 객체 — 검사를 안 켠 동안은 그래도 통한다 */

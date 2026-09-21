@@ -869,6 +869,18 @@ h2 { font-size: 1.18rem; letter-spacing: -0.028em; margin: 28px 0 10px; font-wei
 /* ---- 테이블 ---- */
 .table-wrap { overflow-x: auto; }
 
+/* 저장 실패 띠 — 화면 맨 위에 걸친다. 공유 데이터가 안 올라간 상태라
+   사이드바/탭에 가리면 안 된다. */
+.save-error {
+  position: fixed; inset: 0 0 auto 0; z-index: 9999;
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px;
+  background: var(--danger); color: #fff;
+  font-size: 0.86rem; line-height: 1.4;
+  box-shadow: 0 2px 10px rgb(0 0 0 / 0.2);
+}
+.save-error button { margin-left: auto; background: rgb(255 255 255 / 0.18); color: #fff; border-color: transparent; }
+
 /* 공성전·파괴신 기록표 — 열이 많다(순위·변동·전 주·점수·점수차·미참여·판정·메모).
    table 기본 width:100% 이면 좁은 화면에서 표가 컨테이너에 억지로 맞춰지면서
    이름이 한 글자씩 세로로 접힌다. 제 너비를 갖게 두고 .table-wrap 의

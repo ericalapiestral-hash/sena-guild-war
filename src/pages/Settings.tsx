@@ -31,10 +31,21 @@ export function SettingsPage() {
   }
 
   function onFile(f: File) {
+    // ★ 이건 '내 브라우저에서 열어보기'가 아니다. importJson 이 끝에 push() 를 불러
+    //   길드 공유 저장소를 이 파일 내용으로 통째로 바꾼다 — 전 길드원의 공성전·
+    //   파괴신 기록과 명단이 이 파일 시점으로 되돌아간다. 묻고 나서 한다.
+    if (!confirm(
+      `길드 공유 데이터를 "${f.name}" 의 내용으로 통째로 바꿉니다.\n\n` +
+      '내 브라우저만이 아니라 길드원 전원이 보는 기록(공성전·파괴신·명단·카운터덱)이 ' +
+      '이 파일 시점으로 되돌아갑니다.\n\n계속할까요?',
+    )) {
+      if (fileRef.current) fileRef.current.value = ''
+      return
+    }
     const reader = new FileReader()
     reader.onload = () => {
       const res = importJson(String(reader.result))
-      setMsg(res.ok ? '가져오기 완료!' : `가져오기 실패: ${res.error}`)
+      setMsg(res.ok ? '가져오기 완료 — 공유 저장소에 반영했어요.' : `가져오기 실패: ${res.error}`)
     }
     reader.readAsText(f)
   }
@@ -81,18 +92,31 @@ export function SettingsPage() {
 
       <div className="card">
         <strong>가져오기</strong>
-        <p className="muted">내보냈던 JSON 파일을 불러옵니다. 현재 브라우저의 데이터를 덮어씁니다.</p>
+        <p className="muted">
+          내보냈던 JSON 파일을 불러옵니다.
+          <b style={{ color: 'var(--danger)' }}> 길드 공유 데이터를 이 파일로 통째로 바꿉니다</b>
+          {' '}— 내 브라우저만이 아니라 길드원 전원의 기록이 이 파일 시점으로 되돌아갑니다.
+        </p>
         <input ref={fileRef} type="file" accept=".json,application/json"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f) }} />
       </div>
 
       <div className="card">
         <strong style={{ color: 'var(--danger)' }}>초기화</strong>
-        <p className="muted">직접 입력한 데이터를 모두 지우고 기본 데이터만 남깁니다.</p>
+        <p className="muted">
+          직접 입력한 데이터를 모두 지우고 기본 데이터만 남깁니다.
+          <b style={{ color: 'var(--danger)' }}> 길드 공유 저장소에서 지웁니다</b>
+          {' '}— 길드원 전원의 공성전·파괴신 기록과 명단이 함께 사라집니다.
+        </p>
         <button className="danger" onClick={() => {
-          if (confirm('정말 모든 사용자 데이터를 삭제할까요? 되돌릴 수 없습니다.')) {
+          // 확인창이 '내 데이터'처럼 읽혀서 위험이 전달되지 않았다. 무엇이 사라지는지 적는다.
+          if (confirm(
+            '길드 공유 저장소의 데이터를 전부 지웁니다.\n\n' +
+            '공성전·파괴신 기록, 길드원 명단, 카운터덱, 길드전 세팅이 길드원 전원에게서 사라집니다.\n' +
+            '되돌리려면 운영진이 백업(직전본/일별본)에서 복구해야 합니다.\n\n정말 진행할까요?',
+          )) {
             resetAll()
-            setMsg('초기화 완료')
+            setMsg('초기화 완료 — 공유 저장소에서 지웠어요.')
           }
         }}>전체 초기화</button>
       </div>

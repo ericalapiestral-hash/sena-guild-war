@@ -81,6 +81,23 @@ ok('★ 일반 길드원 /api/siege → 403',
 ok('운영진 /api/siege → 200',
   (await call('/api/siege', { method: 'GET', token: staffTok })).s === 200)
 
+console.log('\n== ★ 운영진 전용 칸은 요청에서 빠져도 이월된다 ==')
+// 권한이 막 바뀐 클라이언트는 siegeRounds 가 없는 stripped 사본을 들고 있다.
+// 그 상태로 저장해도 과거 회차가 날아가면 안 된다.
+await call('/data', { body: { data: { members: roster().data.members } }, token: staffTok })
+const carried = await call('/data', { method: 'GET', token: staffTok })
+ok('★ 요청에서 빠진 siegeRounds 가 살아남는다',
+  Array.isArray(carried.j?.siegeRounds) && carried.j.siegeRounds.length === 1,
+  JSON.stringify(carried.j?.siegeRounds))
+ok('요청에서 빠진 staffNotes 도 살아남는다', carried.j?.staffNotes?.m2 === '비밀메모')
+// 그래도 '빈 배열을 보내는 것'은 통해야 한다 — [전체 초기화]가 그 경로다
+await call('/data', { body: { data: { ...roster().data, siegeRounds: [] } }, token: staffTok })
+const cleared = await call('/data', { method: 'GET', token: staffTok })
+ok('★ 빈 배열을 명시하면 실제로 비워진다',
+  Array.isArray(cleared.j?.siegeRounds) && cleared.j.siegeRounds.length === 0,
+  JSON.stringify(cleared.j?.siegeRounds))
+await call('/data', { body: { data: roster().data }, token: staffTok })   // 뒷 테스트를 위해 원복
+
 console.log('\n== ★ 명단에서 빠진 사이트 관리자 차단 ==')
 ok('m2 를 사이트 관리자로', (await call('/auth/admins', { body: { ids: ['m2'] }, admin: true })).s === 200)
 ok('m2 가 /auth/list 사용 가능', (await call('/auth/list', { token: memTok })).s === 200)
