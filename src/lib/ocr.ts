@@ -468,6 +468,8 @@ async function readImageApi(
   metric?: string,
 ): Promise<{ rows: OcrRow[]; text: string }> {
   const { WORKER_URL } = await import('../data/config')
+  // 이 파일은 캡처를 쓸 때만 동적으로 불린다 — 의존도 같은 방식으로 늦게 가져온다
+  const { authHeaders } = await import('../session')
   const base = (WORKER_URL || '').replace(/\/+$/, '')
   if (!base) throw new Error('서버 주소가 없어요')
 
@@ -479,9 +481,13 @@ async function readImageApi(
   const timer = setTimeout(() => ctrl.abort(), 45_000)
   let data: { ok?: boolean; rows?: Array<{ rank?: number; name: string; score: number }>; error?: string }
   try {
+    // ★ 토큰을 반드시 같이 보낸다. 워커가 /ocr 에 guard() 를 걸었는데(Origin 헤더는
+    //   curl 이면 아무 값이나 넣을 수 있어서 문이 못 됐다) 여기가 안 따라가서, 서버
+    //   판독이 매번 401 로 죽고 아래 catch 가 tesseract 폴백으로 조용히 넘어갔다.
+    //   화면에는 '서버가 응답하지 않아…' 한 줄만 떠서 아무도 몰랐다.
     const res = await fetch(`${base}/ocr`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', ...authHeaders() },
       // metric — 화면에 적힌 수치 이름('점수'/'딜량'). 워커가 프롬프트에 넣어
       // 파괴신 딜량처럼 자릿수가 큰 값을 흘리지 않게 한다. 워커가 값을 검증한다.
       body: JSON.stringify({ image: b64, mime, roster, metric }),

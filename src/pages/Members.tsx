@@ -287,7 +287,11 @@ function MemberCard({ member, expanded, onToggle }: {
                   const notes = { ...(d.staffNotes ?? {}) }
                   if (v) notes[member.id] = v.slice(0, 2000)
                   else delete notes[member.id]
-                  d.staffNotes = Object.keys(notes).length ? notes : undefined
+                  // ★ 빈 객체를 남긴다. undefined 로 두면 push 의 JSON.stringify 가 키를 통째로
+    //   빼고, 워커의 CARRY_OVER_FIELDS 이월이 '요청에 없음'을 '변경 없음'으로 읽어
+    //   직전 메모를 되살린다 — 지웠다고 알려주고 실제로는 계속 보관하는 상태가 됐다.
+    //   길드 이름(guildName)에 대해 CLAUDE.md 가 못 박아 둔 그 함정과 같은 것이다.
+    d.staffNotes = notes
                 })} />
             </div>
           )}

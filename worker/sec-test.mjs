@@ -81,6 +81,35 @@ ok('★ 일반 길드원 /api/siege → 403',
 ok('운영진 /api/siege → 200',
   (await call('/api/siege', { method: 'GET', token: staffTok })).s === 200)
 
+console.log('\n== ★ 신규: 이번 감사에서 나온 구멍들 ==')
+// W2 — members 를 통째로 빼면 명단이 사라져 전원(영구 관리자 포함)이 잠겼다
+ok('★ members 를 빼고 저장해도 명단이 남는다',
+  (await call('/data', { body: { data: {} }, token: staffTok })).s === 200)
+const kept = await call('/data', { method: 'GET', token: staffTok })
+ok('★ 명단이 그대로다', Array.isArray(kept.j?.members) && kept.j.members.length === 3,
+  JSON.stringify(kept.j?.members?.length))
+// W1 — 중첩 배열 검증
+ok('★ counters 안의 counters:null → 400',
+  (await call('/data', {
+    body: { data: { counters: [{ id: 'x', defense: [], counters: null }] } }, token: memTok,
+  })).s === 400)
+ok('정상 중첩은 통과', (await call('/data', {
+  body: { data: { counters: [{ id: 'x', defense: [], counters: [] }] } }, token: memTok,
+})).s === 200)
+// W5 — 일반 길드원이 칸을 부풀려 저장본을 막는 것
+ok('★ 일반 길드원의 거대한 칸 → 413', (await call('/data', {
+  body: { data: { counters: [{ id: 'big', defense: [], counters: [], memo: 'A'.repeat(250_000) }] } },
+  token: memTok,
+})).s === 413)
+await call('/data', { body: { data: roster().data }, token: staffTok })   // 원복
+// W4 — /learn/latest 가 관문 밖에 있어 인터넷 누구나 브리핑을 읽었다
+ok('★ /learn/latest 토큰 없이 → 401',
+  (await call('/learn/latest', { method: 'GET' })).s === 401)
+ok('★ /learn/latest 일반 길드원 → 403',
+  (await call('/learn/latest', { method: 'GET', token: memTok })).s === 403)
+ok('/learn/latest 운영진 → 200',
+  (await call('/learn/latest', { method: 'GET', token: staffTok })).s === 200)
+
 console.log('\n== ★ 운영진 전용 칸은 요청에서 빠져도 이월된다 ==')
 // 권한이 막 바뀐 클라이언트는 siegeRounds 가 없는 stripped 사본을 들고 있다.
 // 그 상태로 저장해도 과거 회차가 날아가면 안 된다.
@@ -116,8 +145,11 @@ ok('★ 명단에서 지운 뒤 m2 의 /auth/list → 403',
 ok('★ 명단에서 지운 뒤 m2 의 /auth/enable → 403',
   (await call('/auth/enable', { body: { on: false }, token: memTok })).s === 403)
 const after = await call('/auth/list', { admin: true })
-ok('유령 관리자 id 가 저장목록에서 청소됨',
-  after.s === 200 && !after.j.admins.includes('m2'), JSON.stringify(after.j?.admins))
+// 목록에서 지우지는 않는다 — 운영진이 members 만 고쳐도 다른 관리자를 영구 강등시킬
+// 수 있었기 때문이다. 대신 힘이 없고(위 403 둘), 화면에서 정리하게 표시해 준다.
+ok('★ 유령 관리자 id 는 목록에 남아도 힘이 없다(ghostAdmins 로 표시)',
+  after.s === 200 && Array.isArray(after.j?.ghostAdmins) && after.j.ghostAdmins.includes('m2'),
+  JSON.stringify(after.j?.ghostAdmins))
 
 console.log('\n== 아이디 해제가 토큰을 실제로 끊나 ==')
 await call('/data', { body: roster(), token: staffTok })       // m2 명단 복구

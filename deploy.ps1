@@ -6,6 +6,17 @@
 #   그래서 (1) 올리기 전에 확장자를 검사하고, (2) .git 정리 실패를 경고로 드러낸다.
 $ErrorActionPreference = 'Stop'
 
+# ★ 배포 전에 origin 을 따라잡았는지 본다.
+#   이 스크립트는 워킹트리를 그대로 빌드해 gh-pages 로 force push 한다. 로컬이
+#   behind 인 채로 돌리면 origin 에만 있는 커밋이 라이브에서 조용히 되돌아간다.
+#   2026-09-17 에 실제로 났다 — fail-closed 로그인 게이트가 빠진 번들이 나가서,
+#   토큰 없는 사람에게 커트라인·공성전·파괴신 메뉴가 그대로 보였다.
+git fetch origin --quiet
+$behind = (git rev-list --count HEAD..origin/master 2>$null)
+if ($behind -and [int]$behind -gt 0) {
+  throw "로컬이 origin/master 보다 $behind 커밋 뒤처져 있습니다. 먼저 따라잡으세요 (git pull --rebase). 이대로 배포하면 origin 에만 있는 변경이 라이브에서 사라집니다."
+}
+
 npm run build
 if ($LASTEXITCODE -ne 0) { throw '빌드 실패 — 배포를 중단합니다. (옛 dist 가 그대로 올라가는 걸 막습니다)' }
 
@@ -16,8 +27,18 @@ Remove-Item -Recurse -Force dist\.git -ErrorAction SilentlyContinue
 if (Test-Path dist\.git) { throw 'dist\.git 를 못 지웠습니다. 파일을 잡고 있는 프로그램을 닫고 다시 시도하세요.' }
 
 # 올라가면 안 되는 것들 — 있으면 멈춘다
-$bad = Get-ChildItem -Path dist -Recurse -File |
-  Where-Object { $_.Extension -in '.map', '.bak', '.env', '.log' -or $_.Name -like 'backup-*' -or $_.Name -like '*.key' }
+# ★ 이름 규칙이 이 프로젝트가 실제로 뱉는 파일과 어긋나 있었다.
+#   사이트의 JSON 내보내기는 sena-guild-war-2026-09-17.json, 워커에서 내려받은
+#   복구용 백업은 guild-data-daily_2026-09-06.json 이다 — 둘 다 backup-* 도 아니고
+#   확장자는 .json 이라, 막으려던 바로 그 파일(길드원 실명·회차별 점수·
+#   운영진 메모)이 검사를 그냥 통과했다. .env 도 Extension 비교라 .env.local 은
+#   Extension 이 '.local' 이어서 안 걸렸다. 이름으로도 같이 본다.
+$badExt = '.map', '.bak', '.env', '.log', '.key', '.pem', '.p12'
+$badName = '^backup-', '^guild-data', '^sena-guild-war-.*\.json$', '^\.env', '\.key$', '\.pem$', '\.p12$'
+$bad = Get-ChildItem -Path dist -Recurse -File | Where-Object {
+  $f = $_
+  ($badExt -contains $f.Extension) -or ($badName | Where-Object { $f.Name -match $_ })
+}
 if ($bad) {
   $bad | ForEach-Object { Write-Host "  $($_.FullName)" }
   throw '위 파일이 dist 에 있습니다. 공개 저장소로 올라가니 먼저 정리하세요.'

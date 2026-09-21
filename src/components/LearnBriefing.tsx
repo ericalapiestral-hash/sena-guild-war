@@ -2,6 +2,7 @@ import { safeUrl } from '../lib/stat'
 import { useEffect, useState } from 'react'
 import { WORKER_URL } from '../data/config'
 import { isAdmin } from '../auth'
+import { authHeaders } from '../session'
 import { getAllHeroes } from '../store'
 
 /** 워커가 학습해 온 최신 브리핑 */
@@ -88,7 +89,9 @@ export function LearnBriefing() {
 
   useEffect(() => {
     if (!base) return
-    fetch(`${base}/learn/latest`)
+    // 브리핑은 운영진 전용이다 — 워커도 이제 토큰을 본다(예전엔 /learn/latest 만
+    // 관문 밖에 있어서 인터넷 누구나 읽었다: endsWith('/learn') 에 안 걸렸다).
+    fetch(`${base}/learn/latest`, { headers: authHeaders() })
       .then((r) => r.json())
       .then((d) => {
         if (d && Array.isArray(d.items)) setData(d)
@@ -105,7 +108,7 @@ export function LearnBriefing() {
     try {
       const res = await fetch(`${base}/learn`, {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: { 'content-type': 'application/json', ...authHeaders() },
         body: JSON.stringify({ heroes: getAllHeroes().map((h) => h.name) }),
       })
       const d = await res.json()

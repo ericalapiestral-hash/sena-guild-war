@@ -48,12 +48,30 @@ function normalize(raw: unknown): UserData {
   // 죽었다(getAllCounters 의 c.id 에서 TypeError). 워커도 같은 검증을 하지만,
   // 이미 저장된 오염 데이터는 여기서 걸러야 화면이 산다.
   const ID_FIELDS = new Set(['hiddenCounterIds', 'hiddenArenaIds'])
+  // 배열로 쓰는 중첩 키가 배열이 아니면 그 원소를 통째로 버린다.
+  // 워커도 같은 검사를 하지만(badNestedKey), 이미 KV 에 들어가 있는 오염 데이터는
+  // 여기서 걸러야 화면이 산다 — `counters: [{ counters: null }]` 하나면 홈·카운터덱이
+  // 전원에게서 TypeError 로 죽었고, '로컬 비우고 새로고침'을 눌러도 같은 KV 를
+  // 다시 받아 와서 안 나았다.
+  const NESTED_ARRAY_KEYS = new Set([
+    'counters', 'defense', 'heroes', 'decks', 'entries', 'skills', 'records',
+    'attune', 'ringsMin', 'ringsWant',
+  ])
+  const nestedOk = (v: unknown, depth = 0): boolean => {
+    if (depth > 8 || !v || typeof v !== 'object') return true
+    if (Array.isArray(v)) return v.every((x) => nestedOk(x, depth + 1))
+    for (const [k, x] of Object.entries(v as Record<string, unknown>)) {
+      if (NESTED_ARRAY_KEYS.has(k) && x !== undefined && !Array.isArray(x)) return false
+      if (!nestedOk(x, depth + 1)) return false
+    }
+    return true
+  }
   for (const k of ARRAY_FIELDS) {
     const v = src[k]
     if (!Array.isArray(v)) continue
     const clean = ID_FIELDS.has(k)
       ? v.filter((x) => typeof x === 'string')
-      : v.filter((x) => !!x && typeof x === 'object' && !Array.isArray(x))
+      : v.filter((x) => !!x && typeof x === 'object' && !Array.isArray(x) && nestedOk(x))
     ;(base as unknown as Record<string, unknown>)[k] = clean
   }
   // 커트라인 기준표(객체 필드) — 숫자 값만 살린다

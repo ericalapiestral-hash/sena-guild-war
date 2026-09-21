@@ -380,9 +380,13 @@ export default function App() {
                 {base === 'home' && <HomePage />}
                 {base === 'counters' && <CountersPage />}
                 {base === 'heroes' && <HeroesPage />}
-                {base === 'siege' && <StatsPage kind="siege" />}
-                {base === 'destroyer' && <StatsPage kind="destroyer" />}
-                {base === 'cutlines' && <CutlinesPage />}
+                {/* ★ admin 라우트처럼 렌더에서도 막는다. 메뉴만 감추면 해시를 직접 쳐서 들어올
+          수 있고, 평소엔 워커가 STAFF_ONLY_FIELDS 를 안 내려보내 빈 표가 나오지만
+          pull 이 멈춘 동안(rev 꼬임·오프라인)에는 localStorage 에 남은 강등 전 사본이
+          그대로 그려졌다. */}
+      {base === 'siege' && (staff ? <StatsPage kind="siege" /> : <HomePage />)}
+                {base === 'destroyer' && (staff ? <StatsPage kind="destroyer" /> : <HomePage />)}
+                {base === 'cutlines' && (staff ? <CutlinesPage /> : <HomePage />)}
                 {base === 'wardefense' && <WarDefensePage />}
                 {base === 'warattack' && <WarAttackPage />}
                 {/* 운영 메뉴는 워커가 실제로 막는다 — 여기 검사는 화면을 안 그리는 용도다 */}
