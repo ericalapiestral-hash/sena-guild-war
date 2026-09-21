@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import type { Grade, Hero, Position, SavedDeck } from '../types'
 import { canEditStaff, getAllHeroes, newId, todayLocal, update, useUserData } from '../store'
 import { DeckNames, HeroName, HeroPickerModal, SlotRow } from '../components/HeroSelect'
+import { HeroPortrait } from '../components/HeroPortrait'
 import { Modal } from '../components/Modal'
 import { recFor } from '../data/heroRecs'
 
@@ -201,6 +202,11 @@ function HeroBrowser({ heroes }: { heroes: Hero[] }) {
         {filtered.length === 0 && <span className="muted">조건에 맞는 영웅이 없어요.</span>}
         {filtered.map((h) => (
           <div className="hcard" key={h.id}>
+            {/* 카드 아트를 다시 켰다(2026-09-21). 글자만 보던 동안에도 컴포넌트와
+                이미지(public/heroes·public/hero-card)는 그대로 있었다. */}
+            <div className="hcard-art">
+              <HeroPortrait hero={h} name={h.name} size={88} />
+            </div>
             <div className="hcard-top">
               <HeroName hero={h} name={h.name} />
               {h.pvpRelevant && <em className="hcard-star" title="PvP 주력">⭐</em>}

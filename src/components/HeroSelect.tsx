@@ -1,8 +1,12 @@
 import { useMemo, useRef, useState } from 'react'
 import type { Grade, Hero, Position } from '../types'
 import { Modal } from './Modal'
-// 영웅 카드(HeroPortrait)는 잠시 빼 두었다 — 글자 위주로 크게 보는 쪽이 읽기 편한지
-// 먼저 보기로 해서. 컴포넌트와 이미지는 그대로 있으니 되돌리기 쉽다.
+import { HeroPortrait } from './HeroPortrait'
+// 영웅 카드(HeroPortrait)는 한동안 빼 두었다가 2026-09-21 에 다시 켰다.
+//   - 도감 목록(Heroes.tsx)   프레임까지 있는 카드
+//   - 선택 모달 타일(아래)     프레임 없는 작은 초상화 (plain)
+// ★ HeroName 에는 안 넣는다. 홈·카운터덱이 이름을 '·' 로 이어 한 줄에 여러 명 쓰는
+//   데 쓰이는 부품이라, 여기에 그림을 넣으면 그 줄들이 통째로 두꺼워진다.
 
 const POSITIONS: Position[] = ['공격형', '마법형', '방어형', '지원형', '만능형']
 const GRADES: Grade[] = ['전설', '희귀', '고급', '일반']
@@ -257,6 +261,9 @@ export function HeroPickerModal({
               title={off ? '이미 이 덱에 있는 영웅이에요' : undefined}
               onClick={() => onPick(h.id)}
             >
+              {/* styles.css 의 .hero-card 주석이 '선택 모달 타일은 .pick-item 규칙이
+                  담당' 이라고 적어 둔 그 자리다 — 작은 초상화로 넣는다(프레임은 도감에만). */}
+              <HeroPortrait hero={h} name={h.name} size={38} plain />
               <i className={`pos-dot ${h.position ? `pos-${h.position}` : 'pos-none'}`} title={h.position ?? '유형 미상'} />
               <span className="pick-name">{h.name}</span>
             </button>

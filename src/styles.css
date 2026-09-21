@@ -1664,6 +1664,13 @@ button.ghost:hover { background: var(--surface-2); color: var(--text); }
     transform var(--dur-2) var(--ease);
 }
 .hcard:hover { border-color: var(--accent-dim); box-shadow: var(--shadow-lift); transform: translateY(-2px); }
+.hcard-art { display: flex; justify-content: center; margin: -1px 0 9px; }
+/* 좁은 화면에서는 2열로 — 1열이면 88px 카드가 넓은 칸 가운데 덩그러니 남는다 */
+@media (max-width: 480px) {
+  .hero-grid { grid-template-columns: repeat(auto-fill, minmax(138px, 1fr)); }
+  .hcard { padding: 9px; }
+  .hcard-art { margin-bottom: 7px; }
+}
 .hcard-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; font-weight: 700; }
 .hcard-star { font-style: normal; font-size: 0.72rem; }
 .hcard-meta { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 7px; }
