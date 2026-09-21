@@ -868,6 +868,14 @@ h2 { font-size: 1.18rem; letter-spacing: -0.028em; margin: 28px 0 10px; font-wei
 
 /* ---- 테이블 ---- */
 .table-wrap { overflow-x: auto; }
+
+/* 공성전·파괴신 기록표 — 열이 많다(순위·변동·전 주·점수·점수차·미참여·판정·메모).
+   table 기본 width:100% 이면 좁은 화면에서 표가 컨테이너에 억지로 맞춰지면서
+   이름이 한 글자씩 세로로 접힌다. 제 너비를 갖게 두고 .table-wrap 의
+   가로 스크롤로 넘긴다. 메모만 예외로 접히게 둔다(길어서 표를 끝없이 늘린다). */
+.stat-table { width: auto; min-width: 100%; }
+.stat-table th, .stat-table td { white-space: nowrap; }
+.stat-table th:last-child, .stat-table td:last-child { white-space: normal; }
 table { width: 100%; border-collapse: collapse; }
 th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--border); }
 th { color: var(--text-3); font-size: 0.82rem; font-weight: 600; text-transform: none; }

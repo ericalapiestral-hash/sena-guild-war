@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import html2canvas from 'html2canvas'
 import type { CutlineGuide, StatEntry, StatRound, UserData } from '../types'
@@ -6,7 +6,7 @@ import { activeMembers, excludedMembers, newId, rosterNames, todayLocal, update,
 import { isAdmin } from '../auth'
 import { Markdown } from '../components/Markdown'
 import { DESTROYER_GUIDES } from '../data/destroyerGuide'
-import { Delta, WEEKDAYS, fmt, tierShort, todayWeekday } from '../lib/stat'
+import { Delta, Diff, RankMove, WEEKDAYS, fmt, tierShort, todayWeekday } from '../lib/stat'
 import { ScoreImport } from '../components/ScoreImport'
 
 type Kind = 'siege' | 'destroyer'
@@ -91,6 +91,10 @@ export function StatsPage({ kind }: { kind: Kind }) {
   const prevRound = currentIndex > 0 ? rounds[currentIndex - 1] : undefined
   const prevList: StatEntry[] = prevRound ? (cfg.byDay ? prevRound.days?.[day] ?? [] : prevRound.entries) : []
   const prevValues = new Map(prevList.filter((e) => typeof e.value === 'number').map((e) => [e.name, e.value as number]))
+  // 순위변동·누적 미참여는 공성전 표에만 붙인다 — 파괴신은 시즌 수가 적어 뜻이 옅다.
+  const prevRanks = cfg.byDay ? rankMapOf(prevList) : undefined
+  // 전 주차를 다 훑으므로(주차×요일) 기록이 쌓이면 무거워진다 — rounds 가 바뀔 때만 다시 센다.
+  const misses = useMemo(() => (cfg.byDay ? missMapOf(rounds, true) : undefined), [rounds, cfg.byDay])
 
   function patchRounds(fn: (rs: StatRound[]) => void) {
     update((d: UserData) => { fn(d[cfg.field]) })
@@ -299,13 +303,15 @@ export function StatsPage({ kind }: { kind: Kind }) {
             prevLabel={cfg.prevLabel}
             finalLabel={cfg.finalLabel}
             prevRoundLabel={prevRound?.label}
+            prevRanks={prevRanks}
+            misses={misses}
             onSaveAll={saveAll}
           />
         </div>
       )}
 
       {current && createPortal(
-        <PrintContent kind={kind} cfg={cfg} current={current} prevRound={prevRound} roster={roster} day={day} tierOf={cfg.byDay ? undefined : tierOf} guide={data.cutlineGuide} />,
+        <PrintContent kind={kind} cfg={cfg} current={current} prevRound={prevRound} roster={roster} day={day} tierOf={cfg.byDay ? undefined : tierOf} guide={data.cutlineGuide} misses={misses} />,
         document.body,
       )}
         </>
@@ -332,6 +338,67 @@ function effValue(e: StatEntry): number | undefined {
   return typeof e.value === 'number' ? e.value : e.mid
 }
 
+/**
+ * 그 목록에서의 등수 — 점수 내림차순, 동점은 같은 등수.
+ * EntryTable 의 rankOf 와 같은 규칙이어야 순위변동이 어긋나지 않는다.
+ */
+function rankMapOf(list: StatEntry[]): Map<string, number> {
+  const vals = list.map((e) => effValue(e)).filter((v): v is number => typeof v === 'number')
+  const m = new Map<string, number>()
+  for (const e of list) {
+    const v = effValue(e)
+    if (typeof v === 'number') m.set(e.name, vals.filter((o) => o > v).length + 1)
+  }
+  return m
+}
+
+/**
+ * 전체 기록 누적 미참여 횟수.
+ *
+ * 슬롯 = 점수가 한 명이라도 들어간 (주차 × 요일). 아직 입력 전인 요일은 슬롯으로
+ * 안 센다 — 안 그러면 만들어만 둔 주차가 전원 미참여로 찍힌다.
+ *
+ * ★ 그 사람 기록이 **처음 등장한 슬롯부터** 센다. 길드에 없던 주에 '미참여'할 수는
+ *   없는데, 맨 앞부터 세면 늦게 들어온 사람이 수십 회로 찍혀 숫자가 뜻을 잃는다.
+ *   그래서 분모(of)도 같이 돌려준다 — '12/70' 처럼 모수를 보여야 읽힌다.
+ *
+ * 공성전은 요일마다 별개 전투라 슬롯이 주차×요일이다. 파괴신은 시즌 하나가
+ * 슬롯이지만, 시즌 수가 적어 이 열은 공성전에서만 쓴다.
+ */
+function missMapOf(rounds: StatRound[], byDay: boolean): Map<string, { miss: number; of: number }> {
+  const slots: Set<string>[] = []
+  for (const r of rounds) {
+    const lists = byDay ? WEEKDAYS.map((d) => r.days?.[d] ?? []) : [r.entries ?? []]
+    for (const list of lists) {
+      const names = list.filter((e) => typeof e.value === 'number').map((e) => e.name)
+      if (names.length) slots.push(new Set(names))
+    }
+  }
+  const firstAt = new Map<string, number>()
+  slots.forEach((s, i) => s.forEach((n) => { if (!firstAt.has(n)) firstAt.set(n, i) }))
+  const out = new Map<string, { miss: number; of: number }>()
+  firstAt.forEach((start, name) => {
+    let miss = 0
+    for (let i = start; i < slots.length; i++) if (!slots[i].has(name)) miss++
+    out.set(name, { miss, of: slots.length - start })
+  })
+  return out
+}
+
+/** 점수차 텍스트 (인쇄용, 색 없이 ▲/▼) */
+function diffText(prev?: number, cur?: number): string {
+  if (typeof cur !== 'number' || typeof prev !== 'number') return '—'
+  const d = cur - prev
+  return d === 0 ? '±0' : `${d > 0 ? '▲' : '▼'} ${Math.abs(d).toLocaleString()}`
+}
+
+/** 순위 변동 텍스트 (인쇄용) */
+function moveText(prev?: number, cur?: number): string {
+  if (typeof cur !== 'number' || typeof prev !== 'number') return '—'
+  const d = prev - cur
+  return d === 0 ? '—' : `${d > 0 ? '▲' : '▼'}${Math.abs(d)}`
+}
+
 /** 등락 % 텍스트 (인쇄용, 색 없이 ▲/▼) */
 function pctText(prev?: number, cur?: number): string {
   if (typeof cur !== 'number' || typeof prev !== 'number' || prev === 0) return '—'
@@ -351,6 +418,7 @@ function PrintContent({
   day,
   tierOf,
   guide,
+  misses,
 }: {
   kind: Kind
   cfg: (typeof CFG)[Kind]
@@ -361,6 +429,8 @@ function PrintContent({
   day?: string
   /** 파괴신: 길드원 이름 → 등급 */
   tierOf?: Map<string, string>
+  /** 공성전: 전체 기록 누적 미참여 */
+  misses?: Map<string, { miss: number; of: number }>
   /** [커트라인] 메뉴의 기준표 — 화면 표와 같은 판정을 쓰도록 함께 넘긴다 */
   guide?: CutlineGuide
 }) {
@@ -374,6 +444,7 @@ function PrintContent({
     const prevMap = new Map(
       (prevRound?.days?.[d] ?? []).filter((e) => typeof e.value === 'number').map((e) => [e.name, e.value as number]),
     )
+    const prevRankMap = rankMapOf(prevRound?.days?.[d] ?? [])
     const total = ranked.reduce((s, e) => s + (e.value as number), 0)
     // 요일별 커트라인 — 회차 저장값 → [커트라인] 기준표 → 주차 공통값
     const dayCut = current.dayCutlines?.[d] ?? guide?.siegeByDay?.[d] ?? current.cutline
@@ -394,16 +465,23 @@ function PrintContent({
               {typeof dayCut === 'number' && <> · 커트라인 {fmt(dayCut)} 이하 미달</>}
             </div>
             <table className="print-table">
-              <thead><tr><th>순위</th><th>길드원</th><th>전 주</th><th>이번 주</th><th>{cfg.deltaLabel}</th></tr></thead>
+              <thead><tr><th>순위</th><th>변동</th><th>길드원</th><th>전 주</th><th>이번 주</th><th>점수차</th><th>{cfg.deltaLabel}</th><th>미참여</th></tr></thead>
               <tbody>
-                {ranked.map((e, i) => (
+                {ranked.map((e, i) => {
+                  const m = misses?.get(e.name)
+                  return (
                   <tr key={e.name}>
-                    <td>{i + 1}</td><td className={isFail(e) ? 'cell-fail' : ''}>{e.name}</td>
+                    <td>{i + 1}</td>
+                    <td>{moveText(prevRankMap.get(e.name), i + 1)}</td>
+                    <td className={isFail(e) ? 'cell-fail' : ''}>{e.name}</td>
                     <td className="num-tab">{fmt(prevMap.get(e.name))}</td>
                     <td className="num-tab">{fmt(e.value)}</td>
+                    <td className="num-tab">{diffText(prevMap.get(e.name), e.value)}</td>
                     <td>{pctText(prevMap.get(e.name), e.value)}</td>
+                    <td className="num-tab">{m ? `${m.miss}/${m.of}` : '—'}</td>
                   </tr>
-                ))}
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -499,6 +577,8 @@ function EntryTable({
   tierCutlines,
   heading,
   prevValues,
+  prevRanks,
+  misses,
   deltaLabel,
   showMid,
   prevLabel,
@@ -527,6 +607,10 @@ function EntryTable({
   tierCutlines?: Record<string, number>
   heading?: string
   prevValues: Map<string, number>
+  /** 전 주 같은 요일의 등수 — 넘기면 순위변동을 보여준다 (공성전) */
+  prevRanks?: Map<string, number>
+  /** 전체 기록 누적 미참여 — 넘기면 열이 생긴다 (공성전) */
+  misses?: Map<string, { miss: number; of: number }>
   deltaLabel: string
   showMid: boolean
   prevLabel: string
@@ -625,7 +709,11 @@ function EntryTable({
   }
   const failCount = rows.filter(isFail).length
 
-  const cols = 5 + (showMid ? 3 : 0) + (showJoined ? 1 : 0) + (showVerdict ? 1 : 0) + (editing ? 1 : 0)
+  // 공성전도 '전 주' 열을 쓴다 — 예전엔 파괴신(showMid)만 썼고 공성전은 인쇄본에만 있었다.
+  const showPrev = showMid || !!prevRanks
+  // 고정 5칸 = 순위 · 길드원 · 점수 · 등락 · 메모
+  const cols = 5 + (showPrev ? 1 : 0) + (showMid ? 2 : 0) + (misses ? 1 : 0)
+    + (showJoined ? 1 : 0) + (showVerdict ? 1 : 0) + (editing ? 1 : 0)
 
   /** 주어진 값 기준 점수순 이름 배열 — 편집 표의 순서를 잡는 데 쓴다 */
   function rankedNames(source: Record<string, Partial<StatEntry>>, names: string[]): string[] {
@@ -748,18 +836,19 @@ function EntryTable({
       </div>
 
       <div className="table-wrap" style={{ marginTop: 8 }}>
-        <table>
+        <table className="stat-table">
           <thead>
             <tr>
-              <th style={{ width: 44 }}>{editing ? '#' : '순위'}</th>
+              <th style={{ width: prevRanks && !editing ? 58 : 44 }}>{editing ? '#' : '순위'}</th>
               <th>길드원</th>
-              {showMid && <th style={{ textAlign: 'right' }}>{prevLabel}{prevRoundLabel ? <span className="muted" style={{ fontWeight: 400, fontSize: '0.75rem' }}> ({prevRoundLabel})</span> : ''}</th>}
+              {showPrev && <th style={{ textAlign: 'right' }}>{prevLabel}{prevRoundLabel ? <span className="muted" style={{ fontWeight: 400, fontSize: '0.75rem' }}> ({prevRoundLabel})</span> : ''}</th>}
               {showMid && <th style={{ textAlign: 'right' }}>중간집계</th>}
               <th style={{ textAlign: 'right' }}>{showMid ? finalLabel : metric}</th>
               <th style={{ width: 100 }}>{deltaLabel}</th>
               {showMid && <th style={{ width: 110 }}>중간집계 대비</th>}
               {showVerdict && <th style={{ width: 64 }}>판정</th>}
               {showJoined && <th style={{ width: 60 }}>참여</th>}
+              {misses && <th style={{ width: 84 }} title="전체 기록 누적 — 점수가 안 들어간 요일 수 / 그 사람 첫 기록 이후 전체 요일 수">미참여</th>}
               <th>메모</th>
               {editing && <th style={{ width: 44 }} />}
             </tr>
@@ -770,13 +859,18 @@ function EntryTable({
             )}
             {displayRows.map((e, i) => (
               <tr key={e.name} className={isFail(e) ? 'row-fail' : ''}>
-                <td><b>{rankOf(e) ?? '-'}</b></td>
+                <td>
+                  <b>{rankOf(e) ?? '-'}</b>
+                  {prevRanks && !editing && (
+                    <div style={{ marginTop: 1 }}><RankMove prev={prevRanks.get(e.name)} cur={rankOf(e)} /></div>
+                  )}
+                </td>
                 <td className={isFail(e) ? 'cell-fail' : ''}>
                   <b>{e.name}</b>
                   {tierOf?.get(e.name) && <span className="muted" style={{ marginLeft: 4, fontSize: '0.72rem' }}>{tierShort(tierOf.get(e.name))}</span>}
                   {!rosterSet.has(e.name) && <span className="muted" style={{ marginLeft: 4, fontSize: '0.75rem' }}>(외부)</span>}
                 </td>
-                {showMid && <td style={{ textAlign: 'right' }} className="num-tab muted">{fmt(prevValues.get(e.name))}</td>}
+                {showPrev && <td style={{ textAlign: 'right' }} className="num-tab muted">{fmt(prevValues.get(e.name))}</td>}
                 {showMid && <td style={{ textAlign: 'right' }}>{editing ? (
                   <input type="number" value={e.mid ?? ''} placeholder="0" className="num-tab"
                     onChange={(ev) => setField(e.name, { mid: ev.target.value === '' ? undefined : Number(ev.target.value) })}
@@ -787,12 +881,25 @@ function EntryTable({
                     onChange={(ev) => setField(e.name, { value: ev.target.value === '' ? undefined : Number(ev.target.value) })}
                     style={{ width: 120, textAlign: 'right' }} />
                 ) : (<b className="num-tab">{fmt(e.value)}</b>)}</td>
-                <td><Delta prev={prevValues.get(e.name)} cur={effOf(e)} /></td>
+                {/* 공성전은 절대 점수차 + %(점수 자릿수가 작아 차이가 바로 읽힌다),
+                    파괴신은 % 만(딜량은 자릿수가 커서 절대값이 안 읽힌다) */}
+                <td>{showMid
+                  ? <Delta prev={prevValues.get(e.name)} cur={effOf(e)} />
+                  : <Diff prev={prevValues.get(e.name)} cur={effOf(e)} />}</td>
                 {showMid && <td><Delta prev={e.mid} cur={e.value} /></td>}
                 {showVerdict && <td>{typeof effOf(e) === 'number' ? (isFail(e) ? <span className="badge lose">미달</span> : <span className="badge win">통과</span>) : <span className="muted">—</span>}</td>}
                 {showJoined && <td>{editing ? (
                   <input type="checkbox" checked={!!e.joined} onChange={(ev) => setField(e.name, { joined: ev.target.checked })} />
                 ) : (<span className={`badge ${e.joined ? 'win' : 'lose'}`}>{e.joined ? 'O' : 'X'}</span>)}</td>}
+                {misses && <td>{(() => {
+                  const m = misses.get(e.name)
+                  if (!m) return <span className="muted">—</span>
+                  return (
+                    <span className={m.miss ? 'delta down' : 'delta'}>
+                      {m.miss}<span style={{ fontWeight: 400, opacity: 0.6 }}>/{m.of}</span>
+                    </span>
+                  )
+                })()}</td>}
                 <td>{editing ? (
                   <input value={e.memo ?? ''} placeholder="메모" onChange={(ev) => setField(e.name, { memo: ev.target.value })} style={{ width: '100%', minWidth: 90 }} />
                 ) : (<span className="muted">{e.memo || ''}</span>)}</td>

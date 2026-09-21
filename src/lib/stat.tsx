@@ -17,6 +17,44 @@ export function Delta({ prev, cur }: { prev?: number; cur?: number }) {
   return <span className={`delta ${up ? 'up' : 'down'}`}>{up ? '▲' : '▼'} {Math.abs(pct).toFixed(1)}%</span>
 }
 
+/**
+ * 직전 기록 대비 **점수차** — 절대값을 앞에, %를 뒤에.
+ *
+ * 공성전 점수는 자릿수가 작아서 '몇 점 늘었나'가 바로 읽힌다. 파괴신 딜량은
+ * 그렇지 않아서 거기는 Delta(%)를 그대로 쓴다.
+ */
+export function Diff({ prev, cur }: { prev?: number; cur?: number }) {
+  if (typeof cur !== 'number' || typeof prev !== 'number') return <span className="muted">—</span>
+  const d = cur - prev
+  if (d === 0) return <span className="delta">±0</span>
+  const pct = prev === 0 ? undefined : (d / Math.abs(prev)) * 100
+  return (
+    <span className={`delta ${d > 0 ? 'up' : 'down'}`}>
+      {d > 0 ? '▲' : '▼'} {Math.abs(d).toLocaleString()}
+      {pct !== undefined && (
+        <span style={{ fontWeight: 400, opacity: 0.65, marginLeft: 4 }}>({Math.abs(pct).toFixed(1)}%)</span>
+      )}
+    </span>
+  )
+}
+
+/**
+ * 순위 변동. 등수는 작아지는 게 올라가는 것이라 부호를 뒤집어 본다
+ * (3등 → 1등이면 ▲2).
+ */
+export function RankMove({ prev, cur }: { prev?: number; cur?: number }) {
+  if (typeof cur !== 'number' || typeof prev !== 'number') {
+    return <span className="muted" style={{ fontSize: '0.7rem' }}>—</span>
+  }
+  const d = prev - cur
+  if (d === 0) return <span className="delta" style={{ fontSize: '0.7rem' }}>—</span>
+  return (
+    <span className={`delta ${d > 0 ? 'up' : 'down'}`} style={{ fontSize: '0.7rem' }}>
+      {d > 0 ? '▲' : '▼'}{Math.abs(d)}
+    </span>
+  )
+}
+
 /** 집계 기준값 — 최종이 있으면 최종, 없으면 중간집계(파괴신 시즌 도중) */
 export const effOf = (e: StatEntry, useMid: boolean): number | undefined =>
   typeof e.value === 'number' ? e.value : useMid ? e.mid : undefined
