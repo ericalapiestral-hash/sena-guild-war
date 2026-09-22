@@ -151,6 +151,37 @@ ok('★ 유령 관리자 id 는 목록에 남아도 힘이 없다(ghostAdmins �
   after.s === 200 && Array.isArray(after.j?.ghostAdmins) && after.j.ghostAdmins.includes('m2'),
   JSON.stringify(after.j?.ghostAdmins))
 
+console.log('\n== ★ 외부 처리는 계정 정지가 아니다 ==')
+// 외부 처리는 '집계에서 뺀다' 는 뜻이다. 관리자가 자리 때문에 잠깐 명단에서
+// 내려가 있는 동안 사이트를 통째로 못 쓰게 되면 명단을 되돌릴 사람이 없어진다.
+//
+// ★ POST /data 는 guard() 를 타므로 x-admin-pw 로는 못 쓴다 — 토큰으로 보내야 한다.
+//   (처음에 admin:true 로 보냈다가 저장이 안 돼서 테스트가 헛돌았다)
+{
+  const exRoster = (mut) => ({ data: { ...roster().data, members: roster().data.members.map(mut) } })
+  // m1(길마·운영진)은 아직 사이트 관리자가 아니다 → 외부 처리하면 예전처럼 막혀야 한다
+  ok('외부 처리 저장',
+    (await call('/data', {
+      body: exRoster((m) => (m.id === 'm1' ? { ...m, excluded: true } : m)), token: staffTok,
+    })).s === 200)
+  ok('★ 외부 처리된 일반 계정은 여전히 차단',
+    (await call('/data', { method: 'GET', token: staffTok })).s === 403)
+  ok('★ 외부 처리된 일반 계정은 로그인도 거부',
+    (await call('/auth/login', { body: { name: '길마' + R, pw: 'newpass1' } })).s === 401)
+  // 시크릿으로 사이트 관리자로 올린다 (/auth/* 는 x-admin-pw 로 통한다)
+  ok('m1 을 사이트 관리자로', (await call('/auth/admins', { body: { ids: ['m1'] }, admin: true })).s === 200)
+  ok('★ 외부 처리된 사이트 관리자는 통과',
+    (await call('/data', { method: 'GET', token: staffTok })).s === 200)
+  ok('★ 외부 처리된 사이트 관리자는 로그인도 된다',
+    (await call('/auth/login', { body: { name: '길마' + R, pw: 'newpass1' } })).s === 200)
+  ok('★ 외부 처리된 사이트 관리자는 /auth/list 도 쓴다',
+    (await call('/auth/list', { token: staffTok })).s === 200)
+  // 원복 — 이제 m1 이 통하므로 자기 토큰으로 되돌릴 수 있다
+  await call('/data', { body: { data: roster().data }, token: staffTok })
+  await call('/auth/admins', { body: { ids: [] }, admin: true })
+  ok('원복 후 정상', (await call('/data', { method: 'GET', token: staffTok })).s === 200)
+}
+
 console.log('\n== 아이디 해제가 토큰을 실제로 끊나 ==')
 await call('/data', { body: roster(), token: staffTok })       // m2 명단 복구
 const l2b = await call('/auth/login', { body: { name: '쫄병' + R, pw: 'newpass2' } })

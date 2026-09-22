@@ -184,16 +184,29 @@ async function roster(env) {
   try { return JSON.parse(raw).members || [] } catch { return [] }
 }
 
-/** 명단에서 id 로 찾는다. 없거나 외부 처리면 null — 그 즉시 못 쓰게 된다 */
+/**
+ * 외부 처리(`excluded`)된 사람도 들여보낼지.
+ *
+ * ★ 외부 처리는 '집계에서 뺀다'는 뜻이고, '계정을 정지한다'는 뜻이 **아니다.**
+ *   예전엔 excluded 면 findMember 가 null 을 돌려줘서 로그인부터 막혔다. 자리
+ *   때문에 잠깐 명단에서 내린 운영자가 그 동안 사이트를 통째로 못 쓰게 됐다.
+ *   사이트 관리자는 외부 처리 중에도 그대로 쓴다(그 사람이 명단을 되돌려야 한다).
+ *   관리자가 아닌 외부 처리 계정은 예전처럼 막는다 — 지금 길드에 없는 사람이다.
+ */
+const passesExclusion = async (env, m) => !m.excluded || (await isSiteAdmin(env, m.id))
+
+/** 명단에서 id 로 찾는다. 없으면 null — 그 즉시 못 쓰게 된다 */
 async function findMember(env, id) {
   const m = (await roster(env)).find((x) => x && x.id === id)
-  return m && !m.excluded ? m : null
+  if (!m) return null
+  return (await passesExclusion(env, m)) ? m : null
 }
 
 /** 로그인 창에는 닉네임을 치므로, 그때만 이름으로 찾아 id 를 얻는다 */
 async function findByName(env, name) {
   const m = (await roster(env)).find((x) => x && x.name === name)
-  return m && !m.excluded ? m : null
+  if (!m) return null
+  return (await passesExclusion(env, m)) ? m : null
 }
 
 /**

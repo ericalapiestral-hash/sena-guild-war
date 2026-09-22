@@ -429,6 +429,8 @@ export function counterHeroNames(c: CounterDeck): string[] {
 // ★ 이 구분은 '누가 있어야 하는가'(명단)만 바꾼다. '누가 실제로 몇 점을 냈는가'
 //   (StatRound.entries/days)는 이름으로 저장돼 있어 손대지 않는다 — 지난 회차
 //   기록에서 사람이 사라지면 그때 표가 거짓이 되기 때문.
+//   ★ 2026-09-22 부터 화면에서는 감춘다(hiddenNames). 저장된 값은 그대로라
+//     복귀 처리하면 지난 회차 표에 즉시 다시 나타난다 — 지우는 것과 다르다.
 
 /** 지금 길드에 있는 길드원만 */
 export function activeMembers(members: Member[]): Member[] {
@@ -443,6 +445,21 @@ export function excludedMembers(members: Member[]): Member[] {
 /** 통계·커트라인이 기준으로 삼는 명단 (외부 처리 제외) */
 export function rosterNames(members: Member[]): string[] {
   return activeMembers(members).map((m) => m.name)
+}
+
+/**
+ * 표·집계에서 감출 이름 — 외부 처리한 길드원(2026-09-22).
+ *
+ * 예전엔 점수가 있으면 `(외부)` 행으로 순위에 같이 들어갔는데, 지금 길드에 없는
+ * 사람이 랭킹·합계에 끼는 게 맞지 않아 화면에서 뺀다.
+ *
+ * ★ **기록을 지우는 게 아니라 감추는 것이다.** `StatRound.entries/days` 의 값은
+ *   그대로 남아 있어서, 복귀 처리(excluded 해제)하면 지난 회차 표에 즉시 다시 나타난다.
+ * ★ 손으로 적어 넣은 비길드원 이름(용병 등)은 여기 안 들어간다 — 그쪽은 계속 보인다.
+ *   같은 `(외부)` 라벨을 쓰지만 서로 다른 것이다(이쪽은 Member.excluded).
+ */
+export function hiddenNames(members: Member[]): Set<string> {
+  return new Set(excludedMembers(members).map((m) => m.name))
 }
 
 // ---- 병합된 뷰 (초기 데이터 + 사용자 데이터) ----

@@ -2,7 +2,9 @@ import { useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import html2canvas from 'html2canvas'
 import type { CutlineGuide, StatEntry, StatRound, UserData } from '../types'
-import { activeMembers, excludedMembers, newId, rosterNames, todayLocal, update, useGuildName, useUserData } from '../store'
+import {
+  activeMembers, excludedMembers, hiddenNames, newId, rosterNames, todayLocal, update, useGuildName, useUserData,
+} from '../store'
 import { isAdmin } from '../auth'
 import { Markdown } from '../components/Markdown'
 import { DESTROYER_GUIDES } from '../data/destroyerGuide'
@@ -69,6 +71,8 @@ export function StatsPage({ kind }: { kind: Kind }) {
   // 캡처 판독에는 외부 계정 이름도 넘긴다 — 복귀 처리를 깜빡한 채 캡처를 올려도
   // 이름이 엉뚱하게 붙지 않고, 수동 선택 목록에서도 고를 수 있게.
   const knownExtra = excludedMembers(data.members).map((m) => m.name)
+  /** 표·집계에서 감출 이름 (외부 처리한 길드원) */
+  const hidden = hiddenNames(data.members)
   // 파괴신에만 공략 문서 탭 (감탱이 시트 이관본)
   const guides = kind === 'destroyer' ? DESTROYER_GUIDES : null
   const [view, setView] = useState<'stats' | 'guide'>('stats')
@@ -326,6 +330,7 @@ export function StatsPage({ kind }: { kind: Kind }) {
               guide={data.cutlineGuide}
               metric={cfg.metric}
               prevLabel={prevRound?.label}
+              hidden={hidden}
             />
           )}
           {/* ★ 주간 합계일 때 EntryTable 을 **떼지 않고 감춘다.** 떼면 그 안의
@@ -366,7 +371,7 @@ export function StatsPage({ kind }: { kind: Kind }) {
       )}
 
       {current && createPortal(
-        <PrintContent kind={kind} cfg={cfg} current={current} prevRound={prevRound} roster={roster} day={day} tierOf={cfg.byDay ? undefined : tierOf} guide={data.cutlineGuide} misses={misses} weekView={cfg.byDay && weekView} />,
+        <PrintContent kind={kind} cfg={cfg} current={current} prevRound={prevRound} roster={roster} day={day} tierOf={cfg.byDay ? undefined : tierOf} guide={data.cutlineGuide} misses={misses} weekView={cfg.byDay && weekView} hidden={hidden} />,
         document.body,
       )}
         </>
@@ -376,9 +381,10 @@ export function StatsPage({ kind }: { kind: Kind }) {
 }
 
 /** 이름 병합(길드원+외부) 후 점수 있는 사람만 내림차순 정렬 */
-function buildRanked(roster: string[], stored: StatEntry[]): StatEntry[] {
+function buildRanked(roster: string[], stored: StatEntry[], hidden?: Set<string>): StatEntry[] {
   const rosterSet = new Set(roster)
-  const extra = stored.map((e) => e.name).filter((n) => !rosterSet.has(n))
+  // 외부 처리한 길드원은 표에서 감춘다 — 손으로 넣은 비길드원 이름은 그대로 남는다
+  const extra = stored.map((e) => e.name).filter((n) => !rosterSet.has(n) && !hidden?.has(n))
   const map = new Map(stored.map((e) => [e.name, e]))
   // 최종 집계가 없으면 중간집계 기준 (시즌 도중에도 출력 가능)
   const eff = (e: StatEntry) => (typeof e.value === 'number' ? e.value : e.mid)
@@ -406,7 +412,7 @@ function effValue(e: StatEntry): number | undefined {
  *   구분되지 않아 등수가 사실을 가린다.
  */
 function WeekTotals({
-  round, prevRound, roster, guide, metric, prevLabel,
+  round, prevRound, roster, guide, metric, prevLabel, hidden,
 }: {
   round: StatRound
   prevRound?: StatRound
@@ -414,10 +420,12 @@ function WeekTotals({
   guide?: CutlineGuide
   metric: string
   prevLabel?: string
+  /** 표에서 감출 이름 (외부 처리한 길드원) */
+  hidden?: Set<string>
 }) {
-  const rows = weekTotals(round, roster, guide)
+  const rows = weekTotals(round, roster, guide, hidden)
   const rank = weekRankMap(rows)
-  const prevRows = weekTotals(prevRound, roster, guide)
+  const prevRows = weekTotals(prevRound, roster, guide, hidden)
   const prevRank = weekRankMap(prevRows)
   const prevTotal = new Map(prevRows.filter((r) => r.played > 0).map((r) => [r.name, r.total]))
 
@@ -598,6 +606,7 @@ function PrintContent({
   tierOf,
   guide,
   misses,
+  hidden,
 }: {
   kind: Kind
   cfg: (typeof CFG)[Kind]
@@ -612,6 +621,8 @@ function PrintContent({
   tierOf?: Map<string, string>
   /** 공성전: 전체 기록 누적 미참여 */
   misses?: Map<string, { miss: number; of: number }>
+  /** 표에서 감출 이름 (외부 처리한 길드원) */
+  hidden?: Set<string>
   /** [커트라인] 메뉴의 기준표 — 화면 표와 같은 판정을 쓰도록 함께 넘긴다 */
   guide?: CutlineGuide
 }) {
@@ -620,9 +631,9 @@ function PrintContent({
 
   if (cfg.byDay && weekView) {
     // 화면이 주간 합계면 인쇄도 주간 합계로 — 표를 뽑아 공유하는 게 이 화면의 주 용도다
-    const rows = weekTotals(current, roster, guide)
+    const rows = weekTotals(current, roster, guide, hidden)
     const rank = weekRankMap(rows)
-    const prevRows = weekTotals(prevRound, roster, guide)
+    const prevRows = weekTotals(prevRound, roster, guide, hidden)
     const prevRank = weekRankMap(prevRows)
     const prevTotal = new Map(prevRows.filter((r) => r.played > 0).map((r) => [r.name, r.total]))
     const scored = rows.filter((r) => r.played > 0)
@@ -673,7 +684,7 @@ function PrintContent({
   if (cfg.byDay) {
     // 공성전 — 화면에서 보고 있는 요일 하나만 인쇄 (지난주 같은 요일 대비 %)
     const d = day && WEEKDAYS.includes(day) ? day : WEEKDAYS[0]
-    const ranked = buildRanked(roster, current.days?.[d] ?? [])
+    const ranked = buildRanked(roster, current.days?.[d] ?? [], hidden)
     const prevMap = new Map(
       (prevRound?.days?.[d] ?? []).filter((e) => typeof e.value === 'number').map((e) => [e.name, e.value as number]),
     )
@@ -724,7 +735,7 @@ function PrintContent({
   }
 
   // 파괴신 — 전 시즌 · 이번 시즌 · 상승% 한 표에
-  const curRanked = buildRanked(roster, current.entries)
+  const curRanked = buildRanked(roster, current.entries, hidden)
   const prevMap = new Map(
     (prevRound?.entries ?? []).filter((e) => typeof e.value === 'number').map((e) => [e.name, e.value as number]),
   )
@@ -821,7 +832,12 @@ function EntryTable({
   onSaveAll,
 }: {
   roster: string[]
-  /** 명단 밖이지만 이름은 아는 계정 (외부 처리한 길드원) — 캡처 판독 후보로만 쓴다 */
+  /**
+   * 외부 처리한 길드원 이름. 두 가지로 쓴다 —
+   *   1) 표에서 **감춘다** (지금 길드에 없는 사람이 랭킹·합계에 끼지 않게)
+   *   2) 캡처 판독 후보로는 계속 넘긴다 (복귀 처리를 깜빡해도 그 행이 엉뚱한
+   *      길드원 이름으로 붙지 않게)
+   */
   knownExtra?: string[]
   stored: StatEntry[]
   metric: string
@@ -868,7 +884,11 @@ function EntryTable({
 
   const rosterSet = new Set(roster)
   const storedMap = new Map(stored.map((e) => [e.name, e]))
-  const storedExtra = stored.map((e) => e.name).filter((n) => !rosterSet.has(n) && !removedExtra.includes(n))
+  // 외부 처리한 길드원(knownExtra)은 여기서 빠진다 — 점수는 저장돼 있지만 표에 안 올린다.
+  // 손으로 적어 넣은 비길드원 이름은 knownExtra 에 없으므로 그대로 (외부) 행으로 남는다.
+  const hiddenSet = new Set(knownExtra ?? [])
+  const storedExtra = stored.map((e) => e.name)
+    .filter((n) => !rosterSet.has(n) && !removedExtra.includes(n) && !hiddenSet.has(n))
   const baseNames = [...roster, ...storedExtra, ...localExtra.filter((n) => !rosterSet.has(n) && !storedExtra.includes(n))]
 
   const valOf = (name: string): Partial<StatEntry> => (editing ? draft[name] ?? {} : storedMap.get(name) ?? {})

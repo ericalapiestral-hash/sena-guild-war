@@ -1,6 +1,8 @@
 import { useMemo } from 'react'
 import type { CutlineGuide, Member, StatEntry, StatRound } from '../types'
-import { counterHeroNames, getAllCounters, getAllHeroes, rosterNames, useGuildName, useUserData } from '../store'
+import {
+  counterHeroNames, getAllCounters, getAllHeroes, hiddenNames, rosterNames, useGuildName, useUserData,
+} from '../store'
 import { navigate } from '../router'
 import { DeckNames } from '../components/HeroSelect'
 import {
@@ -45,7 +47,7 @@ export function HomePage() {
 
       {/* 공성전·파괴신은 운영진만 입력하므로, 길드원에겐 최근 기록을 표로 바로 보여준다 */}
       <div className="stat-preview-row">
-        <SiegePreview rounds={userData.siegeRounds} guide={userData.cutlineGuide} />
+        <SiegePreview rounds={userData.siegeRounds} members={userData.members} guide={userData.cutlineGuide} />
         <SiegeWeekPreview rounds={userData.siegeRounds} members={userData.members} guide={userData.cutlineGuide} />
         <DestroyerPreview rounds={userData.destroyerRounds} members={userData.members} guide={userData.cutlineGuide} />
       </div>
@@ -177,7 +179,7 @@ function PreviewTable({
   )
 }
 
-function SiegePreview({ rounds, guide }: { rounds: StatRound[]; guide?: CutlineGuide }) {
+function SiegePreview({ rounds, members, guide }: { rounds: StatRound[]; members: Member[]; guide?: CutlineGuide }) {
   const { round, index } = lastFilled(rounds, true)
   const day = latestDayWithData(round)
   const prevRound = index > 0 ? rounds[index - 1] : undefined
@@ -189,8 +191,10 @@ function SiegePreview({ rounds, guide }: { rounds: StatRound[]; guide?: CutlineG
       .map((e) => [e.name, e.value as number]),
   )
 
+  // 외부 처리한 길드원은 뺀다 — 지금 길드에 없는 사람이 랭킹에 끼지 않게
+  const hidden = hiddenNames(members)
   const rows = [...list]
-    .filter((e) => typeof e.value === 'number')
+    .filter((e) => typeof e.value === 'number' && !hidden.has(e.name))
     .sort((a, b) => (b.value as number) - (a.value as number))
     .map((e) => {
       const cut = round ? cutlineFor(round, e.name, { day, guide }) : undefined
@@ -238,10 +242,11 @@ function SiegeWeekPreview({
   const prevRound = index > 0 ? rounds[index - 1] : undefined
   const roster = rosterNames(members)
 
+  const hidden = hiddenNames(members)
   const prevTotal = new Map(
-    weekTotals(prevRound, roster, guide).filter((r) => r.played > 0).map((r) => [r.name, r.total]),
+    weekTotals(prevRound, roster, guide, hidden).filter((r) => r.played > 0).map((r) => [r.name, r.total]),
   )
-  const rows = weekTotals(round, roster, guide)
+  const rows = weekTotals(round, roster, guide, hidden)
     .filter((r) => r.played > 0)          // 홈 요약은 점수가 있는 사람만 (옆 카드와 같은 규칙)
     .map((r) => ({
       name: r.name,
@@ -263,10 +268,12 @@ function SiegeWeekPreview({
   )
 }
 
-function DestroyerPreview({ rounds, members, guide }: { rounds: StatRound[]; members: { name: string; tier?: string }[]; guide?: CutlineGuide }) {
+function DestroyerPreview({ rounds, members, guide }: { rounds: StatRound[]; members: Member[]; guide?: CutlineGuide }) {
   const { round, index } = lastFilled(rounds, false)
   const prevRound = index > 0 ? rounds[index - 1] : undefined
-  const tierOf = tierMap(members as never)
+  const tierOf = tierMap(members)
+  // 외부 처리한 길드원은 뺀다 (공성전 카드와 같은 규칙)
+  const hidden = hiddenNames(members)
 
   const prevValues = new Map(
     (prevRound?.entries ?? [])
@@ -277,7 +284,7 @@ function DestroyerPreview({ rounds, members, guide }: { rounds: StatRound[]; mem
   // 시즌 도중이면 최종이 없고 중간집계만 있으므로 그것으로 순위를 낸다
   const rows = (round?.entries ?? [])
     .map((e) => ({ e, v: effOf(e, true) }))
-    .filter((x) => typeof x.v === 'number')
+    .filter((x) => typeof x.v === 'number' && !hidden.has(x.e.name))
     .sort((a, b) => (b.v as number) - (a.v as number))
     .map(({ e, v }) => {
       const cut = round ? cutlineFor(round, e.name, { tierOf, guide }) : undefined

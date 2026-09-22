@@ -125,7 +125,13 @@ export function weekCutlines(round: StatRound | undefined, guide?: CutlineGuide)
  * 표에서 사라지면 그게 제일 알고 싶은 정보인데 안 보인다. 명단 밖 이름(외부 처리한
  * 계정)은 점수가 있을 때만 남는다. 요일 표의 buildRanked 와 같은 규칙이다.
  */
-export function weekTotals(round: StatRound | undefined, roster: string[], guide?: CutlineGuide): WeekRow[] {
+export function weekTotals(
+  round: StatRound | undefined,
+  roster: string[],
+  guide?: CutlineGuide,
+  /** 표에서 감출 이름 (외부 처리한 길드원) — 합계·순위 어디에도 안 들어간다 */
+  hidden?: Set<string>,
+): WeekRow[] {
   const acc = new Map<string, WeekRow>()
   const row = (name: string) => {
     let r = acc.get(name)
@@ -138,6 +144,7 @@ export function weekTotals(round: StatRound | undefined, roster: string[], guide
       const cut = cutlineFor(round, '', { day: d, guide })
       for (const e of round.days?.[d] ?? []) {
         if (typeof e.value !== 'number') continue
+        if (hidden?.has(e.name)) continue
         const r = row(e.name)
         r.total += e.value
         r.played += 1
