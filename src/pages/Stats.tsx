@@ -6,7 +6,7 @@ import { activeMembers, excludedMembers, newId, rosterNames, todayLocal, update,
 import { isAdmin } from '../auth'
 import { Markdown } from '../components/Markdown'
 import { DESTROYER_GUIDES } from '../data/destroyerGuide'
-import { Delta, Diff, RankMove, WEEKDAYS, fmt, tierShort, todayWeekday } from '../lib/stat'
+import { Delta, Diff, RankMove, WEEKDAYS, cutlineFor, fmt, tierShort, todayWeekday } from '../lib/stat'
 import { ScoreImport } from '../components/ScoreImport'
 
 type Kind = 'siege' | 'destroyer'
@@ -72,6 +72,17 @@ export function StatsPage({ kind }: { kind: Kind }) {
 
   const [selId, setSelId] = useState<string | null>(null)
   const [day, setDay] = useState<string>(todayWeekday())
+  /**
+   * 주간 합계를 보고 있나.
+   *
+   * ★ 처음엔 day 에 '주간' 이라는 값을 끼워 넣었는데, EntryTable 의 key 가
+   *   `current.id + day` 라서 주간으로 갔다 오면 **재마운트**됐다 — 그 안의
+   *   editing·draft 가 통째로 사라져서, 25명분 점수를 치던 중에 주간 합계를 한 번
+   *   눌러 보면 경고도 없이 전부 날아갔다. day 는 늘 진짜 요일로 두고 이 깃발만
+   *   따로 두면 key 가 안 바뀌어 입력이 살아 있다. `days['주간']` 같은 이상한
+   *   키가 생길 여지도 없어진다.
+   */
+  const [weekView, setWeekView] = useState(false)
   const current = rounds.find((r) => r.id === selId) ?? rounds[rounds.length - 1] ?? null
 
   const stored: StatEntry[] = current ? (cfg.byDay ? current.days?.[day] ?? [] : current.entries) : []
@@ -125,7 +136,17 @@ export function StatsPage({ kind }: { kind: Kind }) {
     if (!current) return
     const safe = (s: string) => s.replace(/[\\/:*?"<>|]/g, '-').replace(/\s+/g, '')
     let fileName: string
-    if (cfg.byDay) {
+    if (cfg.byDay && weekView) {
+      // ★ 주간 합계를 보고 있으면 인쇄 뷰(.print-root)도 주간 표라, 요일 기준으로
+      //   판정하면 안 된다. 월요일만 비어 있어도 '점수가 없다'며 거부했고 파일명도
+      //   '월요일' 로 붙어서, 실제로 담긴 그림(주간 표)과 이름이 어긋났다.
+      const any = WEEKDAYS.some((d) => (current.days?.[d] ?? []).some((e) => typeof e.value === 'number'))
+      if (!any) {
+        alert(`이번 ${cfg.roundName}에 입력된 점수가 없어요.`)
+        return
+      }
+      fileName = `공성전-${safe(current.label)}-주간합계.png`
+    } else if (cfg.byDay) {
       const d = WEEKDAYS.includes(day) ? day : WEEKDAYS[0]
       if (!(current.days?.[d] ?? []).some((e) => typeof e.value === 'number')) {
         alert(`${d}요일에 입력된 점수가 없어요.`)
@@ -273,14 +294,43 @@ export function StatsPage({ kind }: { kind: Kind }) {
               {WEEKDAYS.map((d) => {
                 const cnt = (current.days?.[d] ?? []).filter((e) => typeof e.value === 'number').length
                 return (
-                  <button key={d} className={`small ${day === d ? 'primary' : ''}`} onClick={() => setDay(d)}>
+                  <button
+                    key={d}
+                    className={`small ${!weekView && day === d ? 'primary' : ''}`}
+                    onClick={() => { setDay(d); setWeekView(false) }}
+                  >
                     {d}{cnt ? ` (${cnt})` : ''}
                   </button>
                 )
               })}
+              {/* 요일과 같은 줄에 둔다 — '어느 요일을 볼까'와 '한 주 전체를 볼까'는
+                  같은 층위의 선택이다. 고르는 요일(day)은 그대로 두고 깃발만 세운다. */}
+              <button
+                className={`small ${weekView ? 'primary' : ''}`}
+                style={{ marginLeft: 6 }}
+                onClick={() => setWeekView(true)}
+              >
+                Σ 주간 합계
+              </button>
             </div>
           )}
 
+          {cfg.byDay && weekView && (
+            <WeekTotals
+              round={current}
+              prevRound={prevRound}
+              roster={roster}
+              guide={data.cutlineGuide}
+              metric={cfg.metric}
+              prevLabel={prevRound?.label}
+            />
+          )}
+          {/* ★ 주간 합계일 때 EntryTable 을 **떼지 않고 감춘다.** 떼면 그 안의
+              editing·draft 가 통째로 사라져서, 점수를 치던 중에 주간 합계를 한 번
+              눌러 보면 경고도 없이 전부 날아갔다(주간 표는 저장본만 보므로 방금 친
+              값이 거기 보이지도 않는다 — 날린 대가로 얻는 것도 없었다).
+              key 에 day 만 들어가므로 이 전환에서는 재마운트도 일어나지 않는다. */}
+          <div style={cfg.byDay && weekView ? { display: 'none' } : undefined}>
           <EntryTable
             key={(current.id) + (cfg.byDay ? day : '')}
             roster={roster}
@@ -293,6 +343,7 @@ export function StatsPage({ kind }: { kind: Kind }) {
             cutline={curCutline}
             guide={data.cutlineGuide}
             dayKey={cfg.byDay ? day : undefined}
+            dayCutline={cfg.byDay ? current.dayCutlines?.[day] : undefined}
             tierOf={cfg.byDay ? undefined : tierOf}
             tierList={cfg.byDay ? undefined : tierList}
             tierCutlines={tierCutlines}
@@ -307,11 +358,12 @@ export function StatsPage({ kind }: { kind: Kind }) {
             misses={misses}
             onSaveAll={saveAll}
           />
+          </div>
         </div>
       )}
 
       {current && createPortal(
-        <PrintContent kind={kind} cfg={cfg} current={current} prevRound={prevRound} roster={roster} day={day} tierOf={cfg.byDay ? undefined : tierOf} guide={data.cutlineGuide} misses={misses} />,
+        <PrintContent kind={kind} cfg={cfg} current={current} prevRound={prevRound} roster={roster} day={day} tierOf={cfg.byDay ? undefined : tierOf} guide={data.cutlineGuide} misses={misses} weekView={cfg.byDay && weekView} />,
         document.body,
       )}
         </>
@@ -336,6 +388,202 @@ function buildRanked(roster: string[], stored: StatEntry[]): StatEntry[] {
 /** 집계 기준값 — 최종 우선, 없으면 중간집계 */
 function effValue(e: StatEntry): number | undefined {
   return typeof e.value === 'number' ? e.value : e.mid
+}
+
+/** 주간 합계 한 줄 */
+interface WeekRow {
+  name: string
+  /** 월~일 점수의 합 */
+  total: number
+  /** 점수가 들어간 요일 수 (합계만 보면 몇 번 뛰었는지를 알 수 없다) */
+  played: number
+  /** 그 요일 커트라인 이하였던 횟수 */
+  under: number
+}
+
+/**
+ * 그 주차에 실제로 적용되는 요일별 커트라인 — 값이 있는 요일만.
+ *
+ * ★ 판정은 `lib/stat.tsx` 의 `cutlineFor` 하나만 쓴다. 같은 규칙을 여기 다시 적으면
+ *   한쪽만 고쳐졌을 때 같은 점수가 표에 따라 미달이었다 아니었다 한다(실제로 그랬다).
+ */
+function weekCutlines(round: StatRound | undefined, guide?: CutlineGuide): Array<[string, number]> {
+  if (!round) return []
+  const out: Array<[string, number]> = []
+  for (const d of WEEKDAYS) {
+    const c = cutlineFor(round, '', { day: d, guide })
+    if (typeof c === 'number') out.push([d, c])
+  }
+  return out
+}
+
+/**
+ * 한 주차를 사람별로 합산한다.
+ *
+ * 명단에 있는 사람은 점수가 하나도 없어도 넣는다 — '이번 주에 아예 안 뛴 사람'이
+ * 표에서 사라지면 그게 제일 알고 싶은 정보인데 안 보인다. 명단 밖 이름(외부 처리한
+ * 계정)은 점수가 있을 때만 남는다. 요일 표의 buildRanked 와 같은 규칙이다.
+ */
+function weekTotals(round: StatRound | undefined, roster: string[], guide?: CutlineGuide): WeekRow[] {
+  const acc = new Map<string, WeekRow>()
+  const row = (name: string) => {
+    let r = acc.get(name)
+    if (!r) { r = { name, total: 0, played: 0, under: 0 }; acc.set(name, r) }
+    return r
+  }
+  for (const name of roster) row(name)
+  if (round) {
+    for (const d of WEEKDAYS) {
+      const cut = cutlineFor(round, '', { day: d, guide })
+      for (const e of round.days?.[d] ?? []) {
+        if (typeof e.value !== 'number') continue
+        const r = row(e.name)
+        r.total += e.value
+        r.played += 1
+        if (typeof cut === 'number' && e.value <= cut) r.under += 1
+      }
+    }
+  }
+  const rosterSet = new Set(roster)
+  // ★ 한 번도 안 뛴 사람은 맨 아래로. total 이 0 으로 초기화돼 있어서 그냥 정렬하면
+  //   **실제로 0점을 낸 사람**과 동률이 되어, 순위가 '-' 인 행이 순위 있는 행 위로
+  //   올라왔다. EntryTable 이 '값 없음'을 -Infinity 로 미는 것과 같은 규칙이다.
+  return [...acc.values()]
+    .filter((r) => r.played > 0 || rosterSet.has(r.name))
+    .sort((a, b) =>
+      (b.played > 0 ? 1 : 0) - (a.played > 0 ? 1 : 0)
+      || b.total - a.total
+      || a.name.localeCompare(b.name))
+}
+
+/** 합계 기준 등수 — 점수가 없으면 등수도 없다. 동점은 같은 등수(rankOf 와 같은 규칙) */
+function weekRankMap(rows: WeekRow[]): Map<string, number> {
+  const scored = rows.filter((r) => r.played > 0)
+  const m = new Map<string, number>()
+  for (const r of scored) m.set(r.name, scored.filter((o) => o.total > r.total).length + 1)
+  return m
+}
+
+/**
+ * 주간 합계 랭킹 (공성전 전용).
+ *
+ * 요일 표가 '그날 누가 잘했나' 라면 이쪽은 '이번 주 전체로 누가 잘했나' 다.
+ * 전 주차의 합계·등수와 나란히 놓아 점수차와 순위변동을 같이 본다.
+ *
+ * ★ 읽기 전용이다. 여기 숫자는 전부 요일 표에 입력된 값에서 계산해 나오므로,
+ *   고치려면 해당 요일로 가서 고쳐야 한다. (EntryTable 을 재사용하지 않는 이유)
+ * ★ '참여' 열을 같이 보여준다 — 합계만 놓으면 5일 뛴 사람과 7일 뛴 사람이
+ *   구분되지 않아 등수가 사실을 가린다.
+ */
+function WeekTotals({
+  round, prevRound, roster, guide, metric, prevLabel,
+}: {
+  round: StatRound
+  prevRound?: StatRound
+  roster: string[]
+  guide?: CutlineGuide
+  metric: string
+  prevLabel?: string
+}) {
+  const rows = weekTotals(round, roster, guide)
+  const rank = weekRankMap(rows)
+  const prevRows = weekTotals(prevRound, roster, guide)
+  const prevRank = weekRankMap(prevRows)
+  const prevTotal = new Map(prevRows.filter((r) => r.played > 0).map((r) => [r.name, r.total]))
+
+  const scored = rows.filter((r) => r.played > 0)
+  const sum = scored.reduce((s, r) => s + r.total, 0)
+  const top = scored[0]
+  const rosterSet = new Set(roster)
+  // 기준이 하나도 없으면 '미달' 열을 아예 안 그린다 — 전원 '—' 인 열은
+  // '아무도 미달이 아니다'인지 '기준이 아직 없다'인지 구분이 안 된다.
+  // (요일 표의 showVerdict 와 같은 규칙)
+  const cuts = weekCutlines(round, guide)
+  const showUnder = cuts.length > 0
+  const cutText = cuts.map(([d, c]) => `${d} ${fmt(c)}`).join(' · ')
+
+  return (
+    <div style={{ marginTop: 14 }}>
+      <div className="row between" style={{ alignItems: 'baseline' }}>
+        <strong>주간 합계</strong>
+        <span className="muted" style={{ fontSize: '0.8rem' }}>
+          월~일 {metric}를 사람별로 더한 값이에요. 고치려면 해당 요일에서 고쳐주세요.
+        </span>
+      </div>
+      {/* 인쇄·이미지로 뽑아 공유하는 표라, '미달 2' 가 어떤 기준에 걸린 건지
+          숫자와 같이 있어야 한다. 요일 표는 범례로 보여 주는데 여기만 없었다. */}
+      {showUnder && (
+        <div className="muted" style={{ fontSize: '0.78rem', marginTop: 4 }}>
+          미달 기준 — {cutText}
+        </div>
+      )}
+
+      <div className="stat-tiles" style={{ marginTop: 8 }}>
+        <div className="stat-tile"><div className="num">{scored.length}<span style={{ fontSize: '0.9rem', color: 'var(--text-3)' }}>/{rows.length}</span></div><div className="label">참여 인원</div></div>
+        <div className="stat-tile"><div className="num">{fmt(sum)}</div><div className="label">주간 {metric} 합계</div></div>
+        <div className="stat-tile"><div className="num" style={{ fontSize: '1.15rem' }}>{top ? top.name : '-'}</div><div className="label">주간 1위 ({fmt(top?.total)})</div></div>
+      </div>
+
+      <div className="table-wrap" style={{ marginTop: 8 }}>
+        <table className="stat-table">
+          <thead>
+            <tr>
+              <th style={{ width: 58 }}>순위</th>
+              <th>길드원</th>
+              <th style={{ width: 62 }}>참여</th>
+              <th style={{ textAlign: 'right' }}>
+                전 주
+                {prevLabel && <span className="muted" style={{ fontWeight: 400, fontSize: '0.75rem' }}> ({prevLabel})</span>}
+              </th>
+              <th style={{ textAlign: 'right' }}>주간 합계</th>
+              <th style={{ width: 150 }}>전주 대비</th>
+              {showUnder && <th style={{ width: 62 }} title="그 요일 커트라인 이하였던 횟수">미달</th>}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.length === 0 && (
+              <tr><td colSpan={showUnder ? 7 : 6} className="muted">[길드원] 메뉴에 등록된 사람이 없어요.</td></tr>
+            )}
+            {rows.map((r) => {
+              const cur = rank.get(r.name)
+              return (
+                /* ★ 행에 row-fail(빨강)을 쓰지 않는다. 이 저장소에서 그 색은 요일 표·홈
+                     어디서나 '커트라인 미달' 한 가지 뜻이다. 여기에 '미참여' 로 칠하면
+                     같은 화면에서 빨간 줄이 두 가지를 가리키게 되고(진짜 미달자는 하얗게
+                     남는다), 인쇄본에는 색이 안 붙어 화면과 인쇄물이 갈렸다.
+                     미참여는 '참여 0/7' 칸이 빨갛게 드러낸다. */
+                <tr key={r.name}>
+                  <td>
+                    <b>{cur ?? '-'}</b>
+                    <div style={{ marginTop: 1 }}><RankMove prev={prevRank.get(r.name)} cur={cur} /></div>
+                  </td>
+                  <td>
+                    <b>{r.name}</b>
+                    {!rosterSet.has(r.name) && <span className="muted" style={{ marginLeft: 4, fontSize: '0.75rem' }}>(외부)</span>}
+                  </td>
+                  <td>
+                    <span className={r.played === WEEKDAYS.length ? 'delta up' : r.played === 0 ? 'delta down' : 'delta'}>
+                      {r.played}<span style={{ fontWeight: 400, opacity: 0.6 }}>/{WEEKDAYS.length}</span>
+                    </span>
+                  </td>
+                  <td style={{ textAlign: 'right' }} className="num-tab muted">{fmt(prevTotal.get(r.name))}</td>
+                  <td style={{ textAlign: 'right' }}><b className="num-tab">{r.played ? fmt(r.total) : '-'}</b></td>
+                  <td><Diff prev={prevTotal.get(r.name)} cur={r.played ? r.total : undefined} /></td>
+                  {showUnder && (
+                    <td>
+                      {r.under
+                        ? <span className="delta down">{r.under}</span>
+                        : <span className="muted">—</span>}
+                    </td>
+                  )}
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
 }
 
 /**
@@ -416,6 +664,7 @@ function PrintContent({
   prevRound,
   roster,
   day,
+  weekView,
   tierOf,
   guide,
   misses,
@@ -427,6 +676,8 @@ function PrintContent({
   roster: string[]
   /** 공성전: 화면에서 선택된 요일 — 그 요일만 인쇄 */
   day?: string
+  /** 공성전: 화면이 주간 합계면 인쇄도 주간 합계로 */
+  weekView?: boolean
   /** 파괴신: 길드원 이름 → 등급 */
   tierOf?: Map<string, string>
   /** 공성전: 전체 기록 누적 미참여 */
@@ -436,6 +687,58 @@ function PrintContent({
 }) {
   const printedAt = todayLocal()
   const guildName = useGuildName()
+
+  if (cfg.byDay && weekView) {
+    // 화면이 주간 합계면 인쇄도 주간 합계로 — 표를 뽑아 공유하는 게 이 화면의 주 용도다
+    const rows = weekTotals(current, roster, guide)
+    const rank = weekRankMap(rows)
+    const prevRows = weekTotals(prevRound, roster, guide)
+    const prevRank = weekRankMap(prevRows)
+    const prevTotal = new Map(prevRows.filter((r) => r.played > 0).map((r) => [r.name, r.total]))
+    const scored = rows.filter((r) => r.played > 0)
+    const cuts = weekCutlines(current, guide)
+    const showUnder = cuts.length > 0
+    return (
+      <div className="print-root">
+        <div className="print-head">
+          <h2>{cfg.title} — {current.label} · 주간 합계</h2>
+          <span className="print-meta">출력일 {printedAt} · {guildName}</span>
+        </div>
+        {scored.length === 0 ? (
+          <p>이번 {cfg.roundName}에 입력된 점수가 없어요.</p>
+        ) : (
+          <div className="print-block">
+            <h3>주간 합계 (월~일)</h3>
+            <div className="print-sub">
+              참여 {scored.length}명 · 합계 {fmt(scored.reduce((s, r) => s + r.total, 0))}
+              {prevRound && <> · 전 주: {prevRound.label}</>}
+              {showUnder && <> · 미달 기준 {cuts.map(([d, c]) => `${d} ${fmt(c)}`).join(' · ')}</>}
+            </div>
+            <table className="print-table">
+              <thead><tr><th>순위</th><th>변동</th><th>길드원</th><th>참여</th><th>전 주</th><th>주간 합계</th><th>점수차</th>{showUnder && <th>미달</th>}</tr></thead>
+              <tbody>
+                {rows.map((r) => {
+                  const cur = rank.get(r.name)
+                  return (
+                    <tr key={r.name}>
+                      <td>{cur ?? '-'}</td>
+                      <td>{moveText(prevRank.get(r.name), cur)}</td>
+                      <td>{r.name}</td>
+                      <td className="num-tab">{r.played}/{WEEKDAYS.length}</td>
+                      <td className="num-tab">{fmt(prevTotal.get(r.name))}</td>
+                      <td className="num-tab">{r.played ? fmt(r.total) : '-'}</td>
+                      <td className="num-tab">{diffText(prevTotal.get(r.name), r.played ? r.total : undefined)}</td>
+                      {showUnder && <td className="num-tab">{r.under || '—'}</td>}
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    )
+  }
 
   if (cfg.byDay) {
     // 공성전 — 화면에서 보고 있는 요일 하나만 인쇄 (지난주 같은 요일 대비 %)
@@ -572,6 +875,7 @@ function EntryTable({
   cutline,
   guide,
   dayKey,
+  dayCutline,
   tierOf,
   tierList,
   tierCutlines,
@@ -599,6 +903,8 @@ function EntryTable({
   guide?: CutlineGuide
   /** 공성전: 지금 보고 있는 요일 (기준표의 요일별 커트라인을 찾는 키) */
   dayKey?: string
+  /** 공성전: 그 회차에 저장된 그 요일의 커트라인 — 기준표보다 우선한다 */
+  dayCutline?: number
   /** 길드원 이름 → 등급 (파괴신) */
   tierOf?: Map<string, string>
   /** 등급 목록 (파괴신) */
@@ -674,6 +980,13 @@ function EntryTable({
 
   // 커트라인은 회차에 저장된 값 → [커트라인] 기준표 → 회차 기본값 순으로 찾는다.
   // (통계 화면에서는 더 이상 편집하지 않으므로 편집/보기 상태를 구분하지 않는다)
+  //
+  // ★ 예전엔 공성전에서 **기준표를 먼저** 봤다 — 바로 위 문장과도, 정본인
+  //   lib/stat.tsx 의 cutlineFor 와도 반대였다. 그래서 회차에 dayCutlines 가 박힌
+  //   옛 주차에서 같은 점수가 이 표에서는 미달, 인쇄본·주간 합계에서는 통과로
+  //   갈렸다(같은 화면 안에서 숫자가 안 맞았다). 정본 순서로 되돌린다 —
+  //   지난 회차에는 그때 실제로 적용했던 기준이 박혀 있고, 지금 기준표로 덮으면
+  //   과거 미달 판정이 소급해서 바뀐다는 게 그 순서의 이유다.
   const effCutline = cutline
   const effTierCuts = tierCutlines ?? {}
   /** 이 사람에게 적용되는 커트라인 */
@@ -683,7 +996,9 @@ function EntryTable({
     if (typeof tc === 'number') return tc
     const gt = t !== undefined ? guide?.destroyerByTier?.[t] : undefined
     if (typeof gt === 'number') return gt
+    // 공성전 — 회차 저장값(dayCutline)이 기준표보다 앞선다
     if (dayKey) {
+      if (typeof dayCutline === 'number') return dayCutline
       const gd = guide?.siegeByDay?.[dayKey]
       if (typeof gd === 'number') return gd
     }
@@ -698,7 +1013,7 @@ function EntryTable({
   }
   /** 등급이 없는 사람에게 적용되는 값 (표시용) */
   const baseCut = dayKey
-    ? (effCutline ?? guide?.siegeByDay?.[dayKey])
+    ? (dayCutline ?? guide?.siegeByDay?.[dayKey] ?? effCutline)
     : effCutline
   // 실제로 적용되는 커트라인이 한 명이라도 있으면 판정을 보여 준다
   const showVerdict = hasCutline && rows.some((e) => typeof cutFor(e.name) === 'number')
