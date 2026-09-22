@@ -9,8 +9,7 @@ import { isAdmin } from '../auth'
 import { Markdown } from '../components/Markdown'
 import { DESTROYER_GUIDES } from '../data/destroyerGuide'
 import {
-  Delta, Diff, RankMove, WEEKDAYS, cutlineFor, fmt, tierShort, todayWeekday,
-  weekCutlines, weekRankMap, weekTotals,
+  Delta, Diff, RankMove, WEEKDAYS, fmt, tierShort, todayWeekday, weekRankMap, weekTotals,
 } from '../lib/stat'
 import { ScoreImport } from '../components/ScoreImport'
 
@@ -327,7 +326,6 @@ export function StatsPage({ kind }: { kind: Kind }) {
               round={current}
               prevRound={prevRound}
               roster={roster}
-              guide={data.cutlineGuide}
               metric={cfg.metric}
               prevLabel={prevRound?.label}
               hidden={hidden}
@@ -412,33 +410,28 @@ function effValue(e: StatEntry): number | undefined {
  *   구분되지 않아 등수가 사실을 가린다.
  */
 function WeekTotals({
-  round, prevRound, roster, guide, metric, prevLabel, hidden,
+  round, prevRound, roster, metric, prevLabel, hidden,
 }: {
   round: StatRound
   prevRound?: StatRound
   roster: string[]
-  guide?: CutlineGuide
   metric: string
   prevLabel?: string
   /** 표에서 감출 이름 (외부 처리한 길드원) */
   hidden?: Set<string>
 }) {
-  const rows = weekTotals(round, roster, guide, hidden)
+  const rows = weekTotals(round, roster, hidden)
   const rank = weekRankMap(rows)
-  const prevRows = weekTotals(prevRound, roster, guide, hidden)
+  const prevRows = weekTotals(prevRound, roster, hidden)
   const prevRank = weekRankMap(prevRows)
-  const prevTotal = new Map(prevRows.filter((r) => r.played > 0).map((r) => [r.name, r.total]))
+  const prevTotal = new Map(prevRows.map((r) => [r.name, r.total]))
 
-  const scored = rows.filter((r) => r.played > 0)
-  const sum = scored.reduce((s, r) => s + r.total, 0)
-  const top = scored[0]
+  const sum = rows.reduce((s, r) => s + r.total, 0)
+  const top = rows[0]
   const rosterSet = new Set(roster)
-  // 기준이 하나도 없으면 '미달' 열을 아예 안 그린다 — 전원 '—' 인 열은
-  // '아무도 미달이 아니다'인지 '기준이 아직 없다'인지 구분이 안 된다.
-  // (요일 표의 showVerdict 와 같은 규칙)
-  const cuts = weekCutlines(round, guide)
-  const showUnder = cuts.length > 0
-  const cutText = cuts.map(([d, c]) => `${d} ${fmt(c)}`).join(' · ')
+  // 0점인 사람은 표에서 빠지므로(weekTotals), '누가 안 뛰었나' 는 이 타일로만 남는다.
+  // 분모는 명단 인원 — 표에 보이는 줄 수로 하면 늘 N/N 이 되어 아무 말도 안 한다.
+  const joined = rows.filter((r) => rosterSet.has(r.name)).length
 
   return (
     <div style={{ marginTop: 14 }}>
@@ -448,16 +441,9 @@ function WeekTotals({
           월~일 {metric}를 사람별로 더한 값이에요. 고치려면 해당 요일에서 고쳐주세요.
         </span>
       </div>
-      {/* 인쇄·이미지로 뽑아 공유하는 표라, '미달 2' 가 어떤 기준에 걸린 건지
-          숫자와 같이 있어야 한다. 요일 표는 범례로 보여 주는데 여기만 없었다. */}
-      {showUnder && (
-        <div className="muted" style={{ fontSize: '0.78rem', marginTop: 4 }}>
-          미달 기준 — {cutText}
-        </div>
-      )}
 
       <div className="stat-tiles" style={{ marginTop: 8 }}>
-        <div className="stat-tile"><div className="num">{scored.length}<span style={{ fontSize: '0.9rem', color: 'var(--text-3)' }}>/{rows.length}</span></div><div className="label">참여 인원</div></div>
+        <div className="stat-tile"><div className="num">{joined}<span style={{ fontSize: '0.9rem', color: 'var(--text-3)' }}>/{roster.length}</span></div><div className="label">참여 인원</div></div>
         <div className="stat-tile"><div className="num">{fmt(sum)}</div><div className="label">주간 {metric} 합계</div></div>
         <div className="stat-tile"><div className="num" style={{ fontSize: '1.15rem' }}>{top ? top.name : '-'}</div><div className="label">주간 1위 ({fmt(top?.total)})</div></div>
       </div>
@@ -475,12 +461,11 @@ function WeekTotals({
               </th>
               <th style={{ textAlign: 'right' }}>주간 합계</th>
               <th style={{ width: 150 }}>전주 대비</th>
-              {showUnder && <th style={{ width: 62 }} title="그 요일 커트라인 이하였던 횟수">미달</th>}
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 && (
-              <tr><td colSpan={showUnder ? 7 : 6} className="muted">[길드원] 메뉴에 등록된 사람이 없어요.</td></tr>
+              <tr><td colSpan={6} className="muted">[길드원] 메뉴에 등록된 사람이 없어요.</td></tr>
             )}
             {rows.map((r) => {
               const cur = rank.get(r.name)
@@ -500,20 +485,13 @@ function WeekTotals({
                     {!rosterSet.has(r.name) && <span className="muted" style={{ marginLeft: 4, fontSize: '0.75rem' }}>(외부)</span>}
                   </td>
                   <td>
-                    <span className={r.played === WEEKDAYS.length ? 'delta up' : r.played === 0 ? 'delta down' : 'delta'}>
+                    <span className={r.played === WEEKDAYS.length ? 'delta up' : 'delta'}>
                       {r.played}<span style={{ fontWeight: 400, opacity: 0.6 }}>/{WEEKDAYS.length}</span>
                     </span>
                   </td>
                   <td style={{ textAlign: 'right' }} className="num-tab muted">{fmt(prevTotal.get(r.name))}</td>
-                  <td style={{ textAlign: 'right' }}><b className="num-tab">{r.played ? fmt(r.total) : '-'}</b></td>
-                  <td><Diff prev={prevTotal.get(r.name)} cur={r.played ? r.total : undefined} /></td>
-                  {showUnder && (
-                    <td>
-                      {r.under
-                        ? <span className="delta down">{r.under}</span>
-                        : <span className="muted">—</span>}
-                    </td>
-                  )}
+                  <td style={{ textAlign: 'right' }}><b className="num-tab">{fmt(r.total)}</b></td>
+                  <td><Diff prev={prevTotal.get(r.name)} cur={r.total} /></td>
                 </tr>
               )
             })}
@@ -631,32 +609,29 @@ function PrintContent({
 
   if (cfg.byDay && weekView) {
     // 화면이 주간 합계면 인쇄도 주간 합계로 — 표를 뽑아 공유하는 게 이 화면의 주 용도다
-    const rows = weekTotals(current, roster, guide, hidden)
+    const rows = weekTotals(current, roster, hidden)
     const rank = weekRankMap(rows)
-    const prevRows = weekTotals(prevRound, roster, guide, hidden)
+    const prevRows = weekTotals(prevRound, roster, hidden)
     const prevRank = weekRankMap(prevRows)
-    const prevTotal = new Map(prevRows.filter((r) => r.played > 0).map((r) => [r.name, r.total]))
-    const scored = rows.filter((r) => r.played > 0)
-    const cuts = weekCutlines(current, guide)
-    const showUnder = cuts.length > 0
+    const prevTotal = new Map(prevRows.map((r) => [r.name, r.total]))
+    const joined = rows.filter((r) => roster.includes(r.name)).length
     return (
       <div className="print-root">
         <div className="print-head">
           <h2>{cfg.title} — {current.label} · 주간 합계</h2>
           <span className="print-meta">출력일 {printedAt} · {guildName}</span>
         </div>
-        {scored.length === 0 ? (
+        {rows.length === 0 ? (
           <p>이번 {cfg.roundName}에 입력된 점수가 없어요.</p>
         ) : (
           <div className="print-block">
             <h3>주간 합계 (월~일)</h3>
             <div className="print-sub">
-              참여 {scored.length}명 · 합계 {fmt(scored.reduce((s, r) => s + r.total, 0))}
+              참여 {joined}/{roster.length}명 · 합계 {fmt(rows.reduce((s, r) => s + r.total, 0))}
               {prevRound && <> · 전 주: {prevRound.label}</>}
-              {showUnder && <> · 미달 기준 {cuts.map(([d, c]) => `${d} ${fmt(c)}`).join(' · ')}</>}
             </div>
             <table className="print-table">
-              <thead><tr><th>순위</th><th>변동</th><th>길드원</th><th>참여</th><th>전 주</th><th>주간 합계</th><th>점수차</th>{showUnder && <th>미달</th>}</tr></thead>
+              <thead><tr><th>순위</th><th>변동</th><th>길드원</th><th>참여</th><th>전 주</th><th>주간 합계</th><th>점수차</th></tr></thead>
               <tbody>
                 {rows.map((r) => {
                   const cur = rank.get(r.name)
@@ -667,9 +642,8 @@ function PrintContent({
                       <td>{r.name}</td>
                       <td className="num-tab">{r.played}/{WEEKDAYS.length}</td>
                       <td className="num-tab">{fmt(prevTotal.get(r.name))}</td>
-                      <td className="num-tab">{r.played ? fmt(r.total) : '-'}</td>
-                      <td className="num-tab">{diffText(prevTotal.get(r.name), r.played ? r.total : undefined)}</td>
-                      {showUnder && <td className="num-tab">{r.under || '—'}</td>}
+                      <td className="num-tab">{fmt(r.total)}</td>
+                      <td className="num-tab">{diffText(prevTotal.get(r.name), r.total)}</td>
                     </tr>
                   )
                 })}
@@ -933,7 +907,7 @@ function EntryTable({
   //
   // ★ 예전엔 공성전에서 **기준표를 먼저** 봤다 — 바로 위 문장과도, 정본인
   //   lib/stat.tsx 의 cutlineFor 와도 반대였다. 그래서 회차에 dayCutlines 가 박힌
-  //   옛 주차에서 같은 점수가 이 표에서는 미달, 인쇄본·주간 합계에서는 통과로
+  //   옛 주차에서 같은 점수가 이 표에서는 미달, 인쇄본에서는 통과로
   //   갈렸다(같은 화면 안에서 숫자가 안 맞았다). 정본 순서로 되돌린다 —
   //   지난 회차에는 그때 실제로 적용했던 기준이 박혀 있고, 지금 기준표로 덮으면
   //   과거 미달 판정이 소급해서 바뀐다는 게 그 순서의 이유다.

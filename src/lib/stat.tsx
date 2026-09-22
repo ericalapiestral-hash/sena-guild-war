@@ -98,70 +98,51 @@ export interface WeekRow {
   total: number
   /** 점수가 들어간 요일 수 (합계만 보면 몇 번 뛰었는지를 알 수 없다) */
   played: number
-  /** 그 요일 커트라인 이하였던 횟수 */
-  under: number
 }
 
-/**
- * 그 주차에 실제로 적용되는 요일별 커트라인 — 값이 있는 요일만.
- *
- * ★ 판정은 `lib/stat.tsx` 의 `cutlineFor` 하나만 쓴다. 같은 규칙을 여기 다시 적으면
- *   한쪽만 고쳐졌을 때 같은 점수가 표에 따라 미달이었다 아니었다 한다(실제로 그랬다).
- */
-export function weekCutlines(round: StatRound | undefined, guide?: CutlineGuide): Array<[string, number]> {
-  if (!round) return []
-  const out: Array<[string, number]> = []
-  for (const d of WEEKDAYS) {
-    const c = cutlineFor(round, '', { day: d, guide })
-    if (typeof c === 'number') out.push([d, c])
-  }
-  return out
-}
+// 주간 합계에는 커트라인 미달을 안 센다. 커트라인은 '그날 이 점수가 미달이다' 라는
+// 요일 단위 기준이라, 주간 표에 '미달 N회' 로 올리면 요일 표의 판정과 뜻이 다른
+// 숫자가 같은 이름으로 나란히 놓인다. 미달은 요일 표에서 본다.
 
 /**
- * 한 주차를 사람별로 합산한다.
+ * 한 주차를 사람별로 합산한다. **합계가 0 인 사람은 빼고 돌려준다.**
  *
- * 명단에 있는 사람은 점수가 하나도 없어도 넣는다 — '이번 주에 아예 안 뛴 사람'이
- * 표에서 사라지면 그게 제일 알고 싶은 정보인데 안 보인다. 명단 밖 이름(외부 처리한
- * 계정)은 점수가 있을 때만 남는다. 요일 표의 buildRanked 와 같은 규칙이다.
+ * 한 번도 안 뛴 사람과 뛰었지만 0점인 사람 둘 다 빠진다 — 순위표에 0 이 줄줄이
+ * 붙어도 읽을 게 없다.
+ *
+ * ★ 그래서 이 함수만으로는 '이번 주에 누가 안 뛰었나' 를 알 수 없다. 그 정보는
+ *   두 군데에 남겨 뒀다 — 주간 표의 '참여 인원 N/명단수' 타일과, 요일 표의
+ *   '미참여' 열(전체 기록 누적). 여기 필터를 되돌릴 때 그쪽도 같이 볼 것.
  */
 export function weekTotals(
   round: StatRound | undefined,
   roster: string[],
-  guide?: CutlineGuide,
   /** 표에서 감출 이름 (외부 처리한 길드원) — 합계·순위 어디에도 안 들어간다 */
   hidden?: Set<string>,
 ): WeekRow[] {
   const acc = new Map<string, WeekRow>()
   const row = (name: string) => {
     let r = acc.get(name)
-    if (!r) { r = { name, total: 0, played: 0, under: 0 }; acc.set(name, r) }
+    if (!r) { r = { name, total: 0, played: 0 }; acc.set(name, r) }
     return r
   }
   for (const name of roster) row(name)
   if (round) {
     for (const d of WEEKDAYS) {
-      const cut = cutlineFor(round, '', { day: d, guide })
       for (const e of round.days?.[d] ?? []) {
         if (typeof e.value !== 'number') continue
         if (hidden?.has(e.name)) continue
         const r = row(e.name)
         r.total += e.value
         r.played += 1
-        if (typeof cut === 'number' && e.value <= cut) r.under += 1
       }
     }
   }
-  const rosterSet = new Set(roster)
-  // ★ 한 번도 안 뛴 사람은 맨 아래로. total 이 0 으로 초기화돼 있어서 그냥 정렬하면
-  //   **실제로 0점을 낸 사람**과 동률이 되어, 순위가 '-' 인 행이 순위 있는 행 위로
-  //   올라왔다. EntryTable 이 '값 없음'을 -Infinity 로 미는 것과 같은 규칙이다.
+  // 합계가 0(안 뛴 사람 + 0점 기록자)이면 표에 안 올린다.
+  // 남은 행은 전부 점수가 있으므로 순위가 '-' 인 행이 섞일 일이 없다.
   return [...acc.values()]
-    .filter((r) => r.played > 0 || rosterSet.has(r.name))
-    .sort((a, b) =>
-      (b.played > 0 ? 1 : 0) - (a.played > 0 ? 1 : 0)
-      || b.total - a.total
-      || a.name.localeCompare(b.name))
+    .filter((r) => r.total > 0)
+    .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name))
 }
 
 /** 합계 기준 등수 — 점수가 없으면 등수도 없다. 동점은 같은 등수(rankOf 와 같은 규칙) */

@@ -48,7 +48,7 @@ export function HomePage() {
       {/* 공성전·파괴신은 운영진만 입력하므로, 길드원에겐 최근 기록을 표로 바로 보여준다 */}
       <div className="stat-preview-row">
         <SiegePreview rounds={userData.siegeRounds} members={userData.members} guide={userData.cutlineGuide} />
-        <SiegeWeekPreview rounds={userData.siegeRounds} members={userData.members} guide={userData.cutlineGuide} />
+        <SiegeWeekPreview rounds={userData.siegeRounds} members={userData.members} />
         <DestroyerPreview rounds={userData.destroyerRounds} members={userData.members} guide={userData.cutlineGuide} />
       </div>
 
@@ -232,11 +232,10 @@ function SiegePreview({ rounds, members, guide }: { rounds: StatRound[]; members
  *   이길 수 있어서, 등수가 그 사실을 가린다.
  */
 function SiegeWeekPreview({
-  rounds, members, guide,
+  rounds, members,
 }: {
   rounds: StatRound[]
   members: Member[]
-  guide?: CutlineGuide
 }) {
   const { round, index } = lastFilled(rounds, true)
   const prevRound = index > 0 ? rounds[index - 1] : undefined
@@ -244,10 +243,10 @@ function SiegeWeekPreview({
 
   const hidden = hiddenNames(members)
   const prevTotal = new Map(
-    weekTotals(prevRound, roster, guide, hidden).filter((r) => r.played > 0).map((r) => [r.name, r.total]),
+    weekTotals(prevRound, roster, hidden).map((r) => [r.name, r.total]),
   )
-  const rows = weekTotals(round, roster, guide, hidden)
-    .filter((r) => r.played > 0)          // 홈 요약은 점수가 있는 사람만 (옆 카드와 같은 규칙)
+  // weekTotals 가 합계 0(안 뛴 사람·0점)을 이미 빼고 준다
+  const rows = weekTotals(round, roster, hidden)
     .map((r) => ({
       name: r.name,
       note: `${r.played}/${WEEKDAYS.length}`,
