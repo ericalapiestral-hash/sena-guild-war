@@ -1956,8 +1956,18 @@ button.ghost:hover { background: var(--surface-2); color: var(--text); }
 
 /* ---- 홈: 공성전·파괴신 최근 기록 요약 ----
    운영진만 입력하는 기록이라, 길드원은 홈에서 바로 표로 확인한다. */
-.stat-preview-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 18px; }
-@media (max-width: 900px) { .stat-preview-row { grid-template-columns: 1fr; } }
+/* 카드가 둘(공성전·파괴신)에서 셋(주간 합계 추가)이 됐다.
+   auto-fit 로 두면 2칸이 되는 폭에서 세 번째가 반 칸짜리 고아로 남아서,
+   중간 폭에서는 마지막 카드가 두 칸을 쓰게 한다. 3 → 2(마지막이 꽉) → 1 칸. */
+.stat-preview-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 18px; }
+@media (max-width: 1100px) {
+  .stat-preview-row { grid-template-columns: 1fr 1fr; }
+  .stat-preview-row > :last-child { grid-column: 1 / -1; }
+}
+@media (max-width: 700px) {
+  .stat-preview-row { grid-template-columns: 1fr; }
+  .stat-preview-row > :last-child { grid-column: auto; }
+}
 .stat-preview { margin-bottom: 0; }
 .stat-preview .panel-head { align-items: flex-start; }
 .sp-sub { margin-top: 3px; font-size: 0.95rem; font-weight: 700; letter-spacing: -0.02em; }

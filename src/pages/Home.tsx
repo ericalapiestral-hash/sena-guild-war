@@ -1,9 +1,11 @@
 import { useMemo } from 'react'
-import type { CutlineGuide, StatEntry, StatRound } from '../types'
-import { counterHeroNames, getAllCounters, getAllHeroes, useGuildName, useUserData } from '../store'
+import type { CutlineGuide, Member, StatEntry, StatRound } from '../types'
+import { counterHeroNames, getAllCounters, getAllHeroes, rosterNames, useGuildName, useUserData } from '../store'
 import { navigate } from '../router'
 import { DeckNames } from '../components/HeroSelect'
-import { Delta, cutlineFor, effOf, fmt, lastFilled, latestDayWithData, tierMap, tierShort } from '../lib/stat'
+import {
+  Delta, WEEKDAYS, cutlineFor, effOf, fmt, lastFilled, latestDayWithData, tierMap, tierShort, weekTotals,
+} from '../lib/stat'
 
 const LINKS: Array<{ route: string; label: string; desc: string }> = [
   { route: 'counters', label: '카운터덱', desc: '상대 방덱을 뚫는 조합 찾기' },
@@ -44,6 +46,7 @@ export function HomePage() {
       {/* 공성전·파괴신은 운영진만 입력하므로, 길드원에겐 최근 기록을 표로 바로 보여준다 */}
       <div className="stat-preview-row">
         <SiegePreview rounds={userData.siegeRounds} guide={userData.cutlineGuide} />
+        <SiegeWeekPreview rounds={userData.siegeRounds} members={userData.members} guide={userData.cutlineGuide} />
         <DestroyerPreview rounds={userData.destroyerRounds} members={userData.members} guide={userData.cutlineGuide} />
       </div>
 
@@ -106,7 +109,16 @@ function PreviewTable({
   title: string
   subtitle?: string
   metric: string
-  rows: Array<{ name: string; tier?: string; value?: number; prev?: number; fail: boolean }>
+  rows: Array<{
+    name: string
+    /** 파괴신 등급 — 이름 옆에 작게 */
+    tier?: string
+    /** 이름 옆에 붙일 짧은 꼬리표 (주간 합계의 '3/7' 참여 일수) */
+    note?: string
+    value?: number
+    prev?: number
+    fail: boolean
+  }>
   empty: string
 }) {
   const scored = rows.filter((r) => typeof r.value === 'number')
@@ -150,6 +162,7 @@ function PreviewTable({
                     <td className={r.fail ? 'cell-fail' : ''}>
                       {r.name}
                       {r.tier && <span className="sp-tier">{tierShort(r.tier)}</span>}
+                      {r.note && <span className="sp-tier">{r.note}</span>}
                     </td>
                     <td style={{ textAlign: 'right' }} className="num-tab"><b>{fmt(r.value)}</b></td>
                     <td><Delta prev={r.prev} cur={r.value} /></td>
@@ -194,6 +207,55 @@ function SiegePreview({ rounds, guide }: { rounds: StatRound[]; guide?: CutlineG
       route="siege"
       title="공성전"
       subtitle={round ? `${round.label}${day ? ` · ${day}요일` : ''}` : undefined}
+      metric="점수"
+      rows={rows}
+      empty="아직 기록된 점수가 없어요."
+    />
+  )
+}
+
+/**
+ * 공성전 주간 합계 — 요일 하나가 아니라 그 주차 월~일을 사람별로 더한 순위.
+ *
+ * 옆의 SiegePreview 가 '가장 최근에 점수가 들어간 요일 하나'를 보여 주는 것과 짝이다.
+ * 합산 규칙은 [공성전] 화면의 [Σ 주간 합계]와 **같은 함수**(lib/stat 의 weekTotals)를
+ * 쓴다 — 같은 규칙을 두 파일에 따로 적었다가 커트라인 판정이 화면마다 갈린 적이 있다.
+ *
+ * ★ 미달은 색으로 표시하지 않는다. 주간 미달은 '몇 번' 이라는 횟수라 요일 표의
+ *   '이 점수가 미달이다' 와 뜻이 다른데, 같은 빨간색을 쓰면 한 화면에서 두 가지를
+ *   가리키게 된다. 횟수는 [공성전]의 주간 합계 표에서 본다.
+ * ★ 이름 옆 '3/7' 은 참여 요일 수다. 합계만 놓으면 3일 뛴 사람이 7일 뛴 사람을
+ *   이길 수 있어서, 등수가 그 사실을 가린다.
+ */
+function SiegeWeekPreview({
+  rounds, members, guide,
+}: {
+  rounds: StatRound[]
+  members: Member[]
+  guide?: CutlineGuide
+}) {
+  const { round, index } = lastFilled(rounds, true)
+  const prevRound = index > 0 ? rounds[index - 1] : undefined
+  const roster = rosterNames(members)
+
+  const prevTotal = new Map(
+    weekTotals(prevRound, roster, guide).filter((r) => r.played > 0).map((r) => [r.name, r.total]),
+  )
+  const rows = weekTotals(round, roster, guide)
+    .filter((r) => r.played > 0)          // 홈 요약은 점수가 있는 사람만 (옆 카드와 같은 규칙)
+    .map((r) => ({
+      name: r.name,
+      note: `${r.played}/${WEEKDAYS.length}`,
+      value: r.total,
+      prev: prevTotal.get(r.name),
+      fail: false,
+    }))
+
+  return (
+    <PreviewTable
+      route="siege"
+      title="공성전 주간 합계"
+      subtitle={round ? `${round.label} · 월~일 합계` : undefined}
       metric="점수"
       rows={rows}
       empty="아직 기록된 점수가 없어요."

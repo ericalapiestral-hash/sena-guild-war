@@ -6,7 +6,10 @@ import { activeMembers, excludedMembers, newId, rosterNames, todayLocal, update,
 import { isAdmin } from '../auth'
 import { Markdown } from '../components/Markdown'
 import { DESTROYER_GUIDES } from '../data/destroyerGuide'
-import { Delta, Diff, RankMove, WEEKDAYS, cutlineFor, fmt, tierShort, todayWeekday } from '../lib/stat'
+import {
+  Delta, Diff, RankMove, WEEKDAYS, cutlineFor, fmt, tierShort, todayWeekday,
+  weekCutlines, weekRankMap, weekTotals,
+} from '../lib/stat'
 import { ScoreImport } from '../components/ScoreImport'
 
 type Kind = 'siege' | 'destroyer'
@@ -390,79 +393,6 @@ function effValue(e: StatEntry): number | undefined {
   return typeof e.value === 'number' ? e.value : e.mid
 }
 
-/** 주간 합계 한 줄 */
-interface WeekRow {
-  name: string
-  /** 월~일 점수의 합 */
-  total: number
-  /** 점수가 들어간 요일 수 (합계만 보면 몇 번 뛰었는지를 알 수 없다) */
-  played: number
-  /** 그 요일 커트라인 이하였던 횟수 */
-  under: number
-}
-
-/**
- * 그 주차에 실제로 적용되는 요일별 커트라인 — 값이 있는 요일만.
- *
- * ★ 판정은 `lib/stat.tsx` 의 `cutlineFor` 하나만 쓴다. 같은 규칙을 여기 다시 적으면
- *   한쪽만 고쳐졌을 때 같은 점수가 표에 따라 미달이었다 아니었다 한다(실제로 그랬다).
- */
-function weekCutlines(round: StatRound | undefined, guide?: CutlineGuide): Array<[string, number]> {
-  if (!round) return []
-  const out: Array<[string, number]> = []
-  for (const d of WEEKDAYS) {
-    const c = cutlineFor(round, '', { day: d, guide })
-    if (typeof c === 'number') out.push([d, c])
-  }
-  return out
-}
-
-/**
- * 한 주차를 사람별로 합산한다.
- *
- * 명단에 있는 사람은 점수가 하나도 없어도 넣는다 — '이번 주에 아예 안 뛴 사람'이
- * 표에서 사라지면 그게 제일 알고 싶은 정보인데 안 보인다. 명단 밖 이름(외부 처리한
- * 계정)은 점수가 있을 때만 남는다. 요일 표의 buildRanked 와 같은 규칙이다.
- */
-function weekTotals(round: StatRound | undefined, roster: string[], guide?: CutlineGuide): WeekRow[] {
-  const acc = new Map<string, WeekRow>()
-  const row = (name: string) => {
-    let r = acc.get(name)
-    if (!r) { r = { name, total: 0, played: 0, under: 0 }; acc.set(name, r) }
-    return r
-  }
-  for (const name of roster) row(name)
-  if (round) {
-    for (const d of WEEKDAYS) {
-      const cut = cutlineFor(round, '', { day: d, guide })
-      for (const e of round.days?.[d] ?? []) {
-        if (typeof e.value !== 'number') continue
-        const r = row(e.name)
-        r.total += e.value
-        r.played += 1
-        if (typeof cut === 'number' && e.value <= cut) r.under += 1
-      }
-    }
-  }
-  const rosterSet = new Set(roster)
-  // ★ 한 번도 안 뛴 사람은 맨 아래로. total 이 0 으로 초기화돼 있어서 그냥 정렬하면
-  //   **실제로 0점을 낸 사람**과 동률이 되어, 순위가 '-' 인 행이 순위 있는 행 위로
-  //   올라왔다. EntryTable 이 '값 없음'을 -Infinity 로 미는 것과 같은 규칙이다.
-  return [...acc.values()]
-    .filter((r) => r.played > 0 || rosterSet.has(r.name))
-    .sort((a, b) =>
-      (b.played > 0 ? 1 : 0) - (a.played > 0 ? 1 : 0)
-      || b.total - a.total
-      || a.name.localeCompare(b.name))
-}
-
-/** 합계 기준 등수 — 점수가 없으면 등수도 없다. 동점은 같은 등수(rankOf 와 같은 규칙) */
-function weekRankMap(rows: WeekRow[]): Map<string, number> {
-  const scored = rows.filter((r) => r.played > 0)
-  const m = new Map<string, number>()
-  for (const r of scored) m.set(r.name, scored.filter((o) => o.total > r.total).length + 1)
-  return m
-}
 
 /**
  * 주간 합계 랭킹 (공성전 전용).
