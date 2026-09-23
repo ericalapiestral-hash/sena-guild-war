@@ -17,6 +17,9 @@ function Block({ block }: { block: string }) {
     const rows = lines
       .map((l) => l.trim().replace(/^\||\|$/g, '').split('|').map((c) => c.trim()))
       .filter((cells) => !cells.every((c) => /^:?-{2,}:?$/.test(c)))
+    // 구분선(|---|)만 있는 블록이면 행이 하나도 안 남는다. 그대로 head.map 을 부르면
+    // undefined 에서 터지고, 이 글은 공유 데이터라 한 줄로 전원의 화면이 죽는다.
+    if (!rows.length) return null
     const [head, ...body] = rows
     return (
       <div className="table-wrap">

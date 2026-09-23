@@ -1,4 +1,4 @@
-# 빌드 후 dist를 gh-pages 브랜치로 강제 푸시해서 GitHub Pages에 배포
+﻿# 빌드 후 dist를 gh-pages 브랜치로 강제 푸시해서 GitHub Pages에 배포
 #
 # ★ dist 안에 매번 새 git 저장소를 만드는 방식이라, 저장소 루트의 .gitignore 가
 #   여기엔 하나도 안 걸린다. public/ 에 실수로 넣어 둔 백업 JSON(길드원 실명·점수)이나
@@ -15,6 +15,24 @@ git fetch origin --quiet
 $behind = (git rev-list --count HEAD..origin/master 2>$null)
 if ($behind -and [int]$behind -gt 0) {
   throw "로컬이 origin/master 보다 $behind 커밋 뒤처져 있습니다. 먼저 따라잡으세요 (git pull --rebase). 이대로 배포하면 origin 에만 있는 변경이 라이브에서 사라집니다."
+}
+
+# ★ 반대 방향도 막는다 — 라이브는 반드시 origin/master 에 있는 것과 같아야 한다.
+#   뒤처짐만 보면 '커밋은 했는데 push 를 안 한 것'과 '아예 커밋을 안 한 수정'이
+#   그대로 라이브로 나간다. 2026-09-08~16 에 실제로 났다: CSP 가 라이브에만 있고
+#   master 에는 없어서, 다른 곳에서 master 를 배포하자 CSP 가 조용히 빠질 뻔했다.
+#   그 상태에서는 라이브가 무엇으로 만들어졌는지 저장소 어디에도 기록이 없다.
+$ahead = (git rev-list --count origin/master..HEAD 2>$null)
+if ($ahead -and [int]$ahead -gt 0) {
+  throw "origin/master 에 없는 커밋이 $ahead 개 있습니다. 먼저 push 하세요 (git push). 라이브는 origin 과 같아야 합니다."
+}
+# 번들에 들어가는 경로만 본다. public/ 은 그대로 복사되므로 추적 안 하는 파일도
+# 막는다(백업 JSON 을 여기 떨궈 둔 채 배포하면 공개 저장소로 나간다).
+$buildInputs = 'src', 'public', 'index.html', 'vite.config.ts', 'tsconfig.json', 'package.json', 'package-lock.json'
+$dirty = git status --porcelain --untracked-files=all -- $buildInputs
+if ($dirty) {
+  $dirty | ForEach-Object { Write-Host "  $_" }
+  throw '위 변경이 커밋되지 않았습니다. 커밋·push 한 뒤 배포하세요. 커밋 안 한 코드가 라이브에만 나가면 되돌릴 기준이 사라집니다.'
 }
 
 npm run build
