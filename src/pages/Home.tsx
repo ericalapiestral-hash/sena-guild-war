@@ -6,7 +6,8 @@ import {
 import { navigate } from '../router'
 import { DeckNames } from '../components/HeroSelect'
 import {
-  Delta, WEEKDAYS, cutlineFor, effOf, fmt, lastFilled, latestDayWithData, tierMap, tierShort, weekTotals,
+  Delta, WEEKDAYS, cutlineFor, effOf, fmt, lastFilled, latestDayWithData, midCompare, midShown, perHit, tierMap,
+  tierShort, weekTotals,
 } from '../lib/stat'
 
 const LINKS: Array<{ route: string; label: string; desc: string }> = [
@@ -117,7 +118,13 @@ function PreviewTable({
     tier?: string
     /** 이름 옆에 붙일 짧은 꼬리표 (주간 합계의 '3/7' 참여 일수) */
     note?: string
+    /** 합계·입력 인원을 세는 값 */
     value?: number
+    /**
+     * 표에 보여 줄 값 — 없으면 value. 파괴신 시즌 도중에는 value(총 딜량, 합계용)와
+     * 보이는 값(1회 점수)이 다르다. prev 는 **보이는 값과 같은 단위**로 넘길 것.
+     */
+    shown?: number
     prev?: number
     fail: boolean
   }>
@@ -166,8 +173,8 @@ function PreviewTable({
                       {r.tier && <span className="sp-tier">{tierShort(r.tier)}</span>}
                       {r.note && <span className="sp-tier">{r.note}</span>}
                     </td>
-                    <td style={{ textAlign: 'right' }} className="num-tab"><b>{fmt(r.value)}</b></td>
-                    <td><Delta prev={r.prev} cur={r.value} /></td>
+                    <td style={{ textAlign: 'right' }} className="num-tab"><b>{fmt(r.shown ?? r.value)}</b></td>
+                    <td><Delta prev={r.prev} cur={r.shown ?? r.value} /></td>
                   </tr>
                 ))}
               </tbody>
@@ -280,14 +287,27 @@ function DestroyerPreview({ rounds, members, guide }: { rounds: StatRound[]; mem
       .map((e) => [e.name, e.value as number]),
   )
 
+  const prevEntries = new Map((prevRound?.entries ?? []).map((e) => [e.name, e]))
+
   // 시즌 도중이면 최종이 없고 중간집계만 있으므로 그것으로 순위를 낸다
+  // (순위·합계·커트라인은 총 딜량 — 게임 순위와 커트라인이 총계 기준이다)
   const rows = (round?.entries ?? [])
     .map((e) => ({ e, v: effOf(e, true) }))
     .filter((x) => typeof x.v === 'number' && !hidden.has(x.e.name))
     .sort((a, b) => (b.v as number) - (a.v as number))
     .map(({ e, v }) => {
       const cut = round ? cutlineFor(round, e.name, { tierOf, guide }) : undefined
-      return { name: e.name, tier: tierOf.get(e.name), value: v, prev: prevValues.get(e.name), fail: typeof cut === 'number' && (v as number) <= cut }
+      const base = { name: e.name, tier: tierOf.get(e.name), value: v, fail: typeof cut === 'number' && (v as number) <= cut }
+      if (typeof e.value === 'number') return { ...base, prev: prevValues.get(e.name) }
+      // 중간집계만 있는 사람 — 1회 점수로 보이고, 등락은 **전 시즌 중간집계**와 같은 단위로.
+      // (예전엔 전 시즌 최종 총계와 견줘서 시즌 도중엔 전원이 크게 떨어진 것처럼 나왔다)
+      const c = midCompare(prevEntries.get(e.name), e)
+      return {
+        ...base,
+        note: perHit(e) !== undefined ? `${e.midHits}회` : '총',
+        shown: midShown(e),
+        prev: c.prev,
+      }
     })
 
   const midOnly = !!round?.entries.length && round.entries.every((e) => typeof e.value !== 'number')
@@ -296,7 +316,7 @@ function DestroyerPreview({ rounds, members, guide }: { rounds: StatRound[]; mem
     <PreviewTable
       route="destroyer"
       title="파괴신"
-      subtitle={round ? `${round.label}${midOnly ? ' · 중간집계' : ''}` : undefined}
+      subtitle={round ? `${round.label}${midOnly ? ' · 중간집계 1회 점수' : ''}` : undefined}
       metric="딜량"
       rows={rows}
       empty="아직 기록된 딜량이 없어요."

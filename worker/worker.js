@@ -684,6 +684,28 @@ function pctOf(prev, cur) {
   return p < 0 ? -r : r
 }
 
+/** 차이(cur − prev). 비교 불가면 null */
+function diffOf(prev, cur) {
+  return typeof cur === 'number' && typeof prev === 'number' ? cur - prev : null
+}
+
+/** 파괴신 중간집계 1회 점수 — 사이트 lib/stat.tsx 의 perHit 과 같은 규칙 */
+function perHitOf(e) {
+  if (!e || typeof e.mid !== 'number' || typeof e.midHits !== 'number' || !(e.midHits > 0)) return undefined
+  return Math.round(e.mid / e.midHits)
+}
+
+/** 중간집계 비교 짝 — 사이트 lib/stat.tsx 의 midCompare 와 같은 규칙.
+ *  둘 다 횟수가 있으면 1회 점수끼리, 둘 다 없으면 총계끼리, 섞이면 비교하지 않는다. */
+function midCompareOf(prev, cur) {
+  if (typeof prev?.mid !== 'number' || typeof cur?.mid !== 'number') return {}
+  const p = perHitOf(prev)
+  const c = perHitOf(cur)
+  if (p !== undefined && c !== undefined) return { prev: p, cur: c }
+  if (p === undefined && c === undefined) return { prev: prev.mid, cur: cur.mid }
+  return {}
+}
+
 /** 배열이면 객체 원소만 남기고, 아니면 빈 배열 — 오염된 공유 데이터로 API가 죽지 않게 */
 function objArray(v) {
   return Array.isArray(v) ? v.filter((x) => x && typeof x === 'object' && !Array.isArray(x)) : []
@@ -797,6 +819,10 @@ function destroyerStats(data, seasonQuery) {
       .filter((e) => typeof e.name === 'string' && typeof e.value === 'number')
       .map((e) => [e.name, e.value]),
   )
+  // 중간집계 대비용 — 전 시즌 중간집계와 그때 친 횟수
+  const prevEntries = new Map(
+    objArray(prev?.entries).filter((e) => typeof e.name === 'string').map((e) => [e.name, e]),
+  )
   const members = objArray(data.members).filter((m) => typeof m.name === 'string')
   const tierOf = new Map(members.filter((m) => typeof m.tier === 'string').map((m) => [m.name, m.tier]))
   const tierCuts = round.tierCutlines && typeof round.tierCutlines === 'object' ? round.tierCutlines : {}
@@ -819,10 +845,20 @@ function destroyerStats(data, seasonQuery) {
       prev: prevMap.get(e.name) ?? null,
       mid: typeof e.mid === 'number' ? e.mid : null,
       midHits: typeof e.midHits === 'number' ? e.midHits : null,
+      // 사이트 표의 중간집계 칸 = 1회 점수(총 ÷ 횟수). 횟수를 모르면 null
+      midPerHit: perHitOf(e) ?? null,
       value: typeof e.value === 'number' ? e.value : null,
       eff: v,
+      // (옛 필드 — 그대로 둔다) 전 시즌 최종 vs 이번 시즌 eff / 이번 시즌 중간→최종
       deltaPrevPct: pctOf(prevMap.get(e.name), v),
       deltaMidPct: pctOf(typeof e.mid === 'number' ? e.mid : undefined, typeof e.value === 'number' ? e.value : undefined),
+      // 사이트 표와 같은 규칙: 시즌집계 대비 = 최종끼리, 중간집계 대비 = 전 시즌 중간집계와 같은 단위끼리
+      seasonDiff: diffOf(prevMap.get(e.name), typeof e.value === 'number' ? e.value : undefined),
+      seasonDiffPct: pctOf(prevMap.get(e.name), typeof e.value === 'number' ? e.value : undefined),
+      ...(() => {
+        const c = midCompareOf(prevEntries.get(e.name), e)
+        return { midDiff: diffOf(c.prev, c.cur), midDiffPct: pctOf(c.prev, c.cur) }
+      })(),
       cutline: cut,
       fail: typeof cut === 'number' && v <= cut,
     }

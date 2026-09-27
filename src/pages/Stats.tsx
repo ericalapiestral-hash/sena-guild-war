@@ -9,7 +9,7 @@ import { isAdmin } from '../auth'
 import { Markdown } from '../components/Markdown'
 import { DESTROYER_GUIDES } from '../data/destroyerGuide'
 import {
-  Delta, Diff, RankMove, WEEKDAYS, fmt, tierShort, todayWeekday, weekRankMap, weekTotals,
+  Diff, RankMove, WEEKDAYS, fmt, midCompare, midUnit, perHit, tierShort, todayWeekday, weekRankMap, weekTotals,
 } from '../lib/stat'
 import { ScoreImport } from '../components/ScoreImport'
 
@@ -44,14 +44,16 @@ const CFG: Record<
   },
   destroyer: {
     title: '파괴신 통계',
-    desc: '시즌별로 [편집]을 눌러 중간집계·최종 딜량을 입력하고 [저장]하면 잠겨요. 딜량은 [📷 캡처에서 읽기]로 결과 화면을 붙여넣으면 자동으로 채워지는데, 중간집계와 최종 집계 중 어디에 넣을지 고를 수 있어요. 전 시즌 / 이번 시즌 중간집계 / 이번 시즌 집계를 나란히 비교하고, [커트라인] 메뉴의 파이 초월 단계별 기준 이하는 미달로 표시돼요. 명단은 [길드원] 메뉴 등록자가 자동으로 들어옵니다.',
+    desc: '시즌별로 [편집]을 눌러 중간집계·최종 딜량을 입력하고 [저장]하면 잠겨요. 딜량은 [📷 캡처에서 읽기]로 결과 화면을 붙여넣으면 자동으로 채워지는데, 중간집계와 최종 집계 중 어디에 넣을지 고를 수 있어요. 중간집계는 총 딜량을 친 횟수로 나눈 1회 점수로 보여 주고(캡처에서 횟수도 같이 읽어요), 중간집계·시즌집계를 각각 전 시즌 같은 값과 비교해 차이를 표시해요. [커트라인] 메뉴의 파이 초월 단계별 기준 이하는 미달로 표시돼요. 명단은 [길드원] 메뉴 등록자가 자동으로 들어옵니다.',
     metric: '딜량',
     field: 'destroyerRounds',
     byDay: false,
     roundName: '시즌',
     showJoined: false,
     hasCutline: true,
-    deltaLabel: '전 시즌 대비',
+    // 이번 시즌 집계 − 전 시즌 집계. 옆의 '중간집계 대비' 도 전 시즌과 비교하므로
+    // '전 시즌 대비' 라고 하면 둘 중 어느 쪽인지 구분이 안 된다.
+    deltaLabel: '시즌집계 대비',
     showMid: true,
     prevLabel: '전 시즌',
     finalLabel: '이번 시즌 집계',
@@ -108,6 +110,8 @@ export function StatsPage({ kind }: { kind: Kind }) {
   const prevRound = currentIndex > 0 ? rounds[currentIndex - 1] : undefined
   const prevList: StatEntry[] = prevRound ? (cfg.byDay ? prevRound.days?.[day] ?? [] : prevRound.entries) : []
   const prevValues = new Map(prevList.filter((e) => typeof e.value === 'number').map((e) => [e.name, e.value as number]))
+  // 파괴신: 전 시즌 기록 통째로 — '중간집계 대비' 가 전 시즌 중간집계(와 그때 친 횟수)를 본다
+  const prevEntries = cfg.showMid ? new Map(prevList.map((e) => [e.name, e])) : undefined
   // 순위변동·누적 미참여는 공성전 표에만 붙인다 — 파괴신은 시즌 수가 적어 뜻이 옅다.
   const prevRanks = cfg.byDay ? rankMapOf(prevList) : undefined
   // 전 주차를 다 훑으므로(주차×요일) 기록이 쌓이면 무거워진다 — rounds 가 바뀔 때만 다시 센다.
@@ -355,6 +359,7 @@ export function StatsPage({ kind }: { kind: Kind }) {
             tierCutlines={tierCutlines}
             heading={cfg.byDay ? `${day}요일 기록` : undefined}
             prevValues={prevValues}
+            prevEntries={prevEntries}
             deltaLabel={cfg.deltaLabel}
             showMid={cfg.showMid}
             prevLabel={cfg.prevLabel}
@@ -570,6 +575,22 @@ function pctText(prev?: number, cur?: number): string {
   if (Math.abs(p) < 0.05) return '0%'
   return `${p > 0 ? '▲' : '▼'} ${Math.abs(p).toFixed(1)}%`
 }
+/**
+ * 차이 + % 한 칸에 — 화면의 Diff 와 **글자까지** 같은 모양 (파괴신 인쇄본).
+ * pctText 를 빌려 쓰면 아주 작은 변화가 '0%' 로 떨어져 화면('0.0%')과 갈렸다.
+ */
+function diffPctText(prev?: number, cur?: number): string {
+  const d = diffText(prev, cur)
+  if (d === '—' || d === '±0' || !prev) return d
+  const p = Math.abs((((cur as number) - prev) / Math.abs(prev)) * 100)
+  return `${d} (${p.toFixed(1)}%)`
+}
+/** 인쇄본 중간집계 칸 — 1회 점수 (N회), 횟수를 모르면 총 딜량 (총) */
+function midPrintText(e: StatEntry): string {
+  const ph = perHit(e)
+  if (ph !== undefined) return `${fmt(ph)} (${e.midHits}회)`
+  return typeof e.mid === 'number' ? `${fmt(e.mid)} (총)` : '-'
+}
 
 
 /** 화면엔 숨김(.print-root), 인쇄 시에만 보이는 표. body에 portal로 렌더. */
@@ -713,8 +734,11 @@ function PrintContent({
   const prevMap = new Map(
     (prevRound?.entries ?? []).filter((e) => typeof e.value === 'number').map((e) => [e.name, e.value as number]),
   )
+  // 중간집계 대비용 — 전 시즌 중간집계와 그때 친 횟수
+  const prevEntryMap = new Map((prevRound?.entries ?? []).map((e) => [e.name, e]))
   const curTotal = curRanked.reduce((s, e) => s + (effValue(e) as number), 0)
   const hasMid = curRanked.some((e) => typeof e.mid === 'number')
+  const unit = midUnit(curRanked)
   // 커트라인 이하 미달자 — 회차에 저장된 값 → [커트라인] 기준표 → 시즌 기본값
   const tierCuts = current.tierCutlines ?? {}
   const cutFor = (name: string) => {
@@ -752,9 +776,13 @@ function PrintContent({
             <> · 커트라인 {usedTiers.map((t) => `${t} ${fmt(tierCutOf(t))}`).join(' / ')}
               {typeof current.cutline === 'number' && `${usedTiers.length ? ' / ' : ''}${usedTiers.length ? '기본 ' : ''}${fmt(current.cutline)}`} 이하 미달</>
           )}
+          {/* 뽑아서 돌리는 표라 단위를 표 밖에도 적어 둔다 — 숫자만 보면 총계로 읽힌다 */}
+          {hasMid && (unit === '총'
+            ? <> · 중간집계는 총 딜량(친 횟수 기록 없음)</>
+            : <> · 중간집계는 1회 점수(총 딜량 ÷ 친 횟수){unit === '1회·총' && ', 횟수가 없는 사람은 총 딜량(총)'}</>)}
         </div>
         <table className="print-table">
-          <thead><tr><th>순위</th><th>길드원</th><th>전 시즌</th>{hasMid && <th>중간집계</th>}<th>이번 시즌 집계</th><th>전 시즌 대비</th>{hasMid && <th>중간집계 대비</th>}</tr></thead>
+          <thead><tr><th>순위</th><th>길드원</th><th>전 시즌</th>{hasMid && <th>중간집계({unit})</th>}<th>이번 시즌 집계</th><th>{cfg.deltaLabel}</th>{hasMid && <th>중간집계 대비</th>}</tr></thead>
           <tbody>
             {curRanked.map((e, i) => (
               <tr key={e.name}>
@@ -764,10 +792,14 @@ function PrintContent({
                   {tierOf?.get(e.name) && <span className="print-tier">{tierShort(tierOf.get(e.name))}</span>}
                 </td>
                 <td className="num-tab">{fmt(prevMap.get(e.name))}</td>
-                {hasMid && <td className="num-tab">{fmt(e.mid)}{typeof e.midHits === 'number' ? ` (${e.midHits}회)` : ''}</td>}
+                {hasMid && <td className="num-tab">{midPrintText(e)}</td>}
                 <td className="num-tab">{fmt(e.value)}</td>
-                <td>{pctText(prevMap.get(e.name), effValue(e))}</td>
-                {hasMid && <td>{pctText(e.mid, e.value)}</td>}
+                {/* 화면과 같은 규칙 — 시즌집계는 최종끼리, 중간집계는 중간집계끼리(1회 점수) */}
+                <td className="num-tab">{diffPctText(prevMap.get(e.name), e.value)}</td>
+                {hasMid && <td className="num-tab">{(() => {
+                  const c = midCompare(prevEntryMap.get(e.name), e)
+                  return diffPctText(c.prev, c.cur)
+                })()}</td>}
               </tr>
             ))}
           </tbody>
@@ -777,7 +809,42 @@ function PrintContent({
   )
 }
 
-/** 전 주차(회차) 대비 상승/하락 % */
+/**
+ * 파괴신 중간집계 칸 (보기) — **1회 점수**(총 딜량 ÷ 친 횟수)를 앞에, 횟수를 옆에.
+ * 횟수를 모르는 기록은 나눌 수 없어서 총 딜량을 그대로 두고 '총' 을 붙인다 —
+ * 같은 칸에 1회 점수와 총계가 섞여 있어도 어느 쪽인지 구분되게.
+ */
+function MidCell({ e }: { e: StatEntry }) {
+  const ph = perHit(e)
+  if (ph !== undefined) {
+    return (
+      <span className="num-tab" title={`총 ${fmt(e.mid)} ÷ ${e.midHits}회`}>
+        {fmt(ph)}<span className="mid-hits">{e.midHits}회</span>
+      </span>
+    )
+  }
+  if (typeof e.mid !== 'number') return <span className="num-tab">-</span>
+  return (
+    <span className="num-tab" title="친 횟수가 없어 1회 점수를 못 냈어요 — 총 딜량입니다. [편집]에서 횟수를 넣으면 1회 점수로 바뀌어요.">
+      {fmt(e.mid)}<span className="mid-hits">총</span>
+    </span>
+  )
+}
+
+/** 중간집계 대비 — 전 시즌 중간집계와의 차이 (단위 규칙은 lib/stat 의 midCompare) */
+function MidDiff({ prev, cur }: { prev?: StatEntry; cur: StatEntry }) {
+  const c = midCompare(prev, cur)
+  if (c.mixed) {
+    return (
+      <span className="muted" title={`${perHit(prev) === undefined ? '전 시즌' : '이번 시즌'} 중간집계에 친 횟수가 없어 1회 점수끼리 비교할 수 없어요. 그 시즌 [편집]에서 횟수를 넣으면 비교돼요.`}>—</span>
+    )
+  }
+  return (
+    <span title={typeof c.prev === 'number' ? `전 시즌 중간집계 ${fmt(c.prev)}${perHit(prev) !== undefined ? ` (1회 · ${prev?.midHits}회 침)` : ' (총)'}` : undefined}>
+      <Diff prev={c.prev} cur={c.cur} />
+    </span>
+  )
+}
 
 function EntryTable({
   roster,
@@ -796,6 +863,7 @@ function EntryTable({
   tierCutlines,
   heading,
   prevValues,
+  prevEntries,
   prevRanks,
   misses,
   deltaLabel,
@@ -833,6 +901,8 @@ function EntryTable({
   tierCutlines?: Record<string, number>
   heading?: string
   prevValues: Map<string, number>
+  /** 전 시즌 기록 (파괴신) — 중간집계 대비가 전 시즌 중간집계·횟수를 본다 */
+  prevEntries?: Map<string, StatEntry>
   /** 전 주 같은 요일의 등수 — 넘기면 순위변동을 보여준다 (공성전) */
   prevRanks?: Map<string, number>
   /** 전체 기록 누적 미참여 — 넘기면 열이 생긴다 (공성전) */
@@ -1093,10 +1163,16 @@ function EntryTable({
               <th style={{ width: prevRanks && !editing ? 58 : 44 }}>{editing ? '#' : '순위'}</th>
               <th>길드원</th>
               {showPrev && <th style={{ textAlign: 'right' }}>{prevLabel}{prevRoundLabel ? <span className="muted" style={{ fontWeight: 400, fontSize: '0.75rem' }}> ({prevRoundLabel})</span> : ''}</th>}
-              {showMid && <th style={{ textAlign: 'right' }}>중간집계</th>}
+              {/* 보기: 1회 점수(총 ÷ 횟수) / 편집: 캡처에 찍히는 그대로 총계와 횟수를 넣는다 */}
+              {showMid && (
+                <th style={{ textAlign: 'right' }} title={editing ? undefined : '총 딜량 ÷ 친 횟수. 횟수가 없는 기록은 총 딜량에 \'총\' 이 붙어요'}>
+                  중간집계
+                  <span className="muted" style={{ fontWeight: 400, fontSize: '0.75rem' }}>{editing ? ' (총 · 횟수)' : ` (${midUnit(rows)})`}</span>
+                </th>
+              )}
               <th style={{ textAlign: 'right' }}>{showMid ? finalLabel : metric}</th>
-              <th style={{ width: 100 }}>{deltaLabel}</th>
-              {showMid && <th style={{ width: 110 }}>중간집계 대비</th>}
+              <th style={{ width: showMid ? 150 : 100 }} title={showMid ? '이번 시즌 집계 − 전 시즌 집계' : undefined}>{deltaLabel}</th>
+              {showMid && <th style={{ width: 150 }} title="이번 시즌 중간집계 − 전 시즌 중간집계 (1회 점수끼리)">중간집계 대비</th>}
               {showVerdict && <th style={{ width: 64 }}>판정</th>}
               {showJoined && <th style={{ width: 60 }}>참여</th>}
               {misses && <th style={{ width: 84 }} title="전체 기록 누적 — 점수가 안 들어간 요일 수 / 그 사람 첫 기록 이후 전체 요일 수">미참여</th>}
@@ -1129,26 +1205,21 @@ function EntryTable({
                       style={{ width: 120, textAlign: 'right' }} />
                     {/* 친 횟수 — 캡처로 들어오지만 손으로도 고칠 수 있게 */}
                     <input type="number" value={e.midHits ?? ''} placeholder="회" className="num-tab mid-hits-input"
-                      min={0} title="친 횟수"
+                      min={1} step={1} title="친 횟수 — 넣으면 보기 화면에서 1회 점수(총 ÷ 횟수)로 바뀌어요"
                       onChange={(ev) => setField(e.name, { midHits: ev.target.value === '' ? undefined : Number(ev.target.value) })} />
                   </span>
-                ) : (
-                  <span className="num-tab">
-                    {fmt(e.mid)}
-                    {typeof e.midHits === 'number' && <span className="mid-hits">{e.midHits}회</span>}
-                  </span>
-                )}</td>}
+                ) : (<MidCell e={e} />)}</td>}
                 <td style={{ textAlign: 'right' }}>{editing ? (
                   <input type="number" value={e.value ?? ''} placeholder="0" className="num-tab"
                     onChange={(ev) => setField(e.name, { value: ev.target.value === '' ? undefined : Number(ev.target.value) })}
                     style={{ width: 120, textAlign: 'right' }} />
                 ) : (<b className="num-tab">{fmt(e.value)}</b>)}</td>
-                {/* 공성전은 절대 점수차 + %(점수 자릿수가 작아 차이가 바로 읽힌다),
-                    파괴신은 % 만(딜량은 자릿수가 커서 절대값이 안 읽힌다) */}
-                <td>{showMid
-                  ? <Delta prev={prevValues.get(e.name)} cur={effOf(e)} />
-                  : <Diff prev={prevValues.get(e.name)} cur={effOf(e)} />}</td>
-                {showMid && <td><Delta prev={e.mid} cur={e.value} /></td>}
+                {/* 차이(절대값) + %.
+                    ★ 파괴신 시즌집계 대비는 **최종끼리만** 비교한다(effOf 로 중간집계에 떨어뜨리지
+                      않는다). 시즌 도중에 이번 시즌 중간집계를 전 시즌 최종과 빼면 전원이 크게
+                      떨어진 것처럼 나왔다 — 시즌 도중 비교는 옆의 '중간집계 대비' 가 맡는다. */}
+                <td><Diff prev={prevValues.get(e.name)} cur={showMid ? e.value : effOf(e)} /></td>
+                {showMid && <td><MidDiff prev={prevEntries?.get(e.name)} cur={e} /></td>}
                 {showVerdict && <td>{typeof effOf(e) === 'number' ? (isFail(e) ? <span className="badge lose">미달</span> : <span className="badge win">통과</span>) : <span className="muted">—</span>}</td>}
                 {showJoined && <td>{editing ? (
                   <input type="checkbox" checked={!!e.joined} onChange={(ev) => setField(e.name, { joined: ev.target.checked })} />

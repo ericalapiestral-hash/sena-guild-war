@@ -20,8 +20,9 @@ export function Delta({ prev, cur }: { prev?: number; cur?: number }) {
 /**
  * 직전 기록 대비 **점수차** — 절대값을 앞에, %를 뒤에.
  *
- * 공성전 점수는 자릿수가 작아서 '몇 점 늘었나'가 바로 읽힌다. 파괴신 딜량은
- * 그렇지 않아서 거기는 Delta(%)를 그대로 쓴다.
+ * 공성전 점수차와 파괴신의 시즌집계·중간집계 대비가 이걸 쓴다. 파괴신도 예전엔
+ * 딜량 자릿수가 커서 %(Delta)만 보였는데, 운영진이 '전 시즌과의 차이' 를 숫자로
+ * 보고 싶어 해서 바꿨다(2026-09-28). 홈 카드처럼 좁은 곳은 여전히 Delta 를 쓴다.
  */
 export function Diff({ prev, cur }: { prev?: number; cur?: number }) {
   if (typeof cur !== 'number' || typeof prev !== 'number') return <span className="muted">—</span>
@@ -58,6 +59,55 @@ export function RankMove({ prev, cur }: { prev?: number; cur?: number }) {
 /** 집계 기준값 — 최종이 있으면 최종, 없으면 중간집계(파괴신 시즌 도중) */
 export const effOf = (e: StatEntry, useMid: boolean): number | undefined =>
   typeof e.value === 'number' ? e.value : useMid ? e.mid : undefined
+
+type MidLike = { mid?: number; midHits?: number } | undefined
+
+/**
+ * 파괴신 중간집계의 **1회 점수** — 총 딜량 ÷ 친 횟수 (반올림).
+ *
+ * 중간집계 시점에는 사람마다 친 횟수가 달라서, 총계끼리 놓으면 많이 친 사람이 이긴다.
+ * 그래서 중간집계를 **보여 줄 때는** 화면·인쇄·홈 어디서든 이 값을 쓴다.
+ * 횟수를 모르면(옛 기록·횟수 없이 손으로 넣은 값) undefined — 보여 주는 쪽이 총계로
+ * 떨어뜨리고 '총' 을 붙인다(midShown).
+ *
+ * ★ 순위·합계·커트라인은 여전히 **총계**로 매긴다. 게임 순위가 총계 기준이고,
+ *   커트라인도 시즌 총 딜량 기준이라 1회 점수와 견주면 전원이 통과해 버린다.
+ */
+export function perHit(e: MidLike): number | undefined {
+  if (!e || typeof e.mid !== 'number' || typeof e.midHits !== 'number' || !(e.midHits > 0)) return undefined
+  return Math.round(e.mid / e.midHits)
+}
+
+/** 중간집계를 화면에 놓을 값 — 1회 점수, 횟수를 모르면 총계 */
+export const midShown = (e: MidLike): number | undefined => perHit(e) ?? e?.mid
+
+/**
+ * 중간집계 열 제목에 붙일 단위 — 실제로 들어 있는 값에 맞춘다.
+ * ★ '1회' 로 고정하면 횟수가 없던 옛 시즌(2026-09-28 전 기록 전부)을 뽑을 때 제목은
+ *   '1회' 인데 칸은 전부 총계가 되어, 밖으로 돌리는 표가 자기 숫자와 어긋났다.
+ */
+export function midUnit(entries: MidLike[]): '1회' | '총' | '1회·총' {
+  const withMid = entries.filter((e) => typeof e?.mid === 'number')
+  const n = withMid.filter((e) => perHit(e) !== undefined).length
+  if (withMid.length > 0 && n === 0) return '총'
+  return n === withMid.length ? '1회' : '1회·총'
+}
+
+/**
+ * 중간집계 대비 — **전 시즌 중간집계 vs 이번 시즌 중간집계** 의 비교 짝.
+ *
+ * 둘 다 횟수가 있으면 1회 점수끼리, 둘 다 없으면 총계끼리 비교한다.
+ * ★ 한쪽만 횟수가 있으면 **비교하지 않는다** — 1회 점수(수십만)에서 총계(수백만)를
+ *   빼면 전원이 크게 떨어진 것처럼 나온다. 전 시즌에 횟수를 채워 넣으면 그때부터 나온다.
+ */
+export function midCompare(prev: MidLike, cur: MidLike): { prev?: number; cur?: number; mixed?: boolean } {
+  if (typeof prev?.mid !== 'number' || typeof cur?.mid !== 'number') return {}
+  const p = perHit(prev)
+  const c = perHit(cur)
+  if (p !== undefined && c !== undefined) return { prev: p, cur: c }
+  if (p === undefined && c === undefined) return { prev: prev.mid, cur: cur.mid }
+  return { mixed: true }
+}
 
 /**
  * 이 사람에게 적용되는 커트라인.
