@@ -24,6 +24,8 @@ export interface OcrRow {
   readName: string
   /** 점수로 읽힌 부분 */
   score?: number
+  /** 친 횟수 ('3회 도전') — 파괴신 캡처를 서버가 읽었을 때만 온다 */
+  count?: number
   /** 명단에서 찾아낸 이름 (없으면 undefined) */
   matched?: string
   /** 매칭 신뢰도 0~1 */
@@ -479,7 +481,7 @@ async function readImageApi(
   onProgress?.({ progress: 0.35, status: 'AI가 읽는 중' })
   const ctrl = new AbortController()
   const timer = setTimeout(() => ctrl.abort(), 45_000)
-  let data: { ok?: boolean; rows?: Array<{ rank?: number; name: string; score: number }>; error?: string }
+  let data: { ok?: boolean; rows?: Array<{ rank?: number; name: string; score: number; count?: number }>; error?: string }
   try {
     // ★ 토큰을 반드시 같이 보낸다. 워커가 /ocr 에 guard() 를 걸었는데(Origin 헤더는
     //   curl 이면 아무 값이나 넣을 수 있어서 문이 못 됐다) 여기가 안 따라가서, 서버
@@ -509,10 +511,15 @@ async function readImageApi(
     // 길드 인원보다 넉넉하되 개인 랭킹(수백~수천 위)과는 확실히 구분되는 값으로 둔다.
     if (rank !== undefined && rank > MAX_GUILD_RANK) continue
     const m = matchName(r.name, roster)
+    // 워커가 이미 걸렀지만 여기서도 한 번 더 — 작은 양의 정수만 받는다
+    const count = Number.isSafeInteger(r.count) && (r.count as number) > 0 && (r.count as number) <= 999
+      ? (r.count as number) : undefined
     rows.push({
-      raw: `${rank !== undefined ? rank + '위 · ' : ''}${r.name}   ${r.score.toLocaleString()}`,
+      raw: `${rank !== undefined ? rank + '위 · ' : ''}${r.name}   ${r.score.toLocaleString()}`
+        + (count !== undefined ? `  · ${count}회` : ''),
       readName: r.name,
       score: r.score,
+      count,
       matched: m.name,
       confidence: m.confidence,
       ambiguous: m.ambiguous,

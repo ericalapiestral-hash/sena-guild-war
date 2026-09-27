@@ -764,7 +764,7 @@ function PrintContent({
                   {tierOf?.get(e.name) && <span className="print-tier">{tierShort(tierOf.get(e.name))}</span>}
                 </td>
                 <td className="num-tab">{fmt(prevMap.get(e.name))}</td>
-                {hasMid && <td className="num-tab">{fmt(e.mid)}</td>}
+                {hasMid && <td className="num-tab">{fmt(e.mid)}{typeof e.midHits === 'number' ? ` (${e.midHits}회)` : ''}</td>}
                 <td className="num-tab">{fmt(e.value)}</td>
                 <td>{pctText(prevMap.get(e.name), effValue(e))}</td>
                 {hasMid && <td>{pctText(e.mid, e.value)}</td>}
@@ -965,7 +965,13 @@ function EntryTable({
 
   function startEdit() {
     const d: Record<string, Partial<StatEntry>> = {}
-    for (const name of baseNames) { const e = storedMap.get(name); if (e) d[name] = { value: e.value, mid: e.mid, joined: e.joined, memo: e.memo } }
+    // ★ 여기는 필드를 **골라** 담는다. StatEntry 에 칸을 새로 만들면 이 목록에도 넣을 것 —
+    //   빠지면 저장된 값이 편집 초안에 안 실리고, [편집]→[저장]만 눌러도 조용히 사라진다.
+    //   midHits(친 횟수)가 실제로 그렇게 빠질 뻔했다.
+    for (const name of baseNames) {
+      const e = storedMap.get(name)
+      if (e) d[name] = { value: e.value, mid: e.mid, midHits: e.midHits, joined: e.joined, memo: e.memo }
+    }
     setDraft(d)
     setLocalExtra([])
     setRemovedExtra([])
@@ -1023,9 +1029,15 @@ function EntryTable({
           targets={showMid ? [{ key: 'mid', label: '중간집계' }, { key: 'value', label: finalLabel }] : undefined}
           onClose={() => setImporting(false)}
           onApply={(values, target) => {
-            const field = target === 'mid' ? 'mid' : 'value'
             const next = { ...draft }
-            for (const { name, value } of values) next[name] = { ...next[name], [field]: value }
+            for (const { name, value, count } of values) {
+              next[name] = target === 'mid'
+                // ★ 중간집계와 친 횟수는 같은 캡처에서 나온 짝이라 같이 갈아 끼운다.
+                //   새 캡처에 횟수가 없으면 지운다 — 안 그러면 옛 횟수가 새 딜량 옆에
+                //   붙어 남아서 '이 딜량을 이 횟수로 냈다' 는 거짓이 된다.
+                ? { ...next[name], mid: value, midHits: count }
+                : { ...next[name], value }
+            }
             setDraft(next)
             // 캡처를 넣었으면 순위가 확 바뀐다 — 이때는 표 순서를 새로 잡아 준다
             setEditOrder(rankedNames(next, baseNames))
@@ -1111,10 +1123,21 @@ function EntryTable({
                 </td>
                 {showPrev && <td style={{ textAlign: 'right' }} className="num-tab muted">{fmt(prevValues.get(e.name))}</td>}
                 {showMid && <td style={{ textAlign: 'right' }}>{editing ? (
-                  <input type="number" value={e.mid ?? ''} placeholder="0" className="num-tab"
-                    onChange={(ev) => setField(e.name, { mid: ev.target.value === '' ? undefined : Number(ev.target.value) })}
-                    style={{ width: 120, textAlign: 'right' }} />
-                ) : (<span className="num-tab">{fmt(e.mid)}</span>)}</td>}
+                  <span className="mid-edit">
+                    <input type="number" value={e.mid ?? ''} placeholder="0" className="num-tab"
+                      onChange={(ev) => setField(e.name, { mid: ev.target.value === '' ? undefined : Number(ev.target.value) })}
+                      style={{ width: 120, textAlign: 'right' }} />
+                    {/* 친 횟수 — 캡처로 들어오지만 손으로도 고칠 수 있게 */}
+                    <input type="number" value={e.midHits ?? ''} placeholder="회" className="num-tab mid-hits-input"
+                      min={0} title="친 횟수"
+                      onChange={(ev) => setField(e.name, { midHits: ev.target.value === '' ? undefined : Number(ev.target.value) })} />
+                  </span>
+                ) : (
+                  <span className="num-tab">
+                    {fmt(e.mid)}
+                    {typeof e.midHits === 'number' && <span className="mid-hits">{e.midHits}회</span>}
+                  </span>
+                )}</td>}
                 <td style={{ textAlign: 'right' }}>{editing ? (
                   <input type="number" value={e.value ?? ''} placeholder="0" className="num-tab"
                     onChange={(ev) => setField(e.name, { value: ev.target.value === '' ? undefined : Number(ev.target.value) })}

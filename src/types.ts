@@ -137,6 +137,12 @@ export interface StatEntry {
   value?: number
   /** 파괴신 중간집계 (시즌 도중 기록) */
   mid?: number
+  /**
+   * 파괴신 중간집계 때의 **친 횟수** — 캡처의 'N회 도전' 을 읽어 온다.
+   * 중간집계 값과 같은 캡처에서 나온 짝이라, 중간집계를 캡처로 다시 넣으면 이것도
+   * 같이 갈아 끼운다(새 캡처에 횟수가 없으면 지운다 — 옛 횟수가 새 딜량 옆에 남지 않게).
+   */
+  midHits?: number
   /** 참여 여부 */
   joined?: boolean
   memo?: string

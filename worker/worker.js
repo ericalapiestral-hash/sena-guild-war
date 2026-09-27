@@ -818,6 +818,7 @@ function destroyerStats(data, seasonQuery) {
       tier: tierOf.get(e.name) ?? null,
       prev: prevMap.get(e.name) ?? null,
       mid: typeof e.mid === 'number' ? e.mid : null,
+      midHits: typeof e.midHits === 'number' ? e.midHits : null,
       value: typeof e.value === 'number' ? e.value : null,
       eff: v,
       deltaPrevPct: pctOf(prevMap.get(e.name), v),
@@ -906,13 +907,25 @@ function ocrPrompt(roster, metric = OCR_DEFAULT_METRIC) {
   const digits = m === '딜량'
     ? `\n- ${m}${eun} 자릿수가 길다. 쉼표 위치를 보고 한 자리도 빠뜨리지 말고 옮겨라. 억/만 같은 단위 글자가 붙어 있으면 실제 정수로 바꿔 적어라.`
     : ''
+  // 파괴신 화면에는 행마다 '3회 도전' 같은 작은 글씨로 **친 횟수**가 붙는다.
+  // 예전엔 딜량과 헷갈리지 말라고 '무시하라'고만 했는데, 운영진이 중간집계 옆에
+  // 그 횟수를 같이 보고 싶어 해서 따로 뽑는다. 헷갈림 방지 문장은 그대로 둔다 —
+  // 뽑는 칸만 다를 뿐 딜량 자리에 들어가면 안 된다는 건 똑같다.
+  // 공성전(점수)은 건드리지 않는다 — 쓰지도 않는 값을 요구해서 점수 판독을 흔들 이유가 없다.
+  const withCount = m === '딜량'
+  const countRule = withCount
+    ? ` 그 횟수 숫자는 따로 "count" 에 정수로 적어라. 횟수 글씨가 없는 행은 count 를 빼라.`
+    : ''
+  const example = withCount
+    ? '[{"rank":21,"name":"닉네임","score":12345678,"count":3}]'
+    : '[{"rank":21,"name":"닉네임","score":12345678}]'
   return `이 이미지는 모바일 게임의 길드원 랭킹 화면 캡처다. 순위 목록의 각 행에서 순위·닉네임·${m}${eul} 읽어라.
 
 규칙:
 - 닉네임 아래 작은 보라색 글씨(길드 이름)는 닉네임이 아니다. 무시하라.
 - 재화·기타 UI 숫자는 ${m}${i} 아니다. 각 행 오른쪽의 큰 숫자만 ${m}이다.
 - 목록 바깥(화면 위쪽 재화 표시줄, 화면 왼쪽/아래의 보스나 요약 패널)의 숫자는 절대 넣지 마라. 세로로 늘어선 순위 목록 안의 행만 대상이다.
-- '3회 도전'처럼 횟수를 뜻하는 작은 글씨는 ${m}${i} 아니다.
+- '3회 도전'처럼 횟수를 뜻하는 작은 글씨는 ${m}${i} 아니다.${countRule}
 - ${m}${eun} 쉼표를 뺀 정수로, 순위는 행 왼쪽의 번호를 정수로 적어라.${digits}
 - 이름과 숫자가 다 보이면 읽어라. 위아래가 잘려 이름이나 숫자를 알아볼 수 없는 행만 빼라.
 - ★ 가장 중요 — 목록 맨 아래에 '본인 순위' 행이 고정되어 붙어 있을 수 있다. 아래 중 하나라도 해당하면 그 행이다:
@@ -921,7 +934,7 @@ function ocrPrompt(roster, metric = OCR_DEFAULT_METRIC) {
   · 구분선으로 나뉘어 있거나 배경색이 다른 행이다
   이 행은 목록을 스크롤하면 제자리에서 다시 잡히므로 **중복이다. 절대 결과에 넣지 마라.**${list}
 
-다른 말 없이 JSON 배열만 출력하라: [{"rank":21,"name":"닉네임","score":12345678}]`
+다른 말 없이 JSON 배열만 출력하라: ${example}`
 }
 
 /** 모델별 입력 형식이 달라서 두 형식을 차례로 시도한다 */
@@ -1004,7 +1017,12 @@ function extractRows(out) {
     const score = Number(it.score)
     if (!name || !Number.isSafeInteger(score) || score < 0) continue
     const rank = Number.isSafeInteger(Number(it.rank)) && Number(it.rank) > 0 ? Number(it.rank) : undefined
-    rows.push(rank !== undefined ? { rank, name, score } : { name, score })
+    // 친 횟수 — 작은 정수여야 한다. 모델이 딜량을 여기 잘못 옮겨 적으면(수백만)
+    // 걸러지고, 딜량과 같은 값이면 한 숫자를 두 칸에 복사한 것이라 버린다.
+    const c = Number(it.count)
+    const count = Number.isSafeInteger(c) && c > 0 && c <= 999 && c !== score ? c : undefined
+    const row = rank !== undefined ? { rank, name, score } : { name, score }
+    rows.push(count !== undefined ? { ...row, count } : row)
   }
   return rows
 }

@@ -1990,6 +1990,11 @@ button.ghost:hover { background: var(--surface-2); color: var(--text); }
 
 /* 30명이 넘어도 홈이 길어지지 않게 표 안에서만 스크롤 */
 .sp-scroll { max-height: 268px; overflow-y: auto; border-top: 1px solid var(--border); }
+
+/* 파괴신 중간집계 옆 '친 횟수' — 값보다 한 단계 낮게, 숫자 폭은 맞춰서 */
+.mid-hits { margin-left: 6px; font-size: 0.74rem; font-weight: 600; color: var(--text-3); }
+.mid-edit { display: inline-flex; align-items: center; gap: 4px; }
+.mid-hits-input { width: 52px; text-align: right; }
 .sp-scroll table { font-size: 0.86rem; }
 .sp-scroll thead th {
   position: sticky;

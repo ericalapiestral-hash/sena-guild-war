@@ -41,7 +41,8 @@ export function ScoreImport({
    * 최종 집계로 잘못 들어간다. 공성전은 칸이 하나라 생략한다.
    */
   targets?: Array<{ key: string; label: string }>
-  onApply: (values: Array<{ name: string; value: number }>, target: string) => void
+  /** count 는 파괴신 중간집계 캡처에서 읽은 '친 횟수' — 없을 수 있다 */
+  onApply: (values: Array<{ name: string; value: number; count?: number }>, target: string) => void
   onClose: () => void
 }) {
   const [imgUrl, setImgUrl] = useState<string | null>(null)
@@ -147,6 +148,9 @@ export function ScoreImport({
   const dupes = [...new Set(usable.map((r) => r.matched).filter((n, i, a) => a.indexOf(n) !== i))]
   // 칸이 둘 이상일 때만 어디에 넣는지 밝힌다 (공성전은 칸이 하나라 군더더기)
   const targetLabel = targets && targets.length > 1 ? targets.find((t) => t.key === target)?.label : undefined
+  // 친 횟수는 중간집계 칸에 넣을 때만 저장한다 — 그때만 칸을 보여 준다.
+  // (최종 집계로 넣으면서 횟수 칸을 보여 주면 '읽었는데 왜 안 들어갔지' 가 된다)
+  const showCount = target === 'mid'
 
   return (
     <Modal
@@ -161,7 +165,7 @@ export function ScoreImport({
             className="primary"
             disabled={usable.length === 0}
             onClick={() => {
-              onApply(usable.map((r) => ({ name: r.matched as string, value: r.score as number })), target)
+              onApply(usable.map((r) => ({ name: r.matched as string, value: r.score as number, count: r.count })), target)
               onClose()
             }}
           >
@@ -274,6 +278,7 @@ export function ScoreImport({
                   <th style={{ width: '38%' }}>읽은 줄</th>
                   <th>길드원</th>
                   <th style={{ textAlign: 'right', width: 130 }}>{metric}</th>
+                  {showCount && <th style={{ textAlign: 'right', width: 72 }} title="캡처의 'N회 도전'">횟수</th>}
                 </tr>
               </thead>
               <tbody>
@@ -321,6 +326,20 @@ export function ScoreImport({
                         style={{ width: 120, textAlign: 'right' }}
                       />
                     </td>
+                    {showCount && (
+                      <td style={{ textAlign: 'right' }}>
+                        {/* 잘못 읽었으면 여기서 고친다 — 적용하면 중간집계 옆에 그대로 붙는다 */}
+                        <input
+                          type="number"
+                          className="num-tab"
+                          min={0}
+                          value={r.count ?? ''}
+                          placeholder="—"
+                          onChange={(e) => setRow(i, { count: e.target.value === '' ? undefined : Number(e.target.value) })}
+                          style={{ width: 60, textAlign: 'right' }}
+                        />
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
