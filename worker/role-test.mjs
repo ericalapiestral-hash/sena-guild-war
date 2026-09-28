@@ -5,8 +5,11 @@ const R = process.argv[2] || 'r1'
 let pass = 0, fail = 0
 const ok = (n, c, x = '') => { c ? (pass++, console.log('  PASS  ' + n)) : (fail++, console.log('  FAIL  ' + n + (x ? '  <- ' + x : ''))) }
 
+// 호출마다 다른 가상 IP — 워커의 IP 단위 호출 제한에 기능 테스트가 걸리지 않게 (sec-test.mjs 참고)
+let ipSeq = 0
 const call = async (p, { method = 'POST', body, token, admin } = {}) => {
-  const h = { 'content-type': 'application/json' }
+  ipSeq++
+  const h = { 'content-type': 'application/json', 'cf-connecting-ip': `10.250.${(ipSeq >> 8) & 255}.${ipSeq & 255}` }
   if (token) h.authorization = 'Bearer ' + token
   if (admin) h['x-admin-pw'] = Buffer.from(PW, 'utf8').toString('base64')
   const r = await fetch(B + p, { method, headers: h, body: body === undefined ? undefined : JSON.stringify(body) })

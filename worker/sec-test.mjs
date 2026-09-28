@@ -1,5 +1,14 @@
 // 보안 패치 회귀 테스트 — wrangler dev --local 에 대고 실제 요청을 쏜다.
+//   cd worker && npx wrangler dev --local --port 8799 --var ADMIN_PW:testpw
+//   node sec-test.mjs <실행마다 다른 글자>
 const B = process.env.BASE || 'http://127.0.0.1:8799'
+// ★ 로컬 말고는 절대 안 돈다. 첫 동작이 로그인 검사 끄기이고 이어서 /data 에 테스트
+//   명단을 덮어쓴다 — BASE 를 운영 주소로 두고 돌리면 실제 명단이 사라진다.
+//   (2026-08-14 에 테스트가 운영 데이터를 덮은 사고가 이미 한 번 있었다)
+if (!['127.0.0.1', 'localhost'].includes(new URL(B).hostname)) {
+  console.error('BASE 가 로컬이 아닙니다: ' + B + ' — 이 테스트는 데이터를 덮어써서 로컬에서만 돌립니다.')
+  process.exit(2)
+}
 const PW = 'testpw'
 const R = process.argv[2] || 'a'   // 실행마다 다른 이름 (로컬 KV 가 남아서)
 let pass = 0, fail = 0
@@ -9,14 +18,21 @@ const ok = (name, cond, extra = '') => {
   else { fail++; console.log('  FAIL  ' + name + (extra ? '  <- ' + extra : '')) }
 }
 
-const call = async (path, { method = 'POST', body, token, admin } = {}) => {
-  const h = { 'content-type': 'application/json' }
+// ★ 호출마다 다른 가상 IP 로 보낸다. 워커가 IP 단위로 호출을 제한하므로(RL_AUTH·RL_CRED),
+//   한 IP 로 몰아 보내면 기능 테스트가 제한에 걸린다. 로컬 런타임은 이 헤더를 그대로
+//   넘기고, 운영에서는 Cloudflare 가 덮어쓰므로 위조 통로가 아니다.
+//   제한 자체를 보는 테스트는 ip 를 고정해서 보낸다.
+let ipSeq = 0
+const nextIp = () => { ipSeq++; return `10.${(ipSeq >> 16) & 255}.${(ipSeq >> 8) & 255}.${ipSeq & 255}` }
+const call = async (path, { method = 'POST', body, token, admin, adminPw, ip, origin } = {}) => {
+  const h = { 'content-type': 'application/json', 'cf-connecting-ip': ip || nextIp() }
+  if (origin) h.origin = origin
   if (token) h.authorization = 'Bearer ' + token
-  if (admin) h['x-admin-pw'] = Buffer.from(PW, 'utf8').toString('base64')
+  if (admin || adminPw) h['x-admin-pw'] = Buffer.from(adminPw || PW, 'utf8').toString('base64')
   const r = await fetch(B + path, { method, headers: h, body: body === undefined ? undefined : JSON.stringify(body) })
   let j = null
   try { j = await r.json() } catch { /* 본문 없음 */ }
-  return { s: r.status, j }
+  return { s: r.status, j, h: r.headers }
 }
 
 const roster = (extra = []) => ({
@@ -34,7 +50,12 @@ const roster = (extra = []) => ({
 
 console.log('\n== 준비: 검사 꺼진 상태에서 명단 심기 ==')
 await call('/auth/enable', { body: { on: false }, admin: true })
-ok('명단 저장', (await call('/data', { body: roster() })).s === 200)
+// ★ 로컬 KV 는 실행 사이에 남고, 워커는 이제 '안 보낸 칸' 을 지우지 않는다(합치기). 다른 테스트
+//   (client-test 등)가 남긴 카운터가 살아 있으면 뒤의 길드원 저장이 '대량 삭제' 로 걸린다 —
+//   공유 칸을 빈 배열로 명시해서 비우고 시작한다.
+ok('명단 저장 (공유 칸 비우고 시작)', (await call('/data', {
+  body: { data: { ...roster().data, counters: [], hiddenCounterIds: [], savedDecks: [], defenseSetups: [], attackTargets: [], siegeGuides: [] } },
+})).s === 200)
 // 로컬 KV 는 실행 사이에 남는다 — 관리자 목록을 영구 관리자만 남기고 턴다
 await call('/auth/admins', { body: { ids: [] }, admin: true })
 
@@ -192,10 +213,13 @@ ok('★ 해제된 아이디의 토큰 → 401', (await call('/data', { method: '
 console.log('\n== 로그인 시도 제한 ==')
 let got429 = false
 for (let i = 0; i < 13; i++) {
-  const r = await call('/auth/login', { body: { name: '길마' + R, pw: 'wrong' + i } })
+  // 같은 곳에서 같은 닉으로 — 제한은 '어디서 + 누구' 단위다
+  const r = await call('/auth/login', { body: { name: '길마' + R, pw: 'wrong' + i }, ip: '10.200.0.1' })
   if (r.s === 429) { got429 = true; break }
 }
 ok('★ 반복 실패 시 429', got429)
+ok('다른 곳에서의 같은 닉 로그인은 막히지 않는다(남의 닉으로 잠그기 방지)',
+  (await call('/auth/login', { body: { name: '길마' + R, pw: 'wrong-x' }, ip: '10.200.0.2' })).s === 401)
 
 console.log('\n== 저장 상한 ==')
 const big = await call('/data', {
@@ -241,6 +265,239 @@ const huge = await fetch(B + '/auth/login', {
   body: JSON.stringify({ name: 'x'.repeat(40000), pw: 'y' }),
 })
 ok('★ 과대 본문 로그인 → 413', huge.status === 413, 'status=' + huge.status)
+
+console.log('\n== 3차 패치: 비번 규칙·관리자 관문 ==')
+// ★ 각 테스트가 '자기 문제' 만 잡도록 짠다. 수정 전 워커에 대고 돌렸을 때, 앞 테스트의
+//   부작용(비번이 바뀌어 토큰이 죽는 등)으로 뒤 테스트가 엉뚱한 이유로 통과·실패하면
+//   그 테스트는 아무것도 증명하지 못한다. 그래서 거절돼야 할 요청은 '틀린 현재 비번' 으로
+//   보내 옛 워커에서도 비번이 바뀌지 않게 하고, 관리자 지정은 옛·새 워커 모두 받는
+//   { ids } 로 한다(add/remove 는 따로 본다).
+const i2b = await call('/auth/issue', { body: { id: 'm2' }, admin: true })
+const l2c = await call('/auth/login', { body: { name: '쫄병' + R, pw: i2b.j?.pw } })
+ok('m2 재발급 후 임시 로그인', l2c.s === 200 && l2c.j?.mustChange === true, JSON.stringify(l2c.j))
+ok('관리자로 지정(ids)', (await call('/auth/admins', { body: { ids: ['m2'] }, admin: true })).s === 200)
+ok('★ 임시 비번 상태의 사이트 관리자 → /auth/list 403',
+  (await call('/auth/list', { token: l2c.j?.token })).s === 403)
+// 현재 비번이 틀린 채로 보낸다 — 새 워커는 규칙에서 먼저 400, 옛 워커는 현재 비번에서 401
+ok('★ 현재 비번과 같은 새 비번 → 400',
+  (await call('/auth/password', { body: { pw: 'samepass9', next: 'samepass9' }, token: l2c.j?.token })).s === 400)
+ok('★ 7자 비번 → 400',
+  (await call('/auth/password', { body: { pw: 'wrong-now', next: 'abc1234' }, token: l2c.j?.token })).s === 400)
+const c2 = await call('/auth/password', { body: { pw: i2b.j?.pw, next: 'newpass2b' }, token: l2c.j?.token })
+ok('정규 비번으로 변경', c2.s === 200 && !!c2.j?.token, JSON.stringify(c2.j))
+const m2Tok = c2.j?.token
+ok('정규 비번 뒤에는 /auth/list 200', (await call('/auth/list', { token: m2Tok })).s === 200)
+
+const lst1 = await call('/auth/list', { admin: true })
+ok('★ 관리 기록이 남는다(재발급·지정)',
+  Array.isArray(lst1.j?.audit) && lst1.j.audit.some((a) => a.action === 'issue') && lst1.j.audit.some((a) => a.action === 'admins'),
+  JSON.stringify(lst1.j?.audit?.slice(0, 3)))
+ok('★ 관리 기록에 비번이 없다', Array.isArray(lst1.j?.audit) && !JSON.stringify(lst1.j.audit).includes(String(i2b.j?.pw)))
+ok('★ 마지막 로그인 시각이 보인다', (lst1.j?.members?.find((m) => m.id === 'm2')?.lastAt || 0) > 0,
+  JSON.stringify(lst1.j?.members?.find((m) => m.id === 'm2')))
+
+// 바뀐 것만 보내는 관리자 지정
+ok('관리자 해제(remove) 요청', (await call('/auth/admins', { body: { remove: ['m2'] }, admin: true })).s === 200)
+ok('★ remove 로 해제된다', !(await call('/auth/list', { admin: true })).j?.admins?.includes('m2'))
+ok('관리자 지정(add) 요청', (await call('/auth/admins', { body: { add: ['m2'] }, admin: true })).s === 200)
+ok('★ add 로 지정된다', !!(await call('/auth/list', { admin: true })).j?.admins?.includes('m2'))
+await call('/auth/admins', { body: { ids: ['m2'] }, admin: true })   // 옛 워커에서도 m2 가 관리자이게
+
+console.log('\n== 3차 패치: 검사 끄기 ==')
+{
+  const r = await call('/auth/enable', { body: { on: false }, token: m2Tok })
+  ok('★ 사이트 관리자(영구 아님)의 검사 끄기 → 403', r.s === 403, 'status=' + r.s)
+  if (r.s === 200) await call('/auth/enable', { body: { on: true }, admin: true })   // 옛 워커에서 꺼졌으면 되돌린다
+}
+const off = await call('/auth/enable', { body: { on: false }, admin: true })
+ok('★ 시크릿으로 끄면 자동 복구 시각이 붙는다', off.s === 200 && off.j?.offUntil > Date.now(), JSON.stringify(off.j))
+ok('꺼진 동안 목록에 복구 시각이 보인다', ((await call('/auth/list', { admin: true })).j?.offUntil || 0) > Date.now())
+ok('다시 켜기', (await call('/auth/enable', { body: { on: true }, admin: true })).s === 200)
+
+console.log('\n== 3차 패치: 세션 ==')
+const la = await call('/auth/login', { body: { name: '쫄병' + R, pw: 'newpass2b' } })
+ok('두 번째 기기 로그인', la.s === 200)
+ok('모든 기기 로그아웃 요청', (await call('/auth/logout-all', { token: m2Tok })).s === 200)
+ok('★ 그 뒤 첫 기기 토큰 → 401', (await call('/data', { method: 'GET', token: m2Tok })).s === 401)
+ok('★ 그 뒤 두 번째 기기 토큰도 → 401', (await call('/data', { method: 'GET', token: la.j?.token })).s === 401)
+const lb2 = await call('/auth/login', { body: { name: '쫄병' + R, pw: 'newpass2b' } })
+ok('다시 로그인하면 된다', lb2.s === 200 && (await call('/data', { method: 'GET', token: lb2.j?.token })).s === 200)
+ok('강제 로그아웃 요청(관리자)', (await call('/auth/kick', { body: { id: 'm2' }, admin: true })).s === 200)
+ok('★ 강제 로그아웃 뒤 토큰 → 401', (await call('/data', { method: 'GET', token: lb2.j?.token })).s === 401)
+const lb3 = await call('/auth/login', { body: { name: '쫄병' + R, pw: 'newpass2b' } })
+ok('강제 로그아웃은 비번을 안 바꾼다', lb3.s === 200)
+const memTok3 = lb3.j?.token
+ok('★ 영구 관리자는 사이트 관리자가 강제 로그아웃 못 한다',
+  (await call('/auth/kick', { body: { id: 'own' }, token: memTok3 })).s === 403)
+// 뒤 테스트에서는 일반 길드원으로 쓴다
+await call('/auth/admins', { body: { ids: [] }, admin: true })
+ok('m2 가 일반 길드원으로 돌아왔다', !(await call('/auth/list', { admin: true })).j?.admins?.includes('m2'))
+
+console.log('\n== 3차 패치: 공유 칸 모양 ==')
+ok('★ attackTargets 의 enemy 가 null → 400', (await call('/data', {
+  body: { data: { attackTargets: [{ id: 'a', name: 'x', enemy: null, decks: [] }] } }, token: memTok3,
+})).s === 400)
+ok('★ counters 의 updatedAt 이 숫자 → 400', (await call('/data', {
+  body: { data: { counters: [{ id: 'u', defense: [], counters: [], updatedAt: 1 }] } }, token: memTok3,
+})).s === 400)
+ok('★ defenseSetups 의 reserve 가 숫자 → 400', (await call('/data', {
+  body: { data: { defenseSetups: [{ id: 'd', name: 'x', heroes: [], reserve: 1 }] } }, token: memTok3,
+})).s === 400)
+const filled = await call('/data', {
+  body: { data: { attackTargets: [{ id: 'a', name: 'x' }], counters: [{ id: 'y' }] } }, token: memTok3,
+})
+ok('필수 배열이 빠진 항목도 저장은 된다', filled.s === 200, 'status=' + filled.s + ' ' + JSON.stringify(filled.j))
+{
+  const g = await call('/data', { method: 'GET', token: memTok3 })
+  const at = g.j?.attackTargets?.find((t) => t.id === 'a')
+  const ct = g.j?.counters?.find((c) => c.id === 'y')
+  ok('★ 빠진 enemy·decks 를 [] 로 채운다', Array.isArray(at?.enemy) && Array.isArray(at?.decks), JSON.stringify(at))
+  ok('★ 빠진 defense·counters 를 [] 로 채운다', Array.isArray(ct?.defense) && Array.isArray(ct?.counters), JSON.stringify(ct))
+}
+
+console.log('\n== 3차 패치: 대량 삭제·변경 기록 ==')
+// 운영진 저장은 이제 '안 보낸 칸' 을 지우지 않는다(합치기) — 앞 테스트가 남긴 카운터를 먼저 비운다
+await call('/data', { body: { data: { counters: [], hiddenCounterIds: [] } }, token: staffTok })
+// 화면이 만드는 새 카운터 id 는 'counter-' 로 시작한다(store.ts 의 newId). 그 밖의 새 id 는
+// 기본 카운터를 가리는 것으로 보고 한 번에 3개까지만 받는다 — 아래 '가리기' 테스트 참고.
+const five = Array.from({ length: 5 }, (_, i) => ({ id: 'counter-bk' + i + R, defense: [], counters: [] }))
+ok('카운터 5개로', (await call('/data', { body: { data: { counters: five } }, token: memTok3 })).s === 200)
+const bulk = await call('/data', { body: { data: { counters: five.slice(0, 1) } }, token: memTok3 })
+ok('★ 일반 길드원이 한 번에 4개 삭제 → 403 bulk', bulk.s === 403 && bulk.j?.code === 'bulk', JSON.stringify(bulk.j))
+ok('★ 거절 사유가 된 칸을 알려 준다(field)', bulk.j?.field === 'counters', JSON.stringify(bulk.j))
+ok('3개 삭제는 된다', (await call('/data', { body: { data: { counters: five.slice(0, 2) } }, token: memTok3 })).s === 200)
+const hide = await call('/data', { body: { data: { hiddenCounterIds: ['d1', 'd2', 'd3', 'd4'] } }, token: memTok3 })
+ok('★ 기본 카운터 4개를 한꺼번에 숨기기 → 403', hide.s === 403, 'status=' + hide.s)
+{
+  // ★ 지우지 않고 '비우기' — id 는 두고 내용만 바꾸면 삭제로 안 세던 우회로
+  const four = Array.from({ length: 4 }, (_, i) => ({ id: 'bm' + i, defense: ['가'], counters: [] }))
+  await call('/data', { body: { data: { counters: four } }, token: staffTok })
+  const blank = await call('/data', {
+    body: { data: { counters: four.map((c) => ({ id: c.id, defense: [], counters: [] })) } }, token: memTok3,
+  })
+  ok('★ 4개의 내용을 한꺼번에 비우기 → 403 bulk', blank.s === 403 && blank.j?.code === 'bulk', JSON.stringify(blank.j))
+  // ★ 기본 카운터와 같은 id 로 빈 항목을 넣어 가리기 — 기본 카운터 사전을 통째로 덮던 우회로
+  const shade = await call('/data', {
+    body: { data: { counters: [...four, ...['lounge-z1', 'lounge-z2', 'lounge-z3', 'lounge-z4'].map((id) => ({ id, defense: [], counters: [] }))] } },
+    token: memTok3,
+  })
+  ok('★ 기본 카운터 4개를 빈 항목으로 가리기 → 403 bulk', shade.s === 403 && shade.j?.code === 'bulk', JSON.stringify(shade.j))
+  const mine = await call('/data', {
+    body: { data: { counters: [...four, ...Array.from({ length: 5 }, (_, i) => ({ id: 'counter-new' + i + R, defense: [], counters: [] }))] } },
+    token: memTok3,
+  })
+  ok('화면이 만드는 새 카운터(counter-…)는 여러 개 한 번에 추가된다', mine.s === 200, JSON.stringify(mine.j))
+  // ★ 객체 칸의 문자열 원소 — 예전엔 받아 줘서, 길드원 한 명이 넣어 두면 다른 길드원의 저장이
+  //   전부 '대량 삭제' 로 거절됐다(클라이언트는 그 문자열을 버리고 보내니까)
+  ok('★ counters 에 문자열 원소 → 400', (await call('/data', {
+    body: { data: { counters: [...four, 'a', 'b', 'c', 'd'] } }, token: memTok3,
+  })).s === 400)
+  // ★ 중첩 배열의 빈 슬롯 — 홈이 슬롯마다 h.name 을 읽다 전원 TypeError 로 죽었다
+  ok('★ 카운터 덱의 heroes:[null] → 400', (await call('/data', {
+    body: { data: { counters: [...four, { id: 'counter-nz' + R, defense: [], counters: [{ heroes: [null], notes: '', confidence: '추측' }] }] } },
+    token: memTok3,
+  })).s === 400)
+}
+ok('운영진은 대량 삭제가 된다',
+  (await call('/data', { body: { data: { ...roster().data, counters: [] } }, token: staffTok })).s === 200)
+const same1 = await call('/data', { body: { data: { counters: [] } }, token: memTok3 })
+ok('★ 안 바뀐 저장은 쓰지 않는다', same1.s === 200 && same1.j?.unchanged === true, JSON.stringify(same1.j))
+{
+  const sv = await call('/data', { method: 'GET', token: staffTok })
+  const mv = await call('/data', { method: 'GET', token: memTok3 })
+  ok('★ 운영진은 변경 기록을 본다', Array.isArray(sv.j?._log) && sv.j._log.some((e) => e.by === '쫄병' + R),
+    JSON.stringify(sv.j?._log?.slice(-2)))
+  ok('★ 변경 기록이 비우기·가리기도 센다(modified)', Array.isArray(sv.j?._log) && sv.j._log.some((e) => e.modified > 0),
+    JSON.stringify(sv.j?._log?.slice(-3)))
+  ok('★ 일반 길드원에게는 변경 기록·저장 횟수가 안 간다', mv.s === 200 && !('_log' in mv.j) && !('_wb' in mv.j))
+  await call('/data', { body: { data: { ...roster().data, staffNotes: { m2: '메모' + R }, _log: [{ by: '위조' }] } }, token: staffTok })
+  const v2 = await call('/data', { method: 'GET', token: staffTok })
+  ok('★ 클라이언트가 보낸 _log 는 무시된다', !v2.j?._log?.some((e) => e.by === '위조'), JSON.stringify(v2.j?._log?.slice(-1)))
+}
+
+console.log('\n== 3차 패치: 바뀐 칸만 받아 합치기 ==')
+// 예전엔 저장이 상태 전체를 받아 통째로 바꿔서, 오래된 사본이 다른 사람의 변경을 되돌렸고
+// 점수 칸이 빈 사본(권한이 막 바뀐 탭)이 기록을 [] 로 덮었다. 이제 보낸 칸만 얹는다.
+await call('/data', { body: { data: { ...roster().data } }, token: staffTok })
+{
+  const h = await call('/data', { method: 'GET', token: staffTok })
+  ok('★ 워커가 합치기를 알린다(x-save-merge)', h.h?.get('x-save-merge') === '1', String(h.h?.get('x-save-merge')))
+  const ps = await call('/data', { body: { data: { counters: [{ id: 'counter-v1', defense: [], counters: [] }] } }, token: staffTok })
+  ok('운영진이 한 칸만 보낸 저장', ps.s === 200, JSON.stringify(ps.j))
+  const g = await call('/data', { method: 'GET', token: staffTok })
+  ok('★ 안 보낸 siegeRounds 는 그대로', g.j?.siegeRounds?.length === 1, JSON.stringify(g.j?.siegeRounds))
+  ok('★ 안 보낸 명단·운영진 메모도 그대로', g.j?.members?.length === 3 && !!g.j?.staffNotes, JSON.stringify(Object.keys(g.j || {})))
+  ok('보낸 칸은 반영된다', !!g.j?.counters?.some((c) => c.id === 'counter-v1'))
+  await call('/data', { body: { data: { counters: [], _view: 'member' } }, token: staffTok })
+  ok('옛 번들의 _view 는 저장본에 안 남는다', !('_view' in ((await call('/data', { method: 'GET', token: staffTok })).j || {})))
+}
+
+console.log('\n== 3차 패치: 영구 관리자 이름 ==')
+{
+  const rename = await call('/data', {
+    body: { data: { ...roster().data, members: roster().data.members.map((m) => (m.id === 'own' ? { ...m, name: '딴이름' } : m)) } },
+    token: staffTok,
+  })
+  ok('★ 영구 관리자 이름 바꾸기 → 403', rename.s === 403, 'status=' + rename.s)
+  const dup = await call('/data', {
+    body: { data: { ...roster().data, members: [{ id: 'fake', name: '작업하는고양이', role: '멤버', records: [] }, ...roster().data.members] } },
+    token: staffTok,
+  })
+  ok('★ 영구 관리자와 같은 이름의 가짜 엔트리 → 400', dup.s === 400, 'status=' + dup.s)
+  // ★ 명단을 통째로 비우면 전원이 잠긴다 — 영구 관리자 본인의 저장이어도 막아야 한다
+  //   (영구 관리자 보호는 '본인' 저장을 막지 않아서 [전체 초기화]가 그대로 통과했다)
+  const lo = await call('/auth/login', { body: { name: '작업하는고양이', pw: own.j?.pw } })
+  const oc = await call('/auth/password', { body: { pw: own.j?.pw, next: 'ownerpass9' }, token: lo.j?.token })
+  const ownTok = oc.j?.token
+  ok('영구 관리자 로그인', !!ownTok, JSON.stringify(oc.j))
+  const emptyOwn = await call('/data', { body: { data: { ...roster().data, members: [] } }, token: ownTok })
+  ok('★ 영구 관리자도 명단을 통째로 비울 수 없다 → 400', emptyOwn.s === 400, 'status=' + emptyOwn.s)
+  ok('명단이 그대로 남아 있다', ((await call('/data', { method: 'GET', token: staffTok })).j?.members?.length || 0) === 3)
+}
+
+console.log('\n== 3차 패치: 일별 백업 ==')
+ok('★ 일별 백업 날짜 목록(운영진)', await (async () => {
+  const r = await call('/data/daily?list=1', { method: 'GET', token: staffTok })
+  return r.s === 200 && Array.isArray(r.j?.days)
+})())
+ok('일별 백업 목록은 일반 길드원 403', (await call('/data/daily?list=1', { method: 'GET', token: memTok3 })).s === 403)
+ok('잘못된 날짜 → 400', (await call('/data/daily?day=../x', { method: 'GET', token: staffTok })).s === 400)
+
+console.log('\n== 3차 패치: 명단에서 빠진 사람의 비번 변경 ==')
+await call('/data', { body: { data: { ...roster().data, members: roster().data.members.filter((m) => m.id !== 'm2') } }, token: staffTok })
+ok('★ 명단에서 빠진 사람의 비번 변경 → 403',
+  (await call('/auth/password', { body: { pw: 'newpass2b', next: 'newpass2c' }, token: memTok3 })).s === 403)
+await call('/data', { body: roster(), token: staffTok })   // 원복
+const lb4 = await call('/auth/login', { body: { name: '쫄병' + R, pw: 'newpass2b' } })
+const memTok4 = lb4.j?.token
+
+console.log('\n== 3차 패치: /ocr 본문 방어 ==')
+ok('★ /ocr 에 JSON null → 400 (500 아님)',
+  (await call('/ocr', { body: null, token: memTok4, origin: 'http://localhost:5199' })).s === 400)
+
+console.log('\n== 3차 패치: 호출 제한 (같은 곳에서 퍼붓기) ==')
+{
+  let s429 = false
+  for (let i = 0; i < 7; i++) {
+    const r = await call('/auth/list', { adminPw: 'wrong' + i, ip: '10.201.0.1' })
+    if (r.s === 429) { s429 = true; break }
+  }
+  ok('★ 틀린 시크릿을 퍼부으면 429', s429)
+  ok('★ 한도를 넘긴 뒤에는 맞는 시크릿도 429(비교 자체를 안 한다)',
+    (await call('/auth/list', { admin: true, ip: '10.201.0.1' })).s === 429)
+  let a429 = false
+  for (let i = 0; i < 35; i++) {
+    const r = await call('/auth/login', { body: { name: '' }, ip: '10.202.0.1' })
+    if (r.s === 429) { a429 = true; break }
+  }
+  ok('★ /auth/* 를 퍼부으면 429', a429)
+  let w429 = false
+  for (let i = 0; i < 70; i++) {
+    const r = await call('/data', { body: { data: { counters: [] } }, token: memTok4 })
+    if (r.s === 429) { w429 = true; break }
+  }
+  ok('★ 한 사람이 저장을 퍼부으면 429', w429)
+}
 
 console.log(`\n결과: ${pass} PASS / ${fail} FAIL`)
 process.exit(fail ? 1 : 0)
