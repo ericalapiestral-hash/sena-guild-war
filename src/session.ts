@@ -111,9 +111,13 @@ export function onAuthLost(fn: Listener): () => void {
   listeners.add(fn)
   return () => { listeners.delete(fn) }
 }
-/** store 의 pull/push 가 401·403 을 만나면 부른다 */
-export function authLost(reason: 'login' | 'gone') {
-  clearSession()
+/**
+ * store 의 pull/push 가 401·403 을 만나면 부른다.
+ * keepToken — 임시 비번 상태(mustchange)처럼 '로그인 화면으로 가되 토큰은 살려 둘' 때.
+ * 그 토큰이 있어야 새 비번 화면에서 비번을 바꿀 수 있다.
+ */
+export function authLost(reason: 'login' | 'gone', opts: { keepToken?: boolean } = {}) {
+  if (!opts.keepToken) clearSession()
   for (const fn of listeners) fn(reason)
 }
 
@@ -127,6 +131,20 @@ export function clearSession() {
   // 칸(점수·커트라인·운영진 메모)이 브라우저에 남아 다음 사람 화면에 그대로 그려진다.
   write('sena-guild-war:v1', '')
   write('sena-guild-war:rev', '')
+  write('sena-guild-war:view', '')   // 사본의 출처 표시 (store.ts 의 VIEW_KEY)
+}
+
+/**
+ * 모든 기기에서 로그아웃 — 이 계정으로 나간 토큰을 워커에서 전부 끊는다.
+ * 로그아웃 버튼은 이 브라우저만 지워서, 잃어버린 폰이나 공용 PC 의 토큰은 30일 동안
+ * 그대로 살아 있었다. 서버 호출이 실패해도 이 브라우저는 지운다.
+ */
+export async function logoutAll(): Promise<void> {
+  try {
+    await post('/auth/logout-all', {}, authHeaders())
+  } finally {
+    clearSession()
+  }
 }
 
 async function post(path: string, body: unknown, extra: Record<string, string> = {}) {
@@ -181,17 +199,47 @@ export type IdRow = {
   /** 영구 최고권한 — 화면에서 해제할 수 없다 */
   owner: boolean
   hasId: boolean; tmp: boolean; at: number | null
+  /** 마지막 로그인 시각 — 계정이 도용됐는지 볼 수 있게 */
+  lastAt: number | null
 }
-export type IdList = { on: boolean; owner: string | null; admins: string[]; members: IdRow[]; orphans: string[] }
+/** 관리자 행동 기록 한 줄 (재발급·해제·관리자 지정·검사 켜고 끄기·강제 로그아웃) */
+export type AuditRow = { at: number; by: string; action: string; target?: string }
+export type IdList = {
+  on: boolean
+  /** 꺼져 있으면 저절로 다시 켜지는 시각 */
+  offUntil: number | null
+  owner: string | null; admins: string[]; members: IdRow[]; orphans: string[]
+  /** 명단에 없는 관리자 id — 힘은 없지만 목록에 남아 있는 것 */
+  ghostAdmins: string[]
+  audit: AuditRow[]
+  /** 이름이 겹친 길드원 — 로그인이 이름으로 사람을 찾아서 이 사람들은 못 들어온다 */
+  dupNames: string[]
+}
 
 export async function listIds(): Promise<IdList> {
   const r = await fetch(`${base()}/auth/list`, { method: 'POST', headers: adminHeaders() })
-  return await unwrap(r) as IdList
+  const j = await unwrap(r) as Partial<IdList>
+  // 옛 워커는 새 칸을 안 준다 — 화면이 undefined 를 만지지 않게 채운다
+  return {
+    on: !!j.on, offUntil: j.offUntil ?? null, owner: j.owner ?? null,
+    admins: j.admins ?? [], orphans: j.orphans ?? [], ghostAdmins: j.ghostAdmins ?? [],
+    audit: j.audit ?? [], dupNames: j.dupNames ?? [],
+    members: (j.members ?? []).map((m) => ({ ...m, lastAt: m.lastAt ?? null })),
+  }
 }
 
-/** 사이트 관리자 명단을 통째로 바꾼다 */
-export async function setSiteAdmins(ids: string[]) {
-  await post('/auth/admins', { ids }, adminHeaders())
+/**
+ * 사이트 관리자를 올리고 내린다 — **바뀐 것만** 보낸다.
+ * 예전엔 목록을 통째로 보내서, 페이지를 연 뒤 다른 관리자가 한 변경이 오래된 사본으로
+ * 조용히 되돌아갔다.
+ */
+export async function changeSiteAdmins(change: { add?: string[]; remove?: string[] }) {
+  await post('/auth/admins', { add: change.add ?? [], remove: change.remove ?? [] }, adminHeaders())
+}
+
+/** 강제 로그아웃 — 그 사람의 모든 토큰을 끊는다. 비번은 그대로 */
+export async function kickMember(id: string) {
+  await post('/auth/kick', { id }, adminHeaders())
 }
 
 /** 아이디 발급 — 임시 비밀번호는 이때 한 번만 돌려받는다. 다시 볼 수 없다 */
@@ -204,7 +252,10 @@ export async function revokeIds(ids: string[]) {
   await post('/auth/revoke', { ids }, adminHeaders())
 }
 
-/** 로그인 검사를 켜고 끈다. 켜면 그 순간부터 아이디 없는 사람은 사이트를 못 연다 */
+/**
+ * 로그인 검사를 켜고 끈다. 켜면 그 순간부터 아이디 없는 사람은 사이트를 못 연다.
+ * 끄기는 영구 관리자·워커 시크릿만 되고, 24시간 뒤 저절로 다시 켜진다(워커가 판정).
+ */
 export async function setGate(on: boolean) {
   await post('/auth/enable', { on }, adminHeaders())
 }

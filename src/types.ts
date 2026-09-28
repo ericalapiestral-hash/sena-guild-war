@@ -437,4 +437,21 @@ export interface UserData {
    * 통째로 빼고 내려보내도록 최상위 칸으로 따로 뒀다.
    */
   staffNotes?: Record<string, string>
+  /**
+   * 변경 기록 — 워커가 저장할 때마다 붙인다(최근 100건). 운영진에게만 내려온다.
+   * 화면에서 읽기만 한다. 보내도 워커가 무시하고 자기 값으로 덮는다.
+   */
+  _log?: DataLogEntry[]
+}
+
+/** 공유 데이터 변경 기록 한 줄 — 누가 언제 어느 칸을 바꿨고 항목이 몇 개 늘고 줄었나 */
+export interface DataLogEntry {
+  at: number
+  by: string
+  id: string | null
+  fields: string[]
+  removed: number
+  added: number
+  /** 있던 항목의 내용을 바꾸거나 기본 카운터를 가린 수 — '지우지 않고 비우기' 도 여기 잡힌다 */
+  modified: number
 }

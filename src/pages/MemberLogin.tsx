@@ -43,7 +43,10 @@ export function MemberLoginPage({ reason, onDone }: {
 
   async function doChange(e: React.FormEvent) {
     e.preventDefault()
-    if (next.length < 6) { setErr('비밀번호는 6자 이상으로 해주세요.'); return }
+    // 워커도 같은 규칙으로 막는다(PW_MIN). 여기서는 왕복 전에 알려 주기만 한다.
+    if (next.length < 8) { setErr('비밀번호는 8자 이상으로 해주세요.'); return }
+    // 임시 비번을 그대로 쓰면 운영진이 아는 비번이 남는다 — 이 화면이 막으려던 상태다
+    if (next === pw) { setErr('임시 비밀번호와 다르게 정해주세요.'); return }
     if (next !== next2) { setErr('새 비밀번호가 서로 달라요.'); return }
     setBusy(true); setErr('')
     try {
@@ -72,7 +75,7 @@ export function MemberLoginPage({ reason, onDone }: {
               본인만 아는 것으로 바꿔야 다른 사람이 못 들어옵니다.
             </p>
             <form onSubmit={doChange}>
-              <label className="login-label">새 비밀번호 (6자 이상)</label>
+              <label className="login-label">새 비밀번호 (8자 이상)</label>
               <PasswordInput value={next} onChange={setNext} autoFocus autoComplete="new-password" />
               <label className="login-label">한 번 더</label>
               <PasswordInput value={next2} onChange={setNext2} autoComplete="new-password" />

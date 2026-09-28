@@ -13,7 +13,7 @@ import { WarDefensePage } from './pages/WarDefense'
 import { WarAttackPage } from './pages/WarAttack'
 import { isAdmin } from './auth'
 import { MemberLoginPage } from './pages/MemberLogin'
-import { clearSession, isLoggedIn, isStaff, onAuthLost, onRoleChange } from './session'
+import { clearSession, isLoggedIn, isStaff, logoutAll, onAuthLost, onRoleChange } from './session'
 import { clearSaveError, useGuildName, useSaveError } from './store'
 
 interface MenuItem {
@@ -163,6 +163,7 @@ function Sidebar({
   onToggleTheme,
   onToggle,
   onLogout,
+  onLogoutAll,
 }: {
   items: MenuItem[]
   active: string
@@ -174,6 +175,8 @@ function Sidebar({
   onToggleTheme: () => void
   onToggle: () => void
   onLogout: () => void
+  /** 모든 기기에서 로그아웃 — 잃어버린 폰·공용 PC 에 남은 로그인까지 끊는다 */
+  onLogoutAll: () => void
 }) {
   const navRef = useRef<HTMLElement | null>(null)
   const [ind, setInd] = useState<{ y: number; h: number } | null>(null)
@@ -285,6 +288,13 @@ function Sidebar({
             <span className="side-label">로그아웃</span>
           </button>
         )}
+        {loggedIn && (
+          <button className="side-item side-lock" onClick={onLogoutAll} aria-label="모든 기기에서 로그아웃"
+            {...flyoutProps('모든 기기에서 로그아웃')}>
+            <Icon name="users" className="ic" />
+            <span className="side-label">모든 기기 로그아웃</span>
+          </button>
+        )}
       </div>
 
       {/* 이름표는 사이드바 안이 아니라 밖에 둔다 — .side-nav의 세로 스크롤에 가로로 잘리지 않게 */}
@@ -342,6 +352,25 @@ export default function App() {
     location.reload()   // 메모리에 남은 상태까지 확실히 턴다
   }
 
+  /**
+   * 모든 기기에서 로그아웃.
+   * 위 로그아웃은 이 브라우저만 지운다 — 토큰은 서버에 상태가 없는 30일짜리라, 잃어버린
+   * 폰이나 공용 PC 에 남은 로그인은 그대로 살아 있었다. 워커가 세션 버전을 올려 전부 끊는다.
+   */
+  async function doLogoutAll() {
+    if (!confirm('이 계정으로 로그인해 둔 모든 기기(폰·PC)에서 로그아웃합니다. 할까요?')) return
+    try {
+      await logoutAll()
+    } catch (e) {
+      // ★ 조용히 넘어가면 안 된다 — 다른 기기의 로그인이 그대로 살아 있는데 끊긴 줄 알게 된다.
+      //   이 브라우저는 logoutAll 의 finally 가 지운다.
+      alert(`다른 기기에서는 로그아웃하지 못했어요: ${e instanceof Error ? e.message : String(e)}\n`
+        + '이 기기에서만 로그아웃됐습니다. 다시 로그인한 뒤 한 번 더 시도하거나, 관리자에게 강제 로그아웃을 부탁하세요.')
+    }
+    location.hash = '#/home'
+    location.reload()
+  }
+
   // 로그인이 풀리면 사이트 전체를 가린다 — 읽기도 막는 게 목적이라 화면부터 덮는다.
   //
   // ★ 토큰이 없으면 워커 응답을 기다리지 않고 그 자리에서 막는다(fail-closed).
@@ -365,6 +394,7 @@ export default function App() {
         onToggleTheme={toggleTheme}
         onToggle={toggleSide}
         onLogout={doLogout}
+        onLogoutAll={() => void doLogoutAll()}
       />
 
       {/* 모바일 상단 앱바 */}
@@ -462,6 +492,12 @@ export default function App() {
                 <button className="sheet-item" onClick={() => { doLogout(); setSheet(false) }}>
                   <Icon name="lock" className="ic" />
                   로그아웃
+                </button>
+              )}
+              {isLoggedIn() && (
+                <button className="sheet-item" onClick={() => { setSheet(false); void doLogoutAll() }}>
+                  <Icon name="users" className="ic" />
+                  모든 기기에서 로그아웃
                 </button>
               )}
             </div>
