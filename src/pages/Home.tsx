@@ -6,8 +6,8 @@ import {
 import { navigate } from '../router'
 import { DeckNames } from '../components/HeroSelect'
 import {
-  Delta, WEEKDAYS, cutlineFor, effOf, fmt, lastFilled, latestDayWithData, midCompare, midShown, perHit, tierMap,
-  tierShort, weekTotals,
+  Delta, WEEKDAYS, byRank, cutlineFor, destroyerRanker, effOf, fmt, lastFilled, latestDayWithData, midCompare,
+  midShown, perHit, tierMap, tierShort, weekTotals,
 } from '../lib/stat'
 
 const LINKS: Array<{ route: string; label: string; desc: string }> = [
@@ -118,6 +118,11 @@ function PreviewTable({
     tier?: string
     /** 이름 옆에 붙일 짧은 꼬리표 (주간 합계의 '3/7' 참여 일수) */
     note?: string
+    /**
+     * 순위를 직접 줄 때 — null 이면 '-'(순위 없음). 안 주면 줄 순서(i + 1).
+     * 파괴신 시즌 도중에 횟수가 없는 사람은 1회 점수가 없어 순위를 안 매긴다.
+     */
+    rank?: number | null
     /** 합계·입력 인원을 세는 값 */
     value?: number
     /**
@@ -167,7 +172,7 @@ function PreviewTable({
               <tbody>
                 {rows.map((r, i) => (
                   <tr key={r.name} className={r.fail ? 'row-fail' : ''}>
-                    <td><b>{typeof r.value === 'number' ? i + 1 : '-'}</b></td>
+                    <td><b>{r.rank !== undefined ? (r.rank ?? '-') : typeof r.value === 'number' ? i + 1 : '-'}</b></td>
                     <td className={r.fail ? 'cell-fail' : ''}>
                       {r.name}
                       {r.tier && <span className="sp-tier">{tierShort(r.tier)}</span>}
@@ -289,15 +294,20 @@ function DestroyerPreview({ rounds, members, guide }: { rounds: StatRound[]; mem
 
   const prevEntries = new Map((prevRound?.entries ?? []).map((e) => [e.name, e]))
 
-  // 시즌 도중이면 최종이 없고 중간집계만 있으므로 그것으로 순위를 낸다
-  // (순위·합계·커트라인은 총 딜량 — 게임 순위와 커트라인이 총계 기준이다)
-  const rows = (round?.entries ?? [])
+  // 순위는 [파괴신] 표와 같은 기준(destroyerRanker) — 시즌 도중엔 **1회 점수 높은 순**.
+  // 합계·커트라인은 총 딜량(v) 그대로다.
+  const visible = (round?.entries ?? []).filter((e) => typeof effOf(e, true) === 'number' && !hidden.has(e.name))
+  const ranker = destroyerRanker(visible)
+  const sorted = [...visible].sort(byRank(ranker.key))
+  const rankOf = (e: StatEntry): number | null => {
+    const k = ranker.key(e)
+    return typeof k === 'number' ? sorted.filter((o) => (ranker.key(o) ?? -Infinity) > k).length + 1 : null
+  }
+  const rows = sorted
     .map((e) => ({ e, v: effOf(e, true) }))
-    .filter((x) => typeof x.v === 'number' && !hidden.has(x.e.name))
-    .sort((a, b) => (b.v as number) - (a.v as number))
     .map(({ e, v }) => {
       const cut = round ? cutlineFor(round, e.name, { tierOf, guide }) : undefined
-      const base = { name: e.name, tier: tierOf.get(e.name), value: v, fail: typeof cut === 'number' && (v as number) <= cut }
+      const base = { name: e.name, tier: tierOf.get(e.name), rank: rankOf(e), value: v, fail: typeof cut === 'number' && (v as number) <= cut }
       if (typeof e.value === 'number') return { ...base, prev: prevValues.get(e.name) }
       // 중간집계만 있는 사람 — 1회 점수로 보이고, 등락은 **전 시즌 중간집계**와 같은 단위로.
       // (예전엔 전 시즌 최종 총계와 견줘서 시즌 도중엔 전원이 크게 떨어진 것처럼 나왔다)

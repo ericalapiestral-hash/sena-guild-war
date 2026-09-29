@@ -850,6 +850,12 @@ h2 { font-size: 1.18rem; letter-spacing: -0.028em; margin: 28px 0 10px; font-wei
 .print-root .print-table th:first-child, .print-root .print-table td:first-child { text-align: center; width: 40px; }
 .print-root .print-table th:nth-child(2), .print-root .print-table td:nth-child(2) { text-align: left; }
 .print-root .print-table th:nth-child(n+3), .print-root .print-table td:nth-child(n+3) { text-align: right; }
+/* 본문 칸은 전부 한 줄로 — '1,763,668 (3회)' 의 '(3회)' 만 다음 줄로 떨어졌다.
+   숫자 칸만 막으면 남은 폭을 이름 칸이 떠안아 '가/가' 처럼 한 글자씩 꺾였다.
+   표가 600px 를 넘으면 이미지 저장이 캡처 폭을 표에 맞춰 넓힌다(saveImage). 머리줄은 꺾여도 된다. */
+.print-root .print-table td { white-space: nowrap; }
+/* 머리줄은 띄어쓰기에서만 꺾는다 — 표가 최소 폭으로 잡히면 '길/드/원' 처럼 한 글자씩 꺾였다 */
+.print-root .print-table th { word-break: keep-all; }
 .print-root .print-table thead th { background: #eee !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 .print-root .print-table td.cell-fail { background: #f4bfba !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 @media print {

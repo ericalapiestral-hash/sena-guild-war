@@ -1036,6 +1036,21 @@ function midCompareOf(prev, cur) {
   return {}
 }
 
+/** 파괴신 순위 기준값 — 사이트 lib/stat.tsx 의 destroyerRanker 와 같은 규칙 */
+function destroyerRankerOf(entries) {
+  if (entries.some((e) => typeof e.value === 'number')) {
+    return { mode: 'final', key: (e) => (typeof e.value === 'number' ? e.value : typeof e.mid === 'number' ? e.mid : undefined) }
+  }
+  if (entries.some((e) => perHitOf(e) !== undefined)) return { mode: 'perHit', key: perHitOf }
+  return { mode: 'midTotal', key: (e) => (typeof e.mid === 'number' ? e.mid : undefined) }
+}
+
+/** 순위 기준값 내림차순 — 사이트 lib/stat.tsx 의 byRank 와 같은 규칙 */
+function byRankOf(key) {
+  const total = (e) => (typeof e.value === 'number' ? e.value : typeof e.mid === 'number' ? e.mid : -Infinity)
+  return (a, b) => ((key(b) ?? -Infinity) - (key(a) ?? -Infinity)) || (total(b) - total(a)) || 0
+}
+
 /** 배열이면 객체 원소만 남기고, 아니면 빈 배열 — 오염된 공유 데이터로 API가 죽지 않게 */
 function objArray(v) {
   return Array.isArray(v) ? v.filter((x) => x && typeof x === 'object' && !Array.isArray(x)) : []
@@ -1161,15 +1176,22 @@ function destroyerStats(data, seasonQuery) {
     const tc = t !== undefined ? tierCuts[t] : undefined
     return typeof tc === 'number' ? tc : typeof round.cutline === 'number' ? round.cutline : null
   }
-  const list = rosterOrdered(
+  const candidates = rosterOrdered(
     objArray(round.entries).filter((e) => typeof e.name === 'string' && eff(e) !== null),
     members,
-  ).sort((a, b) => eff(b) - eff(a))
-  const entries = list.map((e, i) => {
+  )
+  // 순위는 사이트 표와 같은 기준 — 시즌 도중엔 1회 점수 높은 순, 횟수 없는 사람은 rank null
+  const ranker = destroyerRankerOf(candidates)
+  const list = [...candidates].sort(byRankOf(ranker.key))
+  const rankOf = (e) => {
+    const k = ranker.key(e)
+    return typeof k === 'number' ? list.filter((o) => (ranker.key(o) ?? -Infinity) > k).length + 1 : null
+  }
+  const entries = list.map((e) => {
     const v = eff(e)
     const cut = cutFor(e.name)
     return {
-      rank: i + 1,
+      rank: rankOf(e),
       name: e.name,
       tier: tierOf.get(e.name) ?? null,
       prev: prevMap.get(e.name) ?? null,
@@ -1198,6 +1220,8 @@ function destroyerStats(data, seasonQuery) {
     body: {
       ok: true,
       kind: 'destroyer',
+      // 순위 기준: final(최종) · perHit(중간집계 1회 점수) · midTotal(횟수 없는 옛 시즌 — 총계)
+      rankBy: ranker.mode,
       season: round.label,
       prevSeason: prev ? prev.label : null,
       cutline: typeof round.cutline === 'number' ? round.cutline : null,

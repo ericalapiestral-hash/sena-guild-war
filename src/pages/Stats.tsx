@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import type { ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import html2canvas from 'html2canvas'
 import type { CutlineGuide, StatEntry, StatRound, UserData } from '../types'
@@ -9,7 +10,8 @@ import { isAdmin } from '../auth'
 import { Markdown } from '../components/Markdown'
 import { DESTROYER_GUIDES } from '../data/destroyerGuide'
 import {
-  Diff, RankMove, WEEKDAYS, fmt, midCompare, midUnit, perHit, tierShort, todayWeekday, weekRankMap, weekTotals,
+  Diff, RankMove, WEEKDAYS, byRank, destroyerRanker, fmt, midCompare, midUnit, perHit, tierShort, todayWeekday,
+  weekRankMap, weekTotals,
 } from '../lib/stat'
 import { ScoreImport } from '../components/ScoreImport'
 
@@ -183,6 +185,11 @@ export function StatsPage({ kind }: { kind: Kind }) {
     document.body.appendChild(wrap)
     try {
       try { await document.fonts.ready } catch { /* noop */ }
+      // 숫자 칸은 줄 바꿈을 막아 뒀으므로(styles.css) 칸이 많으면 표가 600px 를 넘는다.
+      // 그대로 찍으면 머리줄·밑줄은 600px 에서 끊기고 표만 삐져나간다 — 폭을 표에 맞춘다.
+      const tables = [...clone.querySelectorAll('table')] as HTMLElement[]
+      const need = Math.max(0, ...tables.map((t) => t.scrollWidth))
+      if (need > clone.clientWidth) wrap.style.width = `${need + 40}px`
       // 캡처 크기를 표 전체 크기로 명시 — 기본값은 '브라우저 창' 크기라
       // 인원이 많아 표가 창보다 길면 아래가 잘림 (30명 이상에서 발생)
       const w = Math.ceil(wrap.scrollWidth)
@@ -729,16 +736,43 @@ function PrintContent({
     )
   }
 
-  // 파괴신 — 전 시즌 · 이번 시즌 · 상승% 한 표에
-  const curRanked = buildRanked(roster, current.entries, hidden)
+  // 파괴신 — '이번 시즌 → 전 시즌 → 차이' 순서로 (2026-09-29, 운영진 요청)
+  //   [시즌집계]  이번 시즌 집계 | 전 시즌 집계 | 시즌집계 대비
+  //   [중간집계]  이번 시즌 중간 | 전 시즌 중간 | 중간집계 대비
+  // 최종이 있으면 시즌집계 묶음이 앞, 시즌 도중(최종 없음)이면 중간집계 묶음이 앞이다.
+  // ★ 칸마다 **그 칸에 값이 있는지**로 따로 켠다. 처음엔 묶음째 끄고 켰는데, 시즌 도중에
+  //   시즌집계 묶음을 통째로 빼니 **전 시즌 집계**(전원 값이 있는 칸)까지 사라져서,
+  //   전 시즌에 횟수 기록이 없는 동안(2026-09-28 전 시즌 전부)은 이미지에 전 시즌 숫자가
+  //   하나도 안 남았다. 전원 '-' 이거나 전원 '—' 인 칸만 뺀다 — 폭만 먹어서 600px
+  //   이미지에서 숫자가 줄 바꿈되던 원인이기도 하다.
+  const shown = buildRanked(roster, current.entries, hidden)
+  // 순위는 화면 표와 같은 기준 — 시즌 도중엔 1회 점수 높은 순 (destroyerRanker)
+  const ranker = destroyerRanker(shown)
+  const curRanked = [...shown].sort(byRank(ranker.key))
+  const rankOf = (e: StatEntry): number | undefined => {
+    const v = ranker.key(e)
+    if (typeof v !== 'number') return undefined
+    return curRanked.filter((o) => (ranker.key(o) ?? -Infinity) > v).length + 1
+  }
   const prevMap = new Map(
     (prevRound?.entries ?? []).filter((e) => typeof e.value === 'number').map((e) => [e.name, e.value as number]),
   )
   // 중간집계 대비용 — 전 시즌 중간집계와 그때 친 횟수
   const prevEntryMap = new Map((prevRound?.entries ?? []).map((e) => [e.name, e]))
+  const midCmp = (e: StatEntry) => midCompare(prevEntryMap.get(e.name), e)
   const curTotal = curRanked.reduce((s, e) => s + (effValue(e) as number), 0)
+  const hasFinal = curRanked.some((e) => typeof e.value === 'number')
   const hasMid = curRanked.some((e) => typeof e.mid === 'number')
+  const prevHasFinal = curRanked.some((e) => prevMap.has(e.name))
+  const seasonComparable = curRanked.some((e) => typeof e.value === 'number' && prevMap.has(e.name))
+  const prevHasMid = curRanked.some((e) => typeof prevEntryMap.get(e.name)?.mid === 'number')
+  // 전 시즌 중간·중간집계 대비는 **같은 단위로 비교되는 사람이 하나라도 있을 때만** 켠다.
+  // 전 시즌에 횟수 기록이 없으면 이번 시즌 1회 점수 옆에 전 시즌 총계만 놓이게 되는데,
+  // 단위가 달라 견줄 수 없는 숫자를 나란히 두면 폭락처럼 읽힌다.
+  const midComparable = curRanked.some((e) => typeof midCmp(e).prev === 'number')
   const unit = midUnit(curRanked)
+  // 전 시즌 칸의 단위는 전 시즌 기록을 보고 따로 정한다
+  const prevUnit = midUnit(curRanked.map((e) => prevEntryMap.get(e.name)))
   // 커트라인 이하 미달자 — 회차에 저장된 값 → [커트라인] 기준표 → 시즌 기본값
   const tierCuts = current.tierCutlines ?? {}
   const cutFor = (name: string) => {
@@ -761,6 +795,31 @@ function PrintContent({
     return typeof gt === 'number' ? gt : undefined
   }
   const usedTiers = [...new Set(curRanked.map((e) => tierOf?.get(e.name)).filter((t): t is string => !!t && typeof tierCutOf(t) === 'number'))].sort()
+
+  // 단위 괄호는 통째로 — '(1회·' / '총)' 으로 갈라졌다
+  const unitTag = (u: string) => <span style={{ whiteSpace: 'nowrap' }}>({u})</span>
+  type Col = { key: string; head: ReactNode; cell: (e: StatEntry) => string }
+  // 화면과 같은 규칙 — 시즌집계는 최종끼리, 중간집계는 중간집계끼리(1회 점수)
+  const seasonCols: Array<Col | false> = [
+    hasFinal && { key: 'cur', head: '이번 시즌 집계', cell: (e) => fmt(e.value) },
+    prevHasFinal && { key: 'prev', head: '전 시즌 집계', cell: (e) => fmt(prevMap.get(e.name)) },
+    seasonComparable && { key: 'dSeason', head: cfg.deltaLabel, cell: (e) => diffPctText(prevMap.get(e.name), e.value) },
+  ]
+  const midCols: Array<Col | false> = [
+    hasMid && { key: 'curMid', head: <>이번 시즌 중간{unitTag(unit)}</>, cell: midPrintText },
+    hasMid && midComparable && {
+      key: 'prevMid',
+      head: <>전 시즌 중간{unitTag(prevUnit)}</>,
+      cell: (e) => { const pe = prevEntryMap.get(e.name); return pe ? midPrintText(pe) : '-' },
+    },
+    hasMid && midComparable && {
+      key: 'dMid',
+      head: '중간집계 대비',
+      cell: (e) => { const c = midCmp(e); return diffPctText(c.prev, c.cur) },
+    },
+  ]
+  const cols = (hasFinal ? [...seasonCols, ...midCols] : [...midCols, ...seasonCols]).filter((c): c is Col => !!c)
+
   return (
     <div className="print-root">
       <div className="print-head">
@@ -780,26 +839,26 @@ function PrintContent({
           {hasMid && (unit === '총'
             ? <> · 중간집계는 총 딜량(친 횟수 기록 없음)</>
             : <> · 중간집계는 1회 점수(총 딜량 ÷ 친 횟수){unit === '1회·총' && ', 횟수가 없는 사람은 총 딜량(총)'}</>)}
+          {!hasFinal && ranker.mode === 'perHit' && <> · 순위는 1회 점수 높은 순</>}
+          {/* 전 시즌 중간 칸을 뺀 이유 — 안 적으면 '왜 비교가 없지' 가 된다 */}
+          {hasMid && prevHasMid && !midComparable && <> · 전 시즌 중간집계는 친 횟수 기록이 없어 1회 점수와 비교하지 않았어요</>}
         </div>
         <table className="print-table">
-          <thead><tr><th>순위</th><th>길드원</th><th>전 시즌</th>{hasMid && <th>중간집계({unit})</th>}<th>이번 시즌 집계</th><th>{cfg.deltaLabel}</th>{hasMid && <th>중간집계 대비</th>}</tr></thead>
+          <thead>
+            <tr>
+              <th>순위</th><th>길드원</th>
+              {cols.map((c) => <th key={c.key}>{c.head}</th>)}
+            </tr>
+          </thead>
           <tbody>
-            {curRanked.map((e, i) => (
+            {curRanked.map((e) => (
               <tr key={e.name}>
-                <td>{i + 1}</td>
+                <td>{rankOf(e) ?? '-'}</td>
                 <td className={isFail(e) ? 'cell-fail' : ''}>
                   {e.name}
                   {tierOf?.get(e.name) && <span className="print-tier">{tierShort(tierOf.get(e.name))}</span>}
                 </td>
-                <td className="num-tab">{fmt(prevMap.get(e.name))}</td>
-                {hasMid && <td className="num-tab">{midPrintText(e)}</td>}
-                <td className="num-tab">{fmt(e.value)}</td>
-                {/* 화면과 같은 규칙 — 시즌집계는 최종끼리, 중간집계는 중간집계끼리(1회 점수) */}
-                <td className="num-tab">{diffPctText(prevMap.get(e.name), e.value)}</td>
-                {hasMid && <td className="num-tab">{(() => {
-                  const c = midCompare(prevEntryMap.get(e.name), e)
-                  return diffPctText(c.prev, c.cur)
-                })()}</td>}
+                {cols.map((c) => <td key={c.key} className="num-tab">{c.cell(e)}</td>)}
               </tr>
             ))}
           </tbody>
@@ -818,14 +877,15 @@ function MidCell({ e }: { e: StatEntry }) {
   const ph = perHit(e)
   if (ph !== undefined) {
     return (
-      <span className="num-tab" title={`총 ${fmt(e.mid)} ÷ ${e.midHits}회`}>
+      // nowrap — 칸이 좁아지면 '7회' 만 다음 줄로 떨어졌다
+      <span className="num-tab" style={{ whiteSpace: 'nowrap' }} title={`총 ${fmt(e.mid)} ÷ ${e.midHits}회`}>
         {fmt(ph)}<span className="mid-hits">{e.midHits}회</span>
       </span>
     )
   }
   if (typeof e.mid !== 'number') return <span className="num-tab">-</span>
   return (
-    <span className="num-tab" title="친 횟수가 없어 1회 점수를 못 냈어요 — 총 딜량입니다. [편집]에서 횟수를 넣으면 1회 점수로 바뀌어요.">
+    <span className="num-tab" style={{ whiteSpace: 'nowrap' }} title="친 횟수가 없어 1회 점수를 못 냈어요 — 총 딜량입니다. [편집]에서 횟수를 넣으면 1회 점수로 바뀌어요.">
       {fmt(e.mid)}<span className="mid-hits">총</span>
     </span>
   )
@@ -945,8 +1005,14 @@ function EntryTable({
   const midCount = rows.filter((e) => typeof e.mid === 'number').length
   const finalCount = rows.filter((e) => typeof e.value === 'number').length
   const joinedCount = rows.filter((e) => e.joined).length
-  const ranked = [...rows].sort((a, b) => (effOf(b) ?? -Infinity) - (effOf(a) ?? -Infinity))
-  const top = scored.length ? ranked[0] : undefined
+  // 순위 기준값 — 공성전은 점수 그대로, 파괴신은 destroyerRanker(시즌 도중엔 **1회 점수**).
+  // 합계·미달 판정은 위의 effOf(총계)를 그대로 쓴다.
+  const ranker = showMid ? destroyerRanker(rows) : undefined
+  const rankKey = ranker ? ranker.key : effOf
+  const ranked = [...rows].sort(ranker
+    ? byRank(ranker.key)
+    : (a, b) => (effOf(b) ?? -Infinity) - (effOf(a) ?? -Infinity))
+  const top = ranked.find((e) => typeof rankKey(e) === 'number')
 
   /**
    * 순위 숫자 — 표에 놓인 자리가 아니라 '지금 값'으로 매긴다.
@@ -955,9 +1021,9 @@ function EntryTable({
    * 동점이면 같은 순위가 나오는데, 자리 번호보다 이쪽이 사실에 가깝다.
    */
   const rankOf = (e: StatEntry): number | undefined => {
-    const v = effOf(e)
+    const v = rankKey(e)
     if (typeof v !== 'number') return undefined
-    return rows.filter((o) => (effOf(o) ?? -Infinity) > v).length + 1
+    return rows.filter((o) => (rankKey(o) ?? -Infinity) > v).length + 1
   }
 
   /**
@@ -1026,6 +1092,11 @@ function EntryTable({
 
   /** 주어진 값 기준 점수순 이름 배열 — 편집 표의 순서를 잡는 데 쓴다 */
   function rankedNames(source: Record<string, Partial<StatEntry>>, names: string[]): string[] {
+    if (showMid) {
+      // 파괴신은 보기 표와 같은 기준(destroyerRanker)으로 — 편집을 열었을 때 순서가 튀지 않게
+      const es = names.map((name) => ({ name, ...(source[name] ?? {}) } as StatEntry))
+      return es.sort(byRank(destroyerRanker(es).key)).map((e) => e.name)
+    }
     const val = (n: string) => {
       const e = source[n] ?? {}
       return typeof e.value === 'number' ? e.value : showMid && typeof e.mid === 'number' ? e.mid : undefined
@@ -1153,7 +1224,7 @@ function EntryTable({
         {showJoined && <div className="stat-tile"><div className="num">{joinedCount}</div><div className="label">참여 인원</div></div>}
         {showVerdict && <div className="stat-tile"><div className="num" style={{ color: failCount ? 'var(--danger)' : 'var(--ok)' }}>{failCount}</div><div className="label">미달 인원</div></div>}
         <div className="stat-tile"><div className="num">{fmt(total)}</div><div className="label">{metric} 합계</div></div>
-        <div className="stat-tile"><div className="num" style={{ fontSize: '1.15rem' }}>{top ? top.name : '-'}</div><div className="label">{metric} 1위 ({fmt(top ? effOf(top) : undefined)})</div></div>
+        <div className="stat-tile"><div className="num" style={{ fontSize: '1.15rem' }}>{top ? top.name : '-'}</div><div className="label">{ranker?.mode === 'perHit' ? '1회 점수' : metric} 1위 ({fmt(top ? rankKey(top) : undefined)})</div></div>
       </div>
 
       <div className="table-wrap" style={{ marginTop: 8 }}>

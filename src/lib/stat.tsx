@@ -70,8 +70,9 @@ type MidLike = { mid?: number; midHits?: number } | undefined
  * 횟수를 모르면(옛 기록·횟수 없이 손으로 넣은 값) undefined — 보여 주는 쪽이 총계로
  * 떨어뜨리고 '총' 을 붙인다(midShown).
  *
- * ★ 순위·합계·커트라인은 여전히 **총계**로 매긴다. 게임 순위가 총계 기준이고,
- *   커트라인도 시즌 총 딜량 기준이라 1회 점수와 견주면 전원이 통과해 버린다.
+ * ★ **합계·커트라인은 총계**로 본다 — 커트라인이 시즌 총 딜량 기준이라 1회 점수와
+ *   견주면 전원이 통과해 버린다. **순위는 아래 destroyerRanker** 를 따른다(시즌 도중엔
+ *   이 1회 점수 높은 순 — 총계 순으로 매겼더니 보이는 숫자가 높은 순으로 안 읽혔다).
  */
 export function perHit(e: MidLike): number | undefined {
   if (!e || typeof e.mid !== 'number' || typeof e.midHits !== 'number' || !(e.midHits > 0)) return undefined
@@ -80,6 +81,41 @@ export function perHit(e: MidLike): number | undefined {
 
 /** 중간집계를 화면에 놓을 값 — 1회 점수, 횟수를 모르면 총계 */
 export const midShown = (e: MidLike): number | undefined => perHit(e) ?? e?.mid
+
+/**
+ * 파괴신 **순위를 매길 값** — 화면 표·인쇄본(이미지)·홈 카드·워커 API 가 같이 쓴다.
+ *
+ * - 최종이 하나라도 들어간 시즌(`final`): 최종, 아직 없는 사람은 중간집계 총계 (최종을 넣는 도중)
+ * - 중간집계만 있는 시즌(`perHit`): **1회 점수.** 보이는 값이 1회 점수인데 순위를 총계로
+ *   매겼더니 표가 높은 순으로 읽히지 않았다(2026-09-29). 횟수가 없는 사람은 1회 점수가 없어
+ *   순위 없이(`-`) 아래로 간다 — 총계를 1회 점수 사이에 끼우면 단위가 섞인다.
+ * - 시즌 전체에 횟수가 하나도 없으면(`midTotal`, 2026-09-28 전 옛 시즌) 총계로 매긴다 —
+ *   안 그러면 옛 시즌 표가 통째로 순위를 잃는다.
+ *
+ * `entries` 는 **표에 실제로 올라가는 행**을 넘길 것(외부 처리로 감춘 사람 제외) — 모드가
+ * 보이는 행 기준으로 정해져야 한다.
+ * ★ 합계·커트라인 미달은 여기와 상관없이 총계다(커트라인이 시즌 총 딜량 기준이라).
+ */
+export function destroyerRanker(entries: StatEntry[]): {
+  mode: 'final' | 'perHit' | 'midTotal'
+  key: (e: StatEntry) => number | undefined
+} {
+  if (entries.some((e) => typeof e.value === 'number')) {
+    return { mode: 'final', key: (e) => (typeof e.value === 'number' ? e.value : e.mid) }
+  }
+  if (entries.some((e) => perHit(e) !== undefined)) return { mode: 'perHit', key: perHit }
+  return { mode: 'midTotal', key: (e) => e.mid }
+}
+
+/**
+ * 순위 기준값으로 내림차순 — 기준값이 없는 행은 아래로, 그 안에서는 총계 순.
+ * (-Infinity 끼리 빼면 NaN 이 되는데 sort 는 NaN 을 0 으로 본다 — 다음 기준으로 넘어간다)
+ */
+export function byRank(key: (e: StatEntry) => number | undefined) {
+  const total = (e: StatEntry) => (typeof e.value === 'number' ? e.value : e.mid) ?? -Infinity
+  return (a: StatEntry, b: StatEntry) =>
+    ((key(b) ?? -Infinity) - (key(a) ?? -Infinity)) || (total(b) - total(a)) || 0
+}
 
 /**
  * 중간집계 열 제목에 붙일 단위 — 실제로 들어 있는 값에 맞춘다.
