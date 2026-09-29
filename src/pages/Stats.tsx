@@ -745,7 +745,8 @@ function PrintContent({
               {prevRound && <> · 전 주: {prevRound.label}</>}
             </div>
             <table className="print-table">
-              <thead><tr><th>순위</th><th>변동</th><th>길드원</th><th>참여</th><th>전 주</th><th>주간 합계</th><th>점수차</th></tr></thead>
+              {/* 이번 주 → 전 주 순서 (2026-09-30, 파괴신 인쇄본과 같은 순서로) */}
+              <thead><tr><th>순위</th><th>변동</th><th>길드원</th><th>참여</th><th>주간 합계</th><th>전 주</th><th>점수차</th></tr></thead>
               <tbody>
                 {rows.map((r) => {
                   const cur = rank.get(r.name)
@@ -755,8 +756,8 @@ function PrintContent({
                       <td>{moveText(prevRank.get(r.name), cur)}</td>
                       <td>{r.name}</td>
                       <td className="num-tab">{r.played}/{WEEKDAYS.length}</td>
-                      <td className="num-tab">{fmt(prevTotal.get(r.name))}</td>
                       <td className="num-tab">{fmt(r.total)}</td>
+                      <td className="num-tab">{fmt(prevTotal.get(r.name))}</td>
                       <td className="num-tab">{diffText(prevTotal.get(r.name), r.total)}</td>
                     </tr>
                   )
@@ -797,7 +798,8 @@ function PrintContent({
               {typeof dayCut === 'number' && <> · 커트라인 {fmt(dayCut)} 이하 미달</>}
             </div>
             <table className="print-table">
-              <thead><tr><th>순위</th><th>변동</th><th>길드원</th><th>전 주</th><th>이번 주</th><th>점수차</th><th>{cfg.deltaLabel}</th><th>미참여</th></tr></thead>
+              {/* 이번 주 → 전 주 순서 (2026-09-30, 파괴신 인쇄본과 같은 순서로) */}
+              <thead><tr><th>순위</th><th>변동</th><th>길드원</th><th>이번 주</th><th>전 주</th><th>점수차</th><th>{cfg.deltaLabel}</th><th>미참여</th></tr></thead>
               <tbody>
                 {ranked.map((e, i) => {
                   const m = misses?.get(e.name)
@@ -806,8 +808,8 @@ function PrintContent({
                     <td>{i + 1}</td>
                     <td>{moveText(prevRankMap.get(e.name), i + 1)}</td>
                     <td className={isFail(e) ? 'cell-fail' : ''}>{e.name}</td>
-                    <td className="num-tab">{fmt(prevMap.get(e.name))}</td>
                     <td className="num-tab">{fmt(e.value)}</td>
+                    <td className="num-tab">{fmt(prevMap.get(e.name))}</td>
                     <td className="num-tab">{diffText(prevMap.get(e.name), e.value)}</td>
                     <td>{pctText(prevMap.get(e.name), e.value)}</td>
                     <td className="num-tab">{m ? `${m.miss}/${m.of}` : '—'}</td>
