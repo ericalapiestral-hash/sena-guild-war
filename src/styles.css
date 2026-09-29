@@ -1997,6 +1997,13 @@ button.ghost:hover { background: var(--surface-2); color: var(--text); }
 /* 30명이 넘어도 홈이 길어지지 않게 표 안에서만 스크롤 */
 .sp-scroll { max-height: 268px; overflow-y: auto; border-top: 1px solid var(--border); }
 
+/* 파괴신 출력 기준 고르기 (표 인쇄·이미지 저장 전) — 한 줄에 하나, 설명은 아래 작게 */
+.basis-list { display: grid; gap: 8px; }
+.basis-opt { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; width: 100%; padding: 12px 14px; text-align: left; }
+.basis-opt .muted { font-size: 0.8rem; font-weight: 400; line-height: 1.4; }
+.basis-opt.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.basis-opt:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
 /* 파괴신 중간집계 옆 '친 횟수' — 값보다 한 단계 낮게, 숫자 폭은 맞춰서 */
 .mid-hits { margin-left: 6px; font-size: 0.74rem; font-weight: 600; color: var(--text-3); }
 .mid-edit { display: inline-flex; align-items: center; gap: 4px; }

@@ -82,8 +82,9 @@ export function Modal({
   useEffect(() => {
     const panel = panelRef.current
     if (!panel || panel.contains(document.activeElement)) return
+    // 막힌(disabled) 칸은 건너뛴다 — 거기 focus() 는 조용히 실패해서 포커스가 모달 뒤 화면에 남았다
     const first = panel.querySelector<HTMLElement>(
-      'input:not([disabled]), textarea, select, button:not(.modal-x)',
+      'input:not([disabled]), textarea:not([disabled]), select:not([disabled]), button:not(.modal-x):not([disabled])',
     )
     ;(first ?? panel).focus()
   }, [])

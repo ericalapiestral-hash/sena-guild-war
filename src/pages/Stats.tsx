@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import { createPortal } from 'react-dom'
+import { createPortal, flushSync } from 'react-dom'
 import html2canvas from 'html2canvas'
+import { Modal } from '../components/Modal'
 import type { CutlineGuide, StatEntry, StatRound, UserData } from '../types'
 import {
   activeMembers, excludedMembers, hiddenNames, newId, rosterNames, todayLocal, update, useGuildName, useUserData,
@@ -62,6 +63,36 @@ const CFG: Record<
   },
 }
 
+/**
+ * 파괴신 표를 **뽑을 기준** — [표 인쇄]·[이미지 저장] 을 누르면 먼저 고른다(2026-09-30, 운영진 요청).
+ *   perHit  중간집계 1회 기준 — 캡처 점수 ÷ 친 횟수(1회 점수) 높은 순
+ *   total   중간집계 3회 기준 — 캡처에 찍힌 점수 그대로 높은 순(친 횟수와 상관없이)
+ *   final   시즌 최종 점수 등수
+ * 뽑는 표만 바뀐다 — 화면 표의 순위(destroyerRanker)는 그대로다.
+ */
+type DestroyerBasis = 'perHit' | 'total' | 'final'
+const BASIS: Record<DestroyerBasis, { label: string; file: string; desc: string }> = {
+  perHit: { label: '중간집계 1회 기준', file: '1회기준', desc: '캡처 점수 ÷ 친 횟수 = 1회 점수, 높은 순' },
+  total: { label: '중간집계 3회 기준', file: '3회기준', desc: '캡처에 찍힌 점수 그대로, 높은 순 (괄호는 친 횟수)' },
+  final: { label: '시즌 최종 점수 등수', file: '최종순위', desc: '이번 시즌 최종 집계 순 — 전 시즌 집계와의 차이까지' },
+}
+const BASIS_ORDER: DestroyerBasis[] = ['perHit', 'total', 'final']
+
+/** 그 기준으로 뽑을 값이 있나 — 없으면 고르는 창에서 막고 이유를 보여 준다 */
+function basisBlocked(b: DestroyerBasis, entries: StatEntry[]): string | null {
+  if (b === 'perHit') {
+    return entries.some((e) => perHit(e) !== undefined) ? null : '친 횟수 기록이 없어요 — 중간집계를 캡처로 넣으면 같이 읽혀요'
+  }
+  if (b === 'total') return entries.some((e) => typeof e.mid === 'number') ? null : '중간집계가 아직 없어요'
+  return entries.some((e) => typeof e.value === 'number') ? null : '최종 집계가 아직 없어요'
+}
+
+/** 고르지 않고 인쇄했을 때(Ctrl+P 등)의 기준 — 화면 표와 같은 판단(destroyerRanker) */
+function autoBasis(entries: StatEntry[]): DestroyerBasis {
+  const m = destroyerRanker(entries).mode
+  return m === 'final' ? 'final' : m === 'perHit' ? 'perHit' : 'total'
+}
+
 
 export function StatsPage({ kind }: { kind: Kind }) {
   const data = useUserData()
@@ -94,6 +125,20 @@ export function StatsPage({ kind }: { kind: Kind }) {
    */
   const [weekView, setWeekView] = useState(false)
   const current = rounds.find((r) => r.id === selId) ?? rounds[rounds.length - 1] ?? null
+  /**
+   * 파괴신 출력 기준 — **고른 시즌에만** 붙는다.
+   * ★ 시즌을 가리지 않고 기억했더니, 끝난 시즌에서 '최종 점수 등수' 를 고른 뒤 진행 중인
+   *   시즌으로 가서 Ctrl+P 를 누르면 순위·점수가 전부 '-' 인 빈 표가 나왔다(고르는 창의
+   *   '값 없으면 막기' 는 버튼으로 열 때만 걸린다). 다른 시즌이거나 그 기준에 값이 없으면
+   *   고르지 않은 것(autoBasis)으로 본다.
+   */
+  const [basisPick, setBasisPick] = useState<{ id: string; b: DestroyerBasis } | null>(null)
+  /** 출력 기준을 고르는 창 — 무엇을 하려다 열었나 */
+  const [choosing, setChoosing] = useState<null | 'print' | 'image'>(null)
+  /** 고르는 창이 '뽑을 값이 있나' 를 볼 행 — 인쇄본과 같은 집합(외부 처리한 길드원 제외) */
+  const printable = current && !cfg.byDay ? current.entries.filter((e) => !hidden.has(e.name)) : []
+  const basis: DestroyerBasis | null = basisPick && current && basisPick.id === current.id
+    && !basisBlocked(basisPick.b, printable) ? basisPick.b : null
 
   const stored: StatEntry[] = current ? (cfg.byDay ? current.days?.[day] ?? [] : current.entries) : []
   // 공성전은 요일마다 기준점이 달라 요일별 커트라인 사용 (없으면 주차 공통값으로 폴백)
@@ -144,7 +189,7 @@ export function StatsPage({ kind }: { kind: Kind }) {
   }
 
   /** 현재 보고 있는 표를 PNG 이미지로 저장 — 인쇄 뷰(.print-root)를 그대로 캡처 */
-  async function saveImage() {
+  async function saveImage(b?: DestroyerBasis) {
     if (!current) return
     const safe = (s: string) => s.replace(/[\\/:*?"<>|]/g, '-').replace(/\s+/g, '')
     let fileName: string
@@ -170,7 +215,9 @@ export function StatsPage({ kind }: { kind: Kind }) {
         alert('입력된 딜량이 없어요.')
         return
       }
-      fileName = `파괴신-${safe(current.label)}.png`
+      // 파일 이름에 뽑은 기준을 붙인다 — 같은 시즌을 기준만 바꿔 여러 장 뽑으면 이름이 겹쳤다
+      const used = b ?? autoBasis(printable)
+      fileName = `파괴신-${safe(current.label)}-${BASIS[used].file}.png`
     }
 
     const src = document.querySelector('.print-root')
@@ -216,6 +263,17 @@ export function StatsPage({ kind }: { kind: Kind }) {
     } finally {
       wrap.remove()
     }
+  }
+
+  /** 출력 기준을 골랐다 — 그 기준으로 인쇄 뷰를 다시 그린 **뒤에** 인쇄·캡처한다 */
+  function chooseBasis(b: DestroyerBasis) {
+    const act = choosing
+    if (!current) return
+    const id = current.id
+    // ★ flushSync — 그냥 setState 하면 인쇄·캡처가 먼저 돌아서 **옛 기준의 표**가 찍힌다.
+    flushSync(() => { setBasisPick({ id, b }); setChoosing(null) })
+    if (act === 'print') window.print()
+    else if (act === 'image') void saveImage(b)
   }
 
   /** [저장] — 현재 회차/요일의 기록을 통째로 교체 (편집 모드 결과 한 번에 커밋) */
@@ -295,8 +353,9 @@ export function StatsPage({ kind }: { kind: Kind }) {
               {current.date && <span className="muted" style={{ marginLeft: 8 }}>기록 시작 {current.date}</span>}
             </div>
             <div className="row">
-              <button className="small" onClick={() => window.print()}>🖨 표 인쇄</button>
-              <button className="small" onClick={() => void saveImage()}>🖼 이미지 저장</button>
+              {/* 파괴신은 뽑기 전에 기준(1회·3회·최종 등수)을 고른다 */}
+              <button className="small" onClick={() => (cfg.byDay ? window.print() : setChoosing('print'))}>🖨 표 인쇄</button>
+              <button className="small" onClick={() => (cfg.byDay ? void saveImage() : setChoosing('image'))}>🖼 이미지 저장</button>
               {admin && (
                 <>
                   <button className="small" onClick={() => renameRound(current)}>이름변경</button>
@@ -381,8 +440,32 @@ export function StatsPage({ kind }: { kind: Kind }) {
       )}
 
       {current && createPortal(
-        <PrintContent kind={kind} cfg={cfg} current={current} prevRound={prevRound} roster={roster} day={day} tierOf={cfg.byDay ? undefined : tierOf} guide={data.cutlineGuide} misses={misses} weekView={cfg.byDay && weekView} hidden={hidden} />,
+        <PrintContent kind={kind} cfg={cfg} current={current} prevRound={prevRound} roster={roster} day={day} tierOf={cfg.byDay ? undefined : tierOf} guide={data.cutlineGuide} misses={misses} weekView={cfg.byDay && weekView} hidden={hidden} basis={basis} />,
         document.body,
+      )}
+
+      {choosing && current && (
+        <Modal
+          title={choosing === 'print' ? '어떤 기준으로 인쇄할까요?' : '어떤 기준으로 이미지를 만들까요?'}
+          desc={`${current.label} · 화면 표는 그대로 두고 뽑는 표만 바뀌어요`}
+          onClose={() => setChoosing(null)}
+        >
+          <div className="basis-list">
+            {BASIS_ORDER.map((b) => {
+              const why = basisBlocked(b, printable)
+              // 일부만 들어가 있으면 몇 명인지 같이 — 나머지는 순위 없이(-) 찍힌다는 걸 고르기 전에 알게
+              const has = printable.filter((e) =>
+                b === 'perHit' ? perHit(e) !== undefined : b === 'total' ? typeof e.mid === 'number' : typeof e.value === 'number').length
+              const partial = !why && has < printable.length ? ` · ${has}/${printable.length}명만 있음` : ''
+              return (
+                <button key={b} className={`basis-opt${basis === b ? ' on' : ''}`} disabled={!!why} onClick={() => chooseBasis(b)}>
+                  <b>{BASIS[b].label}</b>
+                  <span className="muted">{why ?? BASIS[b].desc + partial}</span>
+                </button>
+              )
+            })}
+          </div>
+        </Modal>
       )}
         </>
       )}
@@ -613,6 +696,7 @@ function PrintContent({
   guide,
   misses,
   hidden,
+  basis,
 }: {
   kind: Kind
   cfg: (typeof CFG)[Kind]
@@ -631,6 +715,8 @@ function PrintContent({
   hidden?: Set<string>
   /** [커트라인] 메뉴의 기준표 — 화면 표와 같은 판정을 쓰도록 함께 넘긴다 */
   guide?: CutlineGuide
+  /** 파괴신: 뽑을 기준 — [표 인쇄]·[이미지 저장] 전에 고른 값. 없으면 autoBasis */
+  basis?: DestroyerBasis | null
 }) {
   const printedAt = todayLocal()
   const guildName = useGuildName()
@@ -736,44 +822,65 @@ function PrintContent({
     )
   }
 
-  // 파괴신 — '이번 시즌 → 전 시즌 → 차이' 순서로 (2026-09-29, 운영진 요청)
-  //   [시즌집계]  이번 시즌 집계 | 전 시즌 집계 | 시즌집계 대비
-  //   [중간집계]  이번 시즌 중간 | 전 시즌 중간 | 중간집계 대비
-  // 최종이 있으면 시즌집계 묶음이 앞, 시즌 도중(최종 없음)이면 중간집계 묶음이 앞이다.
-  // ★ 칸마다 **그 칸에 값이 있는지**로 따로 켠다. 처음엔 묶음째 끄고 켰는데, 시즌 도중에
-  //   시즌집계 묶음을 통째로 빼니 **전 시즌 집계**(전원 값이 있는 칸)까지 사라져서,
-  //   전 시즌에 횟수 기록이 없는 동안(2026-09-28 전 시즌 전부)은 이미지에 전 시즌 숫자가
-  //   하나도 안 남았다. 전원 '-' 이거나 전원 '—' 인 칸만 뺀다 — 폭만 먹어서 600px
-  //   이미지에서 숫자가 줄 바꿈되던 원인이기도 하다.
+  // 파괴신 — 뽑을 기준(basis)은 [표 인쇄]·[이미지 저장] 전에 고른다(2026-09-30).
+  //   perHit  이번 시즌 중간(1회) | 전 시즌 중간(1회) | 중간집계 대비 | 전 시즌 집계
+  //   total   이번 시즌 중간(총)  | 전 시즌 중간(총)  | 중간집계 대비 | 전 시즌 집계
+  //   final   이번 시즌 집계      | 전 시즌 집계      | 시즌집계 대비
+  // 칸은 '이번 시즌 → 전 시즌 → 차이' 순서(2026-09-29 요청).
+  // ★ 칸마다 **그 칸에 값이 있는지**로 따로 켠다. 묶음째 끄면, 전 시즌에 횟수 기록이 없는
+  //   동안 전 시즌 집계까지 사라져 이미지에 전 시즌 숫자가 하나도 안 남았다(리뷰에서 잡았다).
+  //   전원 '-' 이거나 전원 '—' 인 칸만 뺀다.
   const shown = buildRanked(roster, current.entries, hidden)
-  // 순위는 화면 표와 같은 기준 — 시즌 도중엔 1회 점수 높은 순 (destroyerRanker)
-  const ranker = destroyerRanker(shown)
-  const curRanked = [...shown].sort(byRank(ranker.key))
+  // 고른 기준에 값이 없으면(StatsPage 가 이미 거르지만 한 번 더) 고르지 않은 것으로 본다
+  const chosen = basis && !basisBlocked(basis, shown) ? basis : null
+  /**
+   * 고르지 않고 뽑을 때(Ctrl+P 등)는 **화면 표를 그대로** 따른다 — 순위는 destroyerRanker 의
+   * 값(최종 우선, 없으면 중간집계), 칸은 최종과 중간집계(1회)를 둘 다.
+   * ★ 처음엔 autoBasis 의 '최종' 을 '최종 점수 등수' 기준과 똑같이 뽑았더니, 최종을 넣는
+   *   도중(일부만 입력)에 Ctrl+P 를 누르면 최종이 아직 없는 사람들이 순위도 점수도 없이 찍혔다.
+   */
+  const auto = !chosen
+  const b: DestroyerBasis = chosen ?? autoBasis(shown)
+  const hasMid = shown.some((e) => typeof e.mid === 'number')
+  /** 중간집계 칸을 어떻게 보일까 — 최종 등수를 **골랐으면** 중간집계는 안 싣는다 */
+  const midView: 'perHit' | 'total' | null =
+    b === 'total' ? 'total' : b === 'perHit' || (auto && hasMid) ? 'perHit' : null
+  // 순위 기준값 — 고른 기준의 값. 값이 없는 사람은 순위 없이(-) 아래로(byRank)
+  const screenKey = destroyerRanker(shown).key
+  const key = (e: StatEntry): number | undefined =>
+    auto ? screenKey(e) : b === 'perHit' ? perHit(e) : b === 'total' ? e.mid : e.value
+  const curRanked = [...shown].sort(byRank(key))
   const rankOf = (e: StatEntry): number | undefined => {
-    const v = ranker.key(e)
+    const v = key(e)
     if (typeof v !== 'number') return undefined
-    return curRanked.filter((o) => (ranker.key(o) ?? -Infinity) > v).length + 1
+    return curRanked.filter((o) => (key(o) ?? -Infinity) > v).length + 1
   }
   const prevMap = new Map(
     (prevRound?.entries ?? []).filter((e) => typeof e.value === 'number').map((e) => [e.name, e.value as number]),
   )
   // 중간집계 대비용 — 전 시즌 중간집계와 그때 친 횟수
   const prevEntryMap = new Map((prevRound?.entries ?? []).map((e) => [e.name, e]))
-  const midCmp = (e: StatEntry) => midCompare(prevEntryMap.get(e.name), e)
-  const curTotal = curRanked.reduce((s, e) => s + (effValue(e) as number), 0)
-  const hasFinal = curRanked.some((e) => typeof e.value === 'number')
-  const hasMid = curRanked.some((e) => typeof e.mid === 'number')
+  // 1회 기준은 같은 단위끼리만(midCompare — 한쪽만 횟수가 있으면 비교 안 함),
+  // 3회 기준은 캡처 점수끼리 그대로 — 친 횟수를 안 보는 기준이라 옛 시즌과도 바로 견준다.
+  const midCmp = (e: StatEntry): { prev?: number; cur?: number } => {
+    const pe = prevEntryMap.get(e.name)
+    return midView === 'total' ? { prev: pe?.mid, cur: e.mid } : midCompare(pe, e)
+  }
+  const midComparable = curRanked.some((e) => {
+    const c = midCmp(e)
+    return typeof c.prev === 'number' && typeof c.cur === 'number'
+  })
   const prevHasFinal = curRanked.some((e) => prevMap.has(e.name))
   const seasonComparable = curRanked.some((e) => typeof e.value === 'number' && prevMap.has(e.name))
   const prevHasMid = curRanked.some((e) => typeof prevEntryMap.get(e.name)?.mid === 'number')
-  // 전 시즌 중간·중간집계 대비는 **같은 단위로 비교되는 사람이 하나라도 있을 때만** 켠다.
-  // 전 시즌에 횟수 기록이 없으면 이번 시즌 1회 점수 옆에 전 시즌 총계만 놓이게 되는데,
-  // 단위가 달라 견줄 수 없는 숫자를 나란히 두면 폭락처럼 읽힌다.
-  const midComparable = curRanked.some((e) => typeof midCmp(e).prev === 'number')
+  // 합계는 고른 기준의 총 딜량 — 최종 등수면 최종 합, 중간집계 기준이면 중간집계(캡처 점수) 합,
+  // 안 골랐으면 화면 타일과 같은 값(최종 우선, 없으면 중간집계)
+  const sumOf = (e: StatEntry) => (auto ? effValue(e) : b === 'final' ? e.value : e.mid)
+  const counted = curRanked.filter((e) => typeof sumOf(e) === 'number')
+  const curTotal = counted.reduce((s, e) => s + (sumOf(e) as number), 0)
   const unit = midUnit(curRanked)
-  // 전 시즌 칸의 단위는 전 시즌 기록을 보고 따로 정한다
   const prevUnit = midUnit(curRanked.map((e) => prevEntryMap.get(e.name)))
-  // 커트라인 이하 미달자 — 회차에 저장된 값 → [커트라인] 기준표 → 시즌 기본값
+  // 커트라인 이하 미달자 — 회차에 저장된 값 → [커트라인] 기준표 → 시즌 기본값 (총 딜량 기준)
   const tierCuts = current.tierCutlines ?? {}
   const cutFor = (name: string) => {
     const t = tierOf?.get(name)
@@ -783,9 +890,16 @@ function PrintContent({
     if (typeof gt === 'number') return gt
     return current.cutline
   }
+  /**
+   * 미달 판정에 쓸 값 — **이 표에 실제로 찍힌 값**으로 본다(커트라인은 총 딜량 기준).
+   * 최종 등수면 최종, 중간집계 기준이면 중간집계 총계(1회 칸의 '(N회)' 로 거꾸로 셈이 된다),
+   * 안 골랐으면 화면과 같은 값. 표에 없는 값으로 빨갛게 칠하면 뽑은 그림만 봐서는 이유를 모른다.
+   */
+  const failVal = (e: StatEntry) => (auto ? effValue(e) : b === 'final' ? e.value : e.mid)
   const isFail = (e: StatEntry) => {
     const c = cutFor(e.name)
-    return typeof c === 'number' && typeof effValue(e) === 'number' && (effValue(e) as number) <= c
+    const v = failVal(e)
+    return typeof c === 'number' && typeof v === 'number' && v <= c
   }
   /** 인쇄용 등급 커트라인 — 화면과 같은 순서(회차 저장값 → 기준표) */
   const tierCutOf = (t: string): number | undefined => {
@@ -796,29 +910,33 @@ function PrintContent({
   }
   const usedTiers = [...new Set(curRanked.map((e) => tierOf?.get(e.name)).filter((t): t is string => !!t && typeof tierCutOf(t) === 'number'))].sort()
 
+  /** 3회 기준 칸 — 캡처 점수 그대로, 괄호에 친 횟수 */
+  const totalText = (x?: StatEntry): string =>
+    typeof x?.mid !== 'number' ? '-' : `${fmt(x.mid)}${typeof x.midHits === 'number' && x.midHits > 0 ? ` (${x.midHits}회)` : ''}`
+  const midText = midView === 'perHit' ? midPrintText : totalText
   // 단위 괄호는 통째로 — '(1회·' / '총)' 으로 갈라졌다
   const unitTag = (u: string) => <span style={{ whiteSpace: 'nowrap' }}>({u})</span>
   type Col = { key: string; head: ReactNode; cell: (e: StatEntry) => string }
-  // 화면과 같은 규칙 — 시즌집계는 최종끼리, 중간집계는 중간집계끼리(1회 점수)
   const seasonCols: Array<Col | false> = [
-    hasFinal && { key: 'cur', head: '이번 시즌 집계', cell: (e) => fmt(e.value) },
+    b === 'final' && { key: 'cur', head: '이번 시즌 집계', cell: (e) => fmt(e.value) },
     prevHasFinal && { key: 'prev', head: '전 시즌 집계', cell: (e) => fmt(prevMap.get(e.name)) },
-    seasonComparable && { key: 'dSeason', head: cfg.deltaLabel, cell: (e) => diffPctText(prevMap.get(e.name), e.value) },
+    b === 'final' && seasonComparable && {
+      key: 'dSeason', head: cfg.deltaLabel, cell: (e) => diffPctText(prevMap.get(e.name), e.value),
+    },
   ]
-  const midCols: Array<Col | false> = [
-    hasMid && { key: 'curMid', head: <>이번 시즌 중간{unitTag(unit)}</>, cell: midPrintText },
-    hasMid && midComparable && {
+  const midCols: Array<Col | false> = !midView ? [] : [
+    { key: 'curMid', head: <>이번 시즌 중간{unitTag(midView === 'perHit' ? unit : '총')}</>, cell: midText },
+    midComparable && {
       key: 'prevMid',
-      head: <>전 시즌 중간{unitTag(prevUnit)}</>,
-      cell: (e) => { const pe = prevEntryMap.get(e.name); return pe ? midPrintText(pe) : '-' },
+      head: <>전 시즌 중간{unitTag(midView === 'perHit' ? prevUnit : '총')}</>,
+      cell: (e) => { const pe = prevEntryMap.get(e.name); return pe ? midText(pe) : '-' },
     },
-    hasMid && midComparable && {
-      key: 'dMid',
-      head: '중간집계 대비',
-      cell: (e) => { const c = midCmp(e); return diffPctText(c.prev, c.cur) },
+    midComparable && {
+      key: 'dMid', head: '중간집계 대비', cell: (e) => { const c = midCmp(e); return diffPctText(c.prev, c.cur) },
     },
   ]
-  const cols = (hasFinal ? [...seasonCols, ...midCols] : [...midCols, ...seasonCols]).filter((c): c is Col => !!c)
+  // 최종 등수면 시즌집계 묶음이 앞, 중간집계 기준이면 중간집계 묶음이 앞(전 시즌 집계는 뒤에 참고로)
+  const cols = (b === 'final' ? [...seasonCols, ...midCols] : [...midCols, ...seasonCols]).filter((c): c is Col => !!c)
 
   return (
     <div className="print-root">
@@ -827,21 +945,23 @@ function PrintContent({
         <span className="print-meta">출력일 {printedAt} · {guildName}</span>
       </div>
       <div className="print-block">
-        <h3>이번 시즌: {current.label}</h3>
+        <h3>이번 시즌: {current.label} · {BASIS[b].label}</h3>
         <div className="print-sub">
-          {curRanked.length}명 · 합계 {fmt(curTotal)}
+          {counted.length}명 · 합계 {fmt(curTotal)}
           {prevRound && <> · 전 시즌: {prevRound.label}</>}
           {(usedTiers.length > 0 || typeof current.cutline === 'number') && (
             <> · 커트라인 {usedTiers.map((t) => `${t} ${fmt(tierCutOf(t))}`).join(' / ')}
               {typeof current.cutline === 'number' && `${usedTiers.length ? ' / ' : ''}${usedTiers.length ? '기본 ' : ''}${fmt(current.cutline)}`} 이하 미달</>
           )}
-          {/* 뽑아서 돌리는 표라 단위를 표 밖에도 적어 둔다 — 숫자만 보면 총계로 읽힌다 */}
-          {hasMid && (unit === '총'
-            ? <> · 중간집계는 총 딜량(친 횟수 기록 없음)</>
-            : <> · 중간집계는 1회 점수(총 딜량 ÷ 친 횟수){unit === '1회·총' && ', 횟수가 없는 사람은 총 딜량(총)'}</>)}
-          {!hasFinal && ranker.mode === 'perHit' && <> · 순위는 1회 점수 높은 순</>}
+          {/* 뽑아서 돌리는 표라 기준을 표 밖에도 적어 둔다 — 숫자만 보면 무엇의 순위인지 모른다 */}
+          {b === 'perHit' && <> · 1회 점수(캡처 점수 ÷ 친 횟수) 높은 순{unit === '1회·총' && ', 횟수가 없는 사람은 총 딜량(총)·순위 없음'}</>}
+          {b === 'total' && <> · 캡처 점수 그대로 높은 순(괄호는 친 횟수)</>}
+          {b === 'final' && <> · 최종 집계 높은 순</>}
+          {b === 'final' && curRanked.some((e) => typeof e.value !== 'number') && (auto
+            ? <>, 최종이 아직 없는 사람은 중간집계 점수로 순위</>
+            : <>, 최종이 아직 없는 사람은 순위 없음(-)</>)}
           {/* 전 시즌 중간 칸을 뺀 이유 — 안 적으면 '왜 비교가 없지' 가 된다 */}
-          {hasMid && prevHasMid && !midComparable && <> · 전 시즌 중간집계는 친 횟수 기록이 없어 1회 점수와 비교하지 않았어요</>}
+          {midView === 'perHit' && prevHasMid && !midComparable && <> · 전 시즌 중간집계는 친 횟수 기록이 없어 1회 점수와 비교하지 않았어요</>}
         </div>
         <table className="print-table">
           <thead>
